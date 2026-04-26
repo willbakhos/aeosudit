@@ -1,0 +1,34 @@
+brand:
+  name: "Capify"
+  aliases: ["Capify Australia", "capify.com.au"]
+  domain: "capify.com.au"
+
+competitors:
+  - "Prospa"
+  - "Moula"
+  - "Lumi"
+  - "OnDeck"
+  - "GetCapital"
+
+ground_truth:
+  - "Unsecured business loans up to $300,000"
+  - "Secured business loans from $2M and above"
+  - "Based in Australia"
+  - "No hidden fees (NOT 'no early repayment fees')"
+
+locale:
+  country: "AU"
+  language: "en"
+
+engines:
+  openrouter:
+    - model: "anthropic/claude-haiku-4.5"
+      label: "Claude"
+    - model: "openai/gpt-5-mini"
+      label: "ChatGPT"
+    - model: "perplexity/sonar"
+      label: "Perplexity"
+    - model: "google/gemini-2.5-flash"
+      label: "Gemini"
+  apify:
+    - label: "Google AI Overviews"

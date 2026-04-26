@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ config.brand.name }} AEO Snapshot | Free Preview</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --ink-2: #1e293b;
+    --muted: #64748b;
+    --muted-2: #94a3b8;
+    --line: rgba(148, 163, 184, .24);
+    --panel: rgba(255, 255, 255, .88);
+    --panel-solid: #ffffff;
+    --bg: #f8fafc;
+    --accent: #2563eb;
+    --accent-2: #7c3aed;
+    --accent-3: #06b6d4;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --warning: #d97706;
+    --warning-bg: #fffbeb;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --shadow: 0 22px 60px rgba(15, 23, 42, .10);
+    --shadow-soft: 0 14px 35px rgba(15, 23, 42, .08);
+    --radius: 24px;
+    --radius-sm: 16px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(37, 99, 235, .16), transparent 32rem),
+      radial-gradient(circle at 85% 8%, rgba(124, 58, 237, .12), transparent 30rem),
+      linear-gradient(180deg, #f8fbff 0%, #f8fafc 38%, #eef4ff 100%);
+    -webkit-font-smoothing: antialiased;
+    padding: 0;
+  }
+
+  a { color: inherit; }
+
+  .page-shell {
+    width: min(1180px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 28px 0 56px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 26px;
+  }
+
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 800;
+    letter-spacing: -.03em;
+    color: var(--ink);
+  }
+
+  .brand-mark .logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 14px 30px rgba(37, 99, 235, .26);
+  }
+
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .74);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+  }
+
+  .chip.warning { color: #92400e; background: rgba(255, 251, 235, .9); border-color: rgba(217, 119, 6, .22); }
+  .chip.blue { color: #1d4ed8; background: rgba(239, 246, 255, .9); border-color: rgba(37, 99, 235, .22); }
+  .chip.dark { color: #334155; background: rgba(241, 245, 249, .9); }
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 34px;
+    padding: 34px;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, .97) 0%, rgba(30, 41, 59, .96) 48%, rgba(30, 64, 175, .94) 100%);
+    color: white;
+    box-shadow: var(--shadow);
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background:
+      radial-gradient(circle at 78% 20%, rgba(6, 182, 212, .28), transparent 24rem),
+      radial-gradient(circle at 8% 90%, rgba(124, 58, 237, .32), transparent 22rem);
+    pointer-events: none;
+  }
+
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 34px;
+    align-items: stretch;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .10);
+    border: 1px solid rgba(255, 255, 255, .15);
+    color: rgba(255,255,255,.82);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 20px 0 12px;
+    font-size: clamp(42px, 6vw, 72px);
+    line-height: .94;
+    letter-spacing: -.07em;
+    max-width: 820px;
+  }
+
+  .hero-lede {
+    margin: 0;
+    max-width: 730px;
+    color: rgba(255, 255, 255, .78);
+    font-size: 18px;
+  }
+
+  .hero-lede strong { color: white; }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: .92em;
+    padding: 2px 6px;
+    background: rgba(15, 23, 42, .06);
+    border-radius: 8px;
+    color: #1e293b;
+  }
+
+  .hero code { background: rgba(255, 255, 255, .12); color: white; }
+
+  .audit-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, .09);
+    backdrop-filter: blur(16px);
+    overflow: hidden;
+    box-shadow: 0 20px 55px rgba(0,0,0,.16);
+  }
+
+  .browser-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,.13);
+    background: rgba(15, 23, 42, .2);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 999px; background: rgba(255,255,255,.36); }
+  .address {
+    margin-left: 6px;
+    flex: 1;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.08);
+    border-radius: 999px;
+    padding: 6px 10px;
+    color: rgba(255,255,255,.7);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .screenshot-frame {
+    position: relative;
+    height: 230px;
+    background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.04));
+    border-bottom: 1px solid rgba(255,255,255,.13);
+    overflow: hidden;
+  }
+
+  .screenshot-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    transform: scale(1.01);
+  }
+
+  .screenshot-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(2,6,23,0) 45%, rgba(2,6,23,.46) 100%);
+    pointer-events: none;
+  }
+
+  .screenshot-caption {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: white;
+    font-size: 12px;
+  }
+
+  .screenshot-caption span {
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, .42);
+    backdrop-filter: blur(8px);
+  }
+
+  .screenshot-caption a {
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+
+  .audit-body { padding: 20px; }
+
+  .mini-score {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .mini-score div {
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 18px;
+    padding: 15px;
+    background: rgba(255,255,255,.08);
+  }
+
+  .mini-score span { display: block; color: rgba(255,255,255,.62); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .mini-score strong { display: block; margin-top: 4px; font-size: 32px; letter-spacing: -.04em; }
+
+  .hero-footnote { margin: 18px 0 0; color: rgba(255,255,255,.62); font-size: 13px; }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 13px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 14px;
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: white; color: #1d4ed8; box-shadow: 0 18px 35px rgba(0,0,0,.22); }
+  .btn.secondary { background: rgba(255,255,255,.10); color: white; border: 1px solid rgba(255,255,255,.18); }
+  .btn.blue { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; box-shadow: 0 18px 32px rgba(37, 99, 235, .24); }
+
+  .section {
+    margin-top: 28px;
+    padding: 30px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, .8);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(12px);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(24px, 3vw, 34px);
+    letter-spacing: -.045em;
+    line-height: 1.05;
+  }
+
+  .section-subtitle {
+    margin: 8px 0 0;
+    max-width: 690px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .takeaway {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+    align-items: start;
+    padding: 26px;
+    border-radius: var(--radius);
+    background:
+      linear-gradient(135deg, #fff7ed 0%, #fff 52%, #eff6ff 100%);
+    border: 1px solid rgba(251, 146, 60, .28);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .takeaway::after {
+    content: "";
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    right: -100px;
+    top: -120px;
+    background: radial-gradient(circle, rgba(245, 158, 11, .24), transparent 70%);
+  }
+
+  .signal-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: linear-gradient(135deg, #f97316, #dc2626);
+    box-shadow: 0 16px 32px rgba(220, 38, 38, .20);
+  }
+
+  .takeaway .label {
+    margin-bottom: 8px;
+    color: var(--warning);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .10em;
+  }
+
+  .takeaway h3 {
+    margin: 0 0 10px;
+    font-size: clamp(25px, 3.2vw, 40px);
+    line-height: 1.05;
+    letter-spacing: -.05em;
+  }
+
+  .takeaway p { margin: 0; color: var(--muted); max-width: 820px; }
+  .takeaway p + p { margin-top: 10px; }
+  .takeaway strong { color: var(--ink); }
+  .takeaway .stat-line strong { color: var(--danger); }
+
+  .takeaway-competitor-note {
+    margin: 12px 0 14px;
+    max-width: 780px;
+    font-size: clamp(18px, 2vw, 24px);
+    line-height: 1.35;
+    color: #475569;
+    font-style: italic;
+    letter-spacing: -.02em;
+  }
+
+  .takeaway-competitor-note strong {
+    color: var(--ink);
+    font-style: normal;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--panel-solid);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .055);
+  }
+
+  .card::after {
+    content: "";
+    position: absolute;
+    inset: auto -32px -42px auto;
+    width: 140px;
+    height: 140px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .09);
+  }
+
+  .card.headline-bad::after { background: rgba(220, 38, 38, .10); }
+  .card .label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+  }
+  .card .value {
+    margin-top: 12px;
+    font-size: 46px;
+    line-height: .95;
+    font-weight: 900;
+    letter-spacing: -.06em;
+  }
+  .card.headline-bad .value { color: var(--danger); }
+  .card.headline-good .value { color: var(--success); }
+  .card .caption { margin-top: 10px; color: var(--muted); font-size: 13px; }
+
+  .insight-grid {
+    display: grid;
+    grid-template-columns: .82fr 1.18fr;
+    gap: 18px;
+  }
+
+  .empty {
+    color: var(--muted);
+    padding: 22px;
+    border: 1px dashed rgba(100, 116, 139, .32);
+    border-radius: 18px;
+    background: rgba(248, 250, 252, .74);
+    font-size: 14px;
+  }
+
+  .bar-list {
+    display: grid;
+    gap: 11px;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 210px) 1fr 44px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid var(--line);
+  }
+
+  .bar-row .name {
+    color: var(--ink-2);
+    font-weight: 750;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bar-row .bar {
+    height: 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+  .bar-row .bar > div {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-3));
+  }
+  .bar-row .num {
+    color: var(--muted);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  details {
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: white;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .055);
+    overflow: hidden;
+  }
+  details summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 18px 20px;
+    font-weight: 850;
+    color: var(--ink);
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+
+  .pill {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+    margin-left: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: .02em;
+  }
+  .pill.bad { background: var(--danger-bg); color: var(--danger); }
+  .pill.good { background: var(--success-bg); color: var(--success); }
+  .pill.warn { background: var(--warning-bg); color: var(--warning); }
+
+  .response-text {
+    min-height: 120px;
+    margin: 18px 20px 20px;
+    padding: 18px;
+    color: var(--muted);
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  .response-text:empty::before {
+    content: "No visible answer text was captured in this free preview sample.";
+    color: var(--muted-2);
+    font-style: italic;
+  }
+
+  .locked {
+    position: relative;
+    min-height: 390px;
+    overflow: hidden;
+    margin-top: 16px;
+    border-radius: 24px;
+    background: white;
+    border: 1px solid var(--line);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, .065);
+  }
+
+  .locked .blur {
+    filter: blur(5px);
+    opacity: .52;
+    user-select: none;
+    pointer-events: none;
+    padding: 28px;
+    min-height: 390px;
+  }
+
+  .locked .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background: linear-gradient(180deg, rgba(255,255,255,.58) 0%, rgba(255,255,255,.95) 70%);
+    text-align: center;
+  }
+
+  .overlay-card {
+    width: min(620px, 100%);
+    max-width: 620px;
+    padding: 30px 28px;
+    border-radius: 24px;
+    background: rgba(255,255,255,.86);
+    border: 1px solid rgba(148, 163, 184, .26);
+    box-shadow: 0 18px 46px rgba(15,23,42,.13);
+    backdrop-filter: blur(12px);
+  }
+
+  .lock-icon {
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 12px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+  .overlay h4 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.035em; }
+  .overlay p { margin: 0 auto 16px; color: var(--muted); max-width: 540px; font-size: 14px; }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 16px; }
+  td, th { padding: 11px; font-size: 13px; border-bottom: 1px solid rgba(148, 163, 184, .18); }
+  th { color: #334155; background: #f8fafc; text-align: left; }
+
+  .cta-block {
+    position: relative;
+    overflow: hidden;
+    margin-top: 30px;
+    padding: 38px;
+    border-radius: 30px;
+    color: white;
+    background:
+      radial-gradient(circle at 86% 0%, rgba(6, 182, 212, .34), transparent 22rem),
+      linear-gradient(135deg, #1d4ed8 0%, #4338ca 50%, #6d28d9 100%);
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .cta-block h2 { color: white; font-size: clamp(31px, 4vw, 50px); }
+  .cta-block p { margin: 12px auto 0; max-width: 670px; color: rgba(255,255,255,.78); }
+  .cta-block .specs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 14px;
+    margin: 28px 0;
+    text-align: left;
+  }
+  .cta-block .specs div {
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.14);
+  }
+  .cta-block .specs strong { display: block; font-size: 34px; line-height: 1; letter-spacing: -.05em; }
+  .cta-block .specs span { display: block; margin-top: 6px; color: rgba(255,255,255,.75); font-size: 12px; }
+
+  .footer-note {
+    margin: 26px 0 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  @media (max-width: 930px) {
+    .hero-grid, .insight-grid { grid-template-columns: 1fr; }
+    .cards, .cta-block .specs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero { padding: 26px; }
+    .section { padding: 22px; }
+  }
+
+  @media (max-width: 620px) {
+    .page-shell { width: min(100% - 24px, 1180px); padding-top: 16px; }
+    .topbar, .section-header { align-items: flex-start; flex-direction: column; }
+    .cards, .cta-block .specs, .mini-score { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 1fr; gap: 8px; }
+    .bar-row .num { text-align: left; }
+    .takeaway { grid-template-columns: 1fr; }
+    h1 { font-size: 44px; }
+  }
+
+  @media print {
+    body { background: white; }
+    .page-shell { width: 100%; padding: 0; }
+    .section, .hero, .cta-block { box-shadow: none; break-inside: avoid; }
+    .btn { border: 1px solid #cbd5e1; }
+  }
+
+  /* Multi-engine selector */
+  .engine-panel {
+    margin-top: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255,255,255,.78);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+  }
+
+  .engine-panel-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(135deg, rgba(239,246,255,.92), rgba(255,255,255,.86));
+  }
+
+  .engine-panel-head h3 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    line-height: 1.1;
+    letter-spacing: -.035em;
+  }
+
+  .engine-panel-head p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 760px;
+  }
+
+  .engine-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 18px 24px 0;
+  }
+
+  .engine-tab {
+    appearance: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+
+  .engine-tab:hover { transform: translateY(-1px); border-color: rgba(37,99,235,.32); color: var(--accent); }
+  .engine-tab.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+    box-shadow: 0 14px 28px rgba(37, 99, 235, .22);
+  }
+
+  .engine-tab.locked-tab {
+    padding-right: 10px;
+  }
+
+  .tab-lock {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 3px 7px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .engine-tab.active .tab-lock {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+  }
+
+  .engine-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: .7;
+  }
+
+  .engine-content {
+    padding: 24px;
+  }
+
+  .engine-view { display: none; }
+  .engine-view.active { display: block; }
+
+  .engine-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .engine-score-card, .engine-copy-card {
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: #fff;
+    padding: 22px;
+  }
+
+  .engine-score-card h4, .engine-copy-card h4 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    letter-spacing: -.02em;
+  }
+
+  .engine-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .engine-stat {
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid rgba(148,163,184,.18);
+    padding: 14px;
+  }
+
+  .engine-stat span {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .engine-stat strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: -.045em;
+  }
+
+  .engine-copy-card p {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .engine-query-list {
+    margin: 14px 0 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  .engine-query-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid rgba(148,163,184,.18);
+    border-radius: 14px;
+    background: #f8fafc;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .locked-engine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .locked-engine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.72), rgba(255,255,255,0));
+    transform: translateX(-100%);
+    animation: sheen 3.2s infinite;
+    pointer-events: none;
+  }
+
+  @keyframes sheen {
+    0% { transform: translateX(-100%); }
+    42%, 100% { transform: translateX(100%); }
+  }
+
+  .engine-locked-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .engine-placeholder {
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: linear-gradient(135deg, #fff, #f8fafc);
+    padding: 22px;
+  }
+
+  .placeholder-bars {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .placeholder-bars span {
+    display: block;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #e2e8f0, #f1f5f9);
+  }
+
+  .placeholder-bars span:nth-child(2) { width: 82%; }
+  .placeholder-bars span:nth-child(3) { width: 64%; }
+  .placeholder-bars span:nth-child(4) { width: 74%; }
+
+  .engine-lock-card {
+    border: 1px solid rgba(37,99,235,.18);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(239,246,255,.92), rgba(255,255,255,.94));
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .engine-lock-card h4 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.035em; }
+  .engine-lock-card p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  .engine-lock-card ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
+  .engine-lock-card li + li { margin-top: 6px; }
+
+  @media (max-width: 820px) {
+    .engine-panel-head, .engine-detail-grid, .engine-locked-grid { grid-template-columns: 1fr; }
+    .engine-tabs { padding-top: 14px; }
+  }
+</style>
+</head>
+<body>
+{% set visible = (agg.visible_pct | float) %}
+{% set total_queries = agg.total %}
+{% set visible_count = ((visible / 100) * total_queries) | round | int %}
+{% set engines_total = 5 %}
+{% set competitors_in_text = (agg.competitor_text_counts | map(attribute=0) | list) if agg.competitor_text_counts else [] %}
+{% set competitors_in_citations = (agg.competitor_citation_counts | map(attribute=0) | list) if agg.competitor_citation_counts else [] %}
+{% set competitors_seen = (competitors_in_text + competitors_in_citations) | unique | list %}
+{% set first_query = agg.by_query.keys() | list | first %}
+{% set first_rows = agg.by_query[first_query] if first_query else [] %}
+{% set competitor_names %}{% for c in competitors_seen %}{{ c }}{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endset %}
+{% set competitor_names_strong %}{% for c in competitors_seen %}<strong>{{ c }}</strong>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endset %}
+  <main class="page-shell">
+    <header class="topbar">
+      <div class="brand-mark">
+        <div class="logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" role="img" aria-label="AEO icon"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span>AEO Snapshot</span>
+      </div>
+      <div class="top-actions">
+        <span class="chip warning">Free preview</span>
+        <span class="chip dark">{{ config.brand.name }}</span>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">AI answer visibility audit</span>
+          <h1>
+            {% if visible == 0 %}
+              {{ config.brand.name }} is invisible in Google AI Overviews.
+            {% elif visible < 50 %}
+              {{ config.brand.name }} is barely showing up in Google AI Overviews.
+            {% else %}
+              {{ config.brand.name }} appears in Google AI Overviews — but who else is being cited?
+            {% endif %}
+          </h1>
+          <p class="hero-lede">
+            {% if visible == 0 %}
+              <strong>Google's AI did not mention {{ config.brand.name }} once</strong> across {{ total_queries }} commercial questions in this category. This preview shows the visibility gap and where Google is sourcing answers instead.
+            {% else %}
+              Google's AI named <strong>{{ config.brand.name }} in {{ visible_count }} of {{ total_queries }} answers</strong> in this preview. The full report shows whether 4 other engines do the same.
+            {% endif %}
+          </p>
+          <div class="hero-meta">
+            <span class="chip blue">Domain <code>{{ config.brand.domain }}</code></span>
+            <span class="chip blue">Engine: Google AI Overviews</span>
+            <span class="chip blue">{{ total_queries }} queries tested</span>
+          </div>
+          <div class="cta-row">
+            <a href="#visibility" class="btn primary">View snapshot</a>
+            <a href="#upgrade" class="btn secondary">Unlock full audit</a>
+          </div>
+        </div>
+
+        <aside class="audit-card" aria-label="Audit summary card">
+          <div class="browser-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <div class="address">https://{{ config.brand.domain }}</div>
+          </div>
+          <div class="screenshot-frame">
+            {% if screenshot %}
+              <img src="{{ screenshot }}" alt="Screenshot of {{ config.brand.domain }}">
+            {% else %}
+              <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2F{{ config.brand.domain }}?w=1200" alt="Screenshot of {{ config.brand.domain }}">
+            {% endif %}
+            <div class="screenshot-caption">
+              <span>Website audited</span>
+              <a href="https://{{ config.brand.domain }}" target="_blank" rel="noopener">{{ config.brand.domain }} ↗</a>
+            </div>
+          </div>
+          <div class="audit-body">
+            <span class="chip warning">Audit subject</span>
+            <h3 style="margin:16px 0 6px;font-size:28px;letter-spacing:-.045em;line-height:1.05;color:white;">{{ config.brand.name }} visibility check</h3>
+            <p style="margin:0;color:rgba(255,255,255,.68);font-size:14px;">Snapshot of how AI answer engines surface, cite, and compare {{ config.brand.name }} in buyer-facing queries.</p>
+            <div class="mini-score">
+              <div><span>Visibility</span><strong style="color:white;">{{ agg.visible_pct }}%</strong></div>
+              <div><span>Citation rate</span><strong style="color:white;">{{ agg.cited_pct }}%</strong></div>
+            </div>
+            <p class="hero-footnote">Full report expands this to 5 engines, 40 queries and 200 individual AI answers.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="visibility">
+      <div class="takeaway">
+        <div class="signal-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 9v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M12 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="label">The takeaway</div>
+          <h3>
+            {% if visible == 0 %}
+              {{ total_queries }} potential customers asked Google a question {{ config.brand.name }} should answer — and got an answer that did not include {{ config.brand.name }}.
+            {% elif visible < 50 %}
+              {{ config.brand.name }} only appears in {{ visible_count }} of {{ total_queries }} Google AI answers — there's a clear visibility gap.
+            {% else %}
+              {{ config.brand.name }} shows up in most Google AI answers — but the bigger question is what Claude, ChatGPT, Perplexity and Gemini are doing.
+            {% endif %}
+          </h3>
+          {% if competitors_seen %}
+          <p class="takeaway-competitor-note"><em>Google pointed them to {{ competitor_names_strong | safe }} instead.</em></p>
+          {% endif %}
+          <p class="stat-line">
+            <strong>{{ agg.visible_pct }}% visibility</strong>
+            {% if visible == 0 %}
+              means {{ config.brand.name }} was not named in any answer in this sample{% if agg.cited_pct and agg.cited_pct > 0 %}, even though one answer linked to the site{% endif %}.
+            {% else %}
+              means {{ visible_count }} of {{ total_queries }} answers named {{ config.brand.name }} directly.
+            {% endif %}
+          </p>
+          <p>The full report tests <strong>4 more AI engines</strong> across <strong>32 more queries</strong>, including head-to-head comparisons, hallucination detection and a complete competitor breakdown.</p>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top:28px;">
+        <div>
+          <h2>Your visibility on Google AI Overviews</h2>
+          <p class="section-subtitle">A concise view of whether Google AI Overviews names {{ config.brand.name }}, links to {{ config.brand.name }}, or cites competing sources when answering buyer questions.</p>
+        </div>
+        <span class="chip dark">Free tier results</span>
+      </div>
+      <div class="cards">
+        <div class="card {% if visible < 30 %}headline-bad{% elif visible >= 60 %}headline-good{% endif %}">
+          <div class="label">Visibility</div>
+          <div class="value">{{ agg.visible_pct }}%</div>
+          <div class="caption">of answers named {{ config.brand.name }}</div>
+        </div>
+        <div class="card {% if agg.cited_pct < 20 %}headline-bad{% elif agg.cited_pct >= 50 %}headline-good{% endif %}">
+          <div class="label">Citation rate</div>
+          <div class="value">{{ agg.cited_pct }}%</div>
+          <div class="caption">of answers linked to {{ config.brand.name }}</div>
+        </div>
+        <div class="card {% if agg.avg_competitors_cited > 1 %}headline-bad{% endif %}">
+          <div class="label">Competitors cited</div>
+          <div class="value">{{ agg.avg_competitors_cited }}</div>
+          <div class="caption">average per question</div>
+        </div>
+        <div class="card">
+          <div class="label">Questions tested</div>
+          <div class="value">{{ total_queries }}</div>
+          <div class="caption">free preview sample</div>
+        </div>
+      </div>
+
+      <div class="engine-panel" id="llm-coverage">
+        <div class="engine-panel-head">
+          <div>
+            <h3>Choose an AI engine to inspect visibility</h3>
+            <p>This preview includes live Google AI Overview results only. The full audit uses the same visibility framework across the main answer engines buyers now use to research {{ config.brand.name }} and its category.</p>
+          </div>
+          <span class="chip blue">5-engine coverage</span>
+        </div>
+        <div class="engine-tabs" role="tablist" aria-label="AI engine visibility selector">
+          <button class="engine-tab active" type="button" role="tab" aria-selected="true" data-engine-tab="google"><span class="engine-dot"></span>Google AI Overviews</button>
+          <button class="engine-tab locked-tab" type="button" role="tab" aria-selected="false" data-engine-tab="chatgpt"><span class="engine-dot"></span>ChatGPT <span class="tab-lock">Unlock</span></button>
+          <button class="engine-tab locked-tab" type="button" role="tab" aria-selected="false" data-engine-tab="claude"><span class="engine-dot"></span>Claude <span class="tab-lock">Unlock</span></button>
+          <button class="engine-tab locked-tab" type="button" role="tab" aria-selected="false" data-engine-tab="perplexity"><span class="engine-dot"></span>Perplexity <span class="tab-lock">Unlock</span></button>
+          <button class="engine-tab locked-tab" type="button" role="tab" aria-selected="false" data-engine-tab="gemini"><span class="engine-dot"></span>Gemini <span class="tab-lock">Unlock</span></button>
+        </div>
+        <div class="engine-content">
+          <div class="engine-view active" data-engine-view="google" role="tabpanel">
+            <div class="engine-detail-grid">
+              <div class="engine-score-card">
+                <span class="chip warning">Available in this preview</span>
+                <h4 style="margin-top:16px;">Google AI Overview visibility</h4>
+                <div class="engine-stats">
+                  <div class="engine-stat"><span>Visibility</span><strong>{{ agg.visible_pct }}%</strong></div>
+                  <div class="engine-stat"><span>Citation rate</span><strong>{{ agg.cited_pct }}%</strong></div>
+                  <div class="engine-stat"><span>Questions tested</span><strong>{{ total_queries }}</strong></div>
+                  <div class="engine-stat"><span>Competitors cited</span><strong>{{ agg.avg_competitors_cited }}</strong></div>
+                </div>
+              </div>
+              <div class="engine-copy-card">
+                <h4>What this means</h4>
+                <p>
+                {% if visible == 0 %}
+                  In this free sample, Google AI Overviews did not name {{ config.brand.name }} in any tested answer{% if agg.cited_pct and agg.cited_pct > 0 %}. One answer linked to {{ config.brand.name }}, but the brand was not surfaced directly in the response text{% endif %}.
+                {% else %}
+                  In this free sample, Google AI Overviews named {{ config.brand.name }} in {{ visible_count }} of {{ total_queries }} answers.
+                {% endif %}
+                </p>
+                <p>The full report repeats this same check across the other engines so the team can see whether invisibility is a Google-specific issue or an AI-wide discovery gap.</p>
+                <div class="engine-query-list" aria-label="Example query coverage">
+                  <div><span>Brand questions</span><strong>tested</strong></div>
+                  <div><span>Category questions</span><strong>tested</strong></div>
+                  <div><span>Problem-led questions</span><strong>tested</strong></div>
+                  <div><span>Comparison questions</span><strong>full audit</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="engine-view" data-engine-view="chatgpt" role="tabpanel">
+            <div class="engine-locked-grid locked-engine">
+              <div class="engine-placeholder">
+                <span class="chip dark">Locked in preview</span>
+                <h4>ChatGPT visibility data</h4>
+                <div class="placeholder-bars"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="engine-lock-card">
+                <h4>See whether ChatGPT recommends {{ config.brand.name }}</h4>
+                <p>The full audit captures how ChatGPT answers brand, category, problem and comparison prompts in {{ config.brand.name }}'s category.</p>
+                <ul><li>Brand mentions and share of answer</li><li>Competitors named in the same response</li><li>Sentiment, claims and content gaps</li></ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="engine-view" data-engine-view="claude" role="tabpanel">
+            <div class="engine-locked-grid locked-engine">
+              <div class="engine-placeholder">
+                <span class="chip dark">Locked in preview</span>
+                <h4>Claude visibility data</h4>
+                <div class="placeholder-bars"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="engine-lock-card">
+                <h4>See whether Claude understands the offer</h4>
+                <p>The full audit shows whether Claude describes {{ config.brand.name }} accurately, cites the right evidence and positions the brand against competitors.</p>
+                <ul><li>Answer inclusion by query type</li><li>Accuracy and hallucination checks</li><li>Recommended evidence to publish</li></ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="engine-view" data-engine-view="perplexity" role="tabpanel">
+            <div class="engine-locked-grid locked-engine">
+              <div class="engine-placeholder">
+                <span class="chip dark">Locked in preview</span>
+                <h4>Perplexity visibility data</h4>
+                <div class="placeholder-bars"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="engine-lock-card">
+                <h4>See which sources Perplexity trusts</h4>
+                <p>The full audit identifies which pages, publishers and competitor domains Perplexity cites when answering commercial buyer questions.</p>
+                <ul><li>Citation source map</li><li>Competitor co-mentions</li><li>PR and content opportunities</li></ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="engine-view" data-engine-view="gemini" role="tabpanel">
+            <div class="engine-locked-grid locked-engine">
+              <div class="engine-placeholder">
+                <span class="chip dark">Locked in preview</span>
+                <h4>Gemini visibility data</h4>
+                <div class="placeholder-bars"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="engine-lock-card">
+                <h4>See how Gemini frames the category</h4>
+                <p>The full audit checks whether Gemini surfaces {{ config.brand.name }} in buyer journeys and where content needs to be strengthened for AI answer inclusion.</p>
+                <ul><li>Visibility by query intent</li><li>Missing entities and claims</li><li>Actionable optimisation priorities</li></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Competitor and source intelligence</h2>
+          <p class="section-subtitle">The free preview shows early source patterns. The larger audit usually reveals a clearer map of competitors, citation sources and content opportunities.</p>
+        </div>
+      </div>
+      <div class="insight-grid">
+        <div>
+          <h3 style="margin:0 0 12px;font-size:18px;letter-spacing:-.02em;">Competitors Google cited instead of {{ config.brand.name }}</h3>
+          {% if agg.competitor_text_counts or agg.competitor_citation_counts %}
+            {% set comp_data = agg.competitor_citation_counts if agg.competitor_citation_counts else agg.competitor_text_counts %}
+            <div class="bar-list">
+              {% set max_cmp = comp_data[0][1] %}
+              {% for name, count in comp_data %}
+                <div class="bar-row">
+                  <div class="name">{{ name }}</div>
+                  <div class="bar"><div style="width: {{ (count / max_cmp * 100) | round(0) }}%;"></div></div>
+                  <div class="num">{{ count }}×</div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty">No competitors were mentioned in this {{ total_queries }}-query sample. A larger 40-query audit is more likely to expose recurring competitors and comparison gaps.</div>
+          {% endif %}
+        </div>
+        <div>
+          <h3 style="margin:0 0 12px;font-size:18px;letter-spacing:-.02em;">Where Google's AI gets its answers</h3>
+          {% if agg.top_domains %}
+            {% set max_count = agg.top_domains[0][1] %}
+            <div class="bar-list">
+              {% for domain, count in agg.top_domains[:8] %}
+                <div class="bar-row">
+                  <div class="name">{{ domain }}</div>
+                  <div class="bar"><div style="width: {{ (count / max_count * 100) | round(0) }}%;"></div></div>
+                  <div class="num">{{ count }}×</div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty">No external citations captured in this sample.</div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Sample answer evidence</h2>
+          <p class="section-subtitle">The full report includes all {{ total_queries }} answers from this run plus 32 more queries across Claude, ChatGPT, Perplexity and Gemini.</p>
+        </div>
+      </div>
+      {% if first_query %}
+      <details open>
+        <summary>
+          {{ first_query }}
+          <span class="pill">{{ first_rows[0].response.query_type }}</span>
+          {% set v = first_rows | selectattr('deterministic.mentioned') | list | length %}
+          {% if v > 0 %}
+            <span class="pill good">{{ config.brand.name }} appears</span>
+          {% else %}
+            <span class="pill bad">{{ config.brand.name }} does not appear</span>
+          {% endif %}
+        </summary>
+        {% for row in first_rows %}
+          {% if not row.response.error %}
+            <div class="response-text">{{ row.response.response_text[:600] }}{% if row.response.response_text|length > 600 %}…{% endif %}</div>
+          {% endif %}
+        {% endfor %}
+      </details>
+      {% endif %}
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>What unlocks in the full audit</h2>
+          <p class="section-subtitle">The paid report turns the snapshot into an action plan: engine-by-engine visibility, hallucinations, citations, competitors and query-level evidence.</p>
+        </div>
+      </div>
+
+      <h3 style="margin:0 0 10px;font-size:18px;letter-spacing:-.02em;">Engine heatmap — how 5 engines compare</h3>
+      <div class="locked">
+        <div class="blur">
+          <table>
+            <tr><td></td><td style="text-align:center;">Claude</td><td style="text-align:center;">ChatGPT</td><td style="text-align:center;">Perplexity</td><td style="text-align:center;">Gemini</td><td style="text-align:center;">Google</td></tr>
+            <tr><td><strong>brand</strong></td><td style="text-align:center;background:#dcfce7;">57%</td><td style="text-align:center;background:#bbf7d0;">64%</td><td style="text-align:center;background:#86efac;">71%</td><td style="text-align:center;background:#4ade80;">78%</td><td style="text-align:center;background:#22c55e;color:white;">85%</td></tr>
+            <tr><td><strong>category</strong></td><td style="text-align:center;background:#dcfce7;">57%</td><td style="text-align:center;background:#bbf7d0;">64%</td><td style="text-align:center;background:#86efac;">71%</td><td style="text-align:center;background:#4ade80;">78%</td><td style="text-align:center;background:#22c55e;color:white;">85%</td></tr>
+            <tr><td><strong>problem</strong></td><td style="text-align:center;background:#dcfce7;">57%</td><td style="text-align:center;background:#bbf7d0;">64%</td><td style="text-align:center;background:#86efac;">71%</td><td style="text-align:center;background:#4ade80;">78%</td><td style="text-align:center;background:#22c55e;color:white;">85%</td></tr>
+            <tr><td><strong>comparison</strong></td><td style="text-align:center;background:#dcfce7;">57%</td><td style="text-align:center;background:#bbf7d0;">64%</td><td style="text-align:center;background:#86efac;">71%</td><td style="text-align:center;background:#4ade80;">78%</td><td style="text-align:center;background:#22c55e;color:white;">85%</td></tr>
+            <tr><td><strong>vertical</strong></td><td style="text-align:center;background:#dcfce7;">57%</td><td style="text-align:center;background:#bbf7d0;">64%</td><td style="text-align:center;background:#86efac;">71%</td><td style="text-align:center;background:#4ade80;">78%</td><td style="text-align:center;background:#22c55e;color:white;">85%</td></tr>
+          </table>
+        </div>
+        <div class="overlay">
+          <div class="overlay-card">
+            <div class="lock-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 11V8a5 5 0 0110 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 11h12v9H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+            <h4>See how every engine ranks {{ config.brand.name }}, side-by-side</h4>
+            <p>Some engines may cite the brand while others never mention it. The full report shows the exact blind spots to fix first.</p>
+            <a href="#upgrade" class="btn blue">Unlock for $99</a>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin:28px 0 10px;font-size:18px;letter-spacing:-.02em;">Hallucination report — what AI is making up</h3>
+      <div class="locked">
+        <div class="blur">
+          <table>
+            <tr><th>Engine</th><th>Query</th><th>False claim</th></tr>
+            <tr><td>Perplexity</td><td>Sample query about pricing</td><td>Incorrect claim about a product feature or eligibility rule</td></tr>
+            <tr><td>ChatGPT</td><td>Another sample query</td><td>Unsupported statement about a service or approval process</td></tr>
+          </table>
+        </div>
+        <div class="overlay">
+          <div class="overlay-card">
+            <div class="lock-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 9v4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+            <h4>Find false claims before customers see them</h4>
+            <p>Every answer is checked against business ground truth so incorrect claims can be corrected before they influence buyers.</p>
+            <a href="#upgrade" class="btn blue">Unlock for $99</a>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin:28px 0 10px;font-size:18px;letter-spacing:-.02em;">Per-query drill-down — all 40 questions, all 5 engines</h3>
+      <div class="locked">
+        <div class="blur">
+          <details open style="box-shadow:none;"><summary>Best providers in your category <span class="pill">category</span></summary><div style="padding:16px;color:#64748b;">Claude: █████████ █████ ████ ███ ███████<br>ChatGPT: ██████ █████████ ████████ ███<br>Gemini: ████████ ████████ ████ ███████</div></details>
+          <details style="box-shadow:none;margin-top:10px;"><summary>{{ config.brand.name }} vs {{ config.competitors[0] if config.competitors else 'competitor' }} <span class="pill">comparison</span></summary></details>
+          <details style="box-shadow:none;margin-top:10px;"><summary>Common buyer-intent question for your category <span class="pill">problem</span></summary></details>
+        </div>
+        <div class="overlay">
+          <div class="overlay-card">
+            <div class="lock-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 11V8a5 5 0 0110 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 11h12v9H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+            <h4>Read every answer from every engine</h4>
+            <p>Unlock 200 responses across 40 queries, each tagged with sentiment, citations, competitor mentions and recommended content actions.</p>
+            <a href="#upgrade" class="btn blue">Unlock for $99</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-block" id="upgrade">
+      <span class="eyebrow">Full audit package</span>
+      <h2>Get the complete {{ config.brand.name }} AEO audit</h2>
+      <p>Tested across all 5 major AI engines with hallucination scoring, competitor analysis and query-level evidence your content team can act on.</p>
+      <div class="specs">
+        <div><strong>5</strong><span>AI engines: Claude, ChatGPT, Perplexity, Gemini and Google</span></div>
+        <div><strong>40</strong><span>queries across brand, category, problem, comparison and vertical intent</span></div>
+        <div><strong>200</strong><span>individual AI answers analysed and tagged</span></div>
+        <div><strong>Yes</strong><span>hallucination detection, sentiment scoring and CSV export</span></div>
+      </div>
+      <a href="mailto:hello@example.com?subject=Full AEO audit for {{ config.brand.name }}" class="btn primary">Get the full report — $99</a>
+      <p style="font-size:12px;opacity:.78;margin-top:16px;">Delivered within 24 hours. Includes CSV export for your team.</p>
+    </section>
+
+    <p class="footer-note">This is a free preview. The data above is generated from Google AI Overviews queries for {{ config.brand.name }}.</p>
+  </main>
+<script>
+  (function () {
+    const tabs = document.querySelectorAll('[data-engine-tab]');
+    const views = document.querySelectorAll('[data-engine-view]');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const engine = tab.getAttribute('data-engine-tab');
+        tabs.forEach((item) => {
+          const isActive = item === tab;
+          item.classList.toggle('active', isActive);
+          item.setAttribute('aria-selected', String(isActive));
+        });
+        views.forEach((view) => {
+          view.classList.toggle('active', view.getAttribute('data-engine-view') === engine);
+        });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

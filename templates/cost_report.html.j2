@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cost-annotated Audit — {{ config.brand.name }}</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #e2e2e2;
+    --accent: #0b6cff;
+    --good: #1a8754;
+    --bad: #b91c1c;
+    --warn: #b45309;
+    --money: #047857;
+    --money-bg: #d1fae5;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; padding: 32px; line-height: 1.45; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  h2 { margin: 40px 0 12px; font-size: 20px; border-bottom: 1px solid var(--line); padding-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  h2 .left { display: flex; align-items: center; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+  .card { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; position: relative; }
+  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  th, td { padding: 8px 12px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+  th { background: #f3f4f6; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .heatmap td { text-align: center; min-width: 80px; }
+  .heatmap td.cell { font-variant-numeric: tabular-nums; font-size: 13px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 14px; }
+  .bar-row .name { width: 140px; }
+  .bar-row .bar { flex: 1; height: 14px; background: #eef0f3; border-radius: 3px; overflow: hidden; }
+  .bar-row .bar > div { height: 100%; background: var(--accent); }
+  .bar-row .num { width: 36px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  details { background: white; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; padding: 8px 12px; }
+  details summary { cursor: pointer; font-weight: 500; }
+  details[open] summary { margin-bottom: 8px; }
+  .engine-block { border-top: 1px solid var(--line); padding: 8px 0; }
+  .engine-block:first-child { border-top: none; }
+  .pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #eef0f3; color: var(--muted); margin-right: 4px; }
+  .pill.good { background: #dcfce7; color: var(--good); }
+  .pill.bad { background: #fee2e2; color: var(--bad); }
+  .pill.warn { background: #fef3c7; color: var(--warn); }
+  .pill.money { background: var(--money-bg); color: var(--money); font-variant-numeric: tabular-nums; }
+  .response-text { white-space: pre-wrap; font-size: 13px; color: #2a2a2a; max-height: 320px; overflow-y: auto; background: #fafafa; padding: 8px; border-radius: 4px; border: 1px solid var(--line); }
+  .citations { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .citations a { color: var(--accent); text-decoration: none; }
+  .citations a:hover { text-decoration: underline; }
+  .empty { color: var(--muted); font-style: italic; padding: 12px; }
+  code { font-size: 12px; background: #f3f4f6; padding: 1px 4px; border-radius: 3px; }
+
+  .info { display: inline-block; width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; font-weight: 600; border-radius: 50%; background: #dbeafe; color: #1d4ed8; cursor: help; margin-left: 6px; vertical-align: middle; position: relative; }
+  .info:hover .tip { display: block; }
+  .tip { display: none; position: absolute; top: 22px; left: 0; width: 320px; background: #1f2937; color: #f3f4f6; padding: 10px 12px; border-radius: 6px; font-size: 12px; font-weight: normal; line-height: 1.5; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2); white-space: normal; text-align: left; }
+  .tip strong { color: white; display: block; margin-bottom: 4px; }
+  .tip em { color: #93c5fd; font-style: normal; }
+
+  .callout { background: #f0f7ff; border-left: 3px solid var(--accent); padding: 10px 14px; margin: 8px 0 16px; font-size: 13px; border-radius: 0 4px 4px 0; }
+  .callout p { margin: 0 0 6px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .fix { color: #1d4ed8; font-weight: 500; }
+
+  .card .info { position: absolute; top: 8px; right: 8px; margin: 0; }
+
+  /* cost-specific styling */
+  .cost-badge {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font-size: 14px; font-weight: 600; color: var(--money);
+    background: var(--money-bg); padding: 4px 10px; border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+    cursor: help; position: relative;
+  }
+  .cost-badge .cost-pct { font-size: 11px; color: var(--money); opacity: 0.7; font-weight: normal; }
+  .cost-badge:hover .tip { display: block; }
+  .cost-banner {
+    background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%);
+    border: 1px solid var(--money-bg);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 12px 0 24px;
+    display: flex; flex-wrap: wrap; gap: 24px;
+    align-items: center;
+  }
+  .cost-banner .stat { font-size: 13px; color: var(--muted); }
+  .cost-banner .stat strong { color: var(--money); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; display: block; }
+</style>
+</head>
+<body>
+
+<h1>AEO Audit (cost-annotated) — {{ config.brand.name }}</h1>
+<div class="meta">
+  Domain: <code>{{ config.brand.domain }}</code> &middot;
+  {{ agg.total }} (query × engine) calls &middot;
+  {{ agg.engines | length }} engines &middot;
+  {{ agg.types | length }} query types
+</div>
+
+<div class="cost-banner">
+  <div class="stat"><strong>${{ '%.4f' | format(costs.total) }}</strong>total run cost</div>
+  <div class="stat"><strong>${{ '%.4f' | format(costs.per_usable) }}</strong>per usable answer</div>
+  <div class="stat"><strong>{{ costs.ok_calls }}</strong>ok calls / {{ costs.ok_calls + costs.err_calls }} total</div>
+  <div class="stat"><strong>${{ '%.4f' | format(costs.wasted) }}</strong>wasted on failed calls</div>
+  <div style="flex: 1; text-align: right; font-size: 12px; color: var(--muted);">
+    Each section heading shows what that section cost to produce.<br>
+    Hover any green badge for detail.
+  </div>
+</div>
+
+<!-- ===== Headline metrics ===== -->
+<h2>
+  <span class="left">Headline metrics<span class="info">?<span class="tip"><strong>The four numbers that matter most.</strong>Visibility, citation rate, competitor density, errors.</span></span></span>
+  <span class="cost-badge">${{ '%.4f' | format(costs.sections.headline.cost) }}
+    <span class="cost-pct">{{ '%.0f' | format(costs.sections.headline.pct) }}% of run</span>
+    <span class="tip"><strong>How this section cost is calculated</strong>{{ costs.sections.headline.note }}</span>
+  </span>
+</h2>
+<div class="cards">
+  <div class="card">
+    <span class="info">?<span class="tip"><strong>Visibility</strong>% of successful queries where your brand name appeared in the AI's answer.</span></span>
+    <div class="label">Visibility</div><div class="value">{{ agg.visible_pct }}%</div>
+  </div>
+  <div class="card">
+    <span class="info">?<span class="tip"><strong>Citation rate</strong>% of successful queries where your domain appeared as a clickable source.</span></span>
+    <div class="label">Citation rate</div><div class="value">{{ agg.cited_pct }}%</div>
+  </div>
+  <div class="card">
+    <span class="info">?<span class="tip"><strong>Competitor density</strong>Average number of competitor domains cited per query.</span></span>
+    <div class="label">Avg competitors cited / query</div><div class="value">{{ agg.avg_competitors_cited }}</div>
+  </div>
+  <div class="card">
+    <span class="info">?<span class="tip"><strong>Errors</strong>Calls that returned no answer at all.</span></span>
+    <div class="label">Errors</div><div class="value">{{ agg.errors | length }}</div>
+  </div>
+</div>
+<div class="callout">
+  <p><strong>Cost note:</strong> {{ costs.sections.headline.note }}</p>
+</div>
+
+<!-- ===== Engine heatmap ===== -->
+<h2>
+  <span class="left">Engine heatmap<span class="info">?<span class="tip"><strong>Where you show up — and where you don't.</strong>Each cell is the % of queries of that type where your brand appeared in that engine's answer.</span></span></span>
+  <span class="cost-badge">${{ '%.4f' | format(costs.sections.heatmap.cost) }}
+    <span class="cost-pct">{{ '%.0f' | format(costs.sections.heatmap.pct) }}% of run</span>
+    <span class="tip"><strong>How this section cost is calculated</strong>{{ costs.sections.heatmap.note }}</span>
+  </span>
+</h2>
+<div class="callout">
+  <p><strong>Cost note:</strong> {{ costs.sections.heatmap.note }}</p>
+</div>
+<table class="heatmap">
+  <thead>
+    <tr>
+      <th>Query type<br><span style="font-weight:normal; font-size:11px; color:var(--muted);">(cost / type)</span></th>
+      {% for e in agg.engines %}<th>{{ e }}<br><span style="font-weight:normal; font-size:11px; color:var(--money);">${{ '%.2f' | format(costs.by_engine.get(e, 0)) }}</span></th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in agg.heatmap %}
+    <tr>
+      <td><strong>{{ row.type }}</strong><br><span style="font-size:11px; color:var(--money); font-weight:normal;">${{ '%.2f' | format(costs.by_type.get(row.type, 0)) }}</span></td>
+      {% for cell in row.cells %}
+        {% if cell.pct is none %}
+          <td class="cell" style="color: #b6b6b6;">—</td>
+        {% else %}
+          <td class="cell" style="background: hsl(140, 60%, {{ 95 - (cell.pct * 0.4) }}%);">
+            {{ cell.pct }}%
+            <div style="font-size: 10px; color: var(--muted);">n={{ cell.n }}</div>
+          </td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ===== Top cited sources ===== -->
+<h2>
+  <span class="left">Top cited sources (PR target list)<span class="info">?<span class="tip"><strong>The domains AI engines trust most for your category.</strong>Use as a PR / link-building target list.</span></span></span>
+  <span class="cost-badge">${{ '%.4f' | format(costs.sections.sources.cost) }}
+    <span class="cost-pct">{{ '%.0f' | format(costs.sections.sources.pct) }}% of run</span>
+    <span class="tip"><strong>How this section cost is calculated</strong>{{ costs.sections.sources.note }}</span>
+  </span>
+</h2>
+<div class="callout">
+  <p><strong>Cost note:</strong> {{ costs.sections.sources.note }}</p>
+</div>
+{% if agg.top_domains %}
+  {% set max_count = agg.top_domains[0][1] %}
+  {% for domain, count in agg.top_domains %}
+    <div class="bar-row">
+      <div class="name">{{ domain }}</div>
+      <div class="bar"><div style="width: {{ (count / max_count * 100) | round(0) }}%;"></div></div>
+      <div class="num">{{ count }}</div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">No external citations captured.</div>
+{% endif %}
+
+<!-- ===== Competitor share-of-voice ===== -->
+<h2>
+  <span class="left">Competitor share-of-voice<span class="info">?<span class="tip"><strong>Who AI engines mention instead of (or alongside) you.</strong></span></span></span>
+  <span class="cost-badge">${{ '%.4f' | format(costs.sections.competitors.cost) }}
+    <span class="cost-pct">{{ '%.0f' | format(costs.sections.competitors.pct) }}% of run</span>
+    <span class="tip"><strong>How this section cost is calculated</strong>{{ costs.sections.competitors.note }}</span>
+  </span>
+</h2>
+<div class="callout">
+  <p><strong>Cost note:</strong> {{ costs.sections.competitors.note }}</p>
+</div>
+<h3 style="font-size: 14px; color: var(--muted); margin-bottom: 4px;">In response text</h3>
+{% if agg.competitor_text_counts %}
+  {% set max_t = agg.competitor_text_counts[0][1] %}
+  {% for name, count in agg.competitor_text_counts %}
+    <div class="bar-row">
+      <div class="name">{{ name }}</div>
+      <div class="bar"><div style="width: {{ (count / max_t * 100) | round(0) }}%;"></div></div>
+      <div class="num">{{ count }}</div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">No competitors mentioned.</div>
+{% endif %}
+
+<h3 style="font-size: 14px; color: var(--muted); margin: 16px 0 4px;">In citations</h3>
+{% if agg.competitor_citation_counts %}
+  {% set max_c = agg.competitor_citation_counts[0][1] %}
+  {% for name, count in agg.competitor_citation_counts %}
+    <div class="bar-row">
+      <div class="name">{{ name }}</div>
+      <div class="bar"><div style="width: {{ (count / max_c * 100) | round(0) }}%; background: var(--warn);"></div></div>
+      <div class="num">{{ count }}</div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">No competitor domains in citations.</div>
+{% endif %}
+
+<!-- ===== Hallucination flags — the only section with its own incremental cost ===== -->
+<h2>
+  <span class="left">Hallucination flags<span class="info">?<span class="tip"><strong>Where AI engines may have made things up about your brand.</strong>Second-pass scoring by Claude Haiku.</span></span></span>
+  <span class="cost-badge" style="background: #fef3c7; color: var(--warn);">+${{ '%.4f' | format(costs.sections.hallucinations.cost) }}
+    <span class="cost-pct" style="color: var(--warn);">incremental</span>
+    <span class="tip"><strong>This is the ONLY section with its own incremental cost</strong>{{ costs.sections.hallucinations.note }}</span>
+  </span>
+</h2>
+<div class="callout" style="background: #fefce8; border-left-color: var(--warn);">
+  <p><strong>Cost note (this section is special):</strong> {{ costs.sections.hallucinations.note }}</p>
+  <p class="fix">Lever: pass <code>--skip-llm-scoring</code> on dry runs to remove this cost entirely. Sections 1–5 above don't need it.</p>
+</div>
+{% if agg.flagged %}
+<table>
+  <thead>
+    <tr><th>Engine</th><th>Query</th><th>Flags</th><th>Confidence</th></tr>
+  </thead>
+  <tbody>
+  {% for row in agg.flagged %}
+    <tr>
+      <td>{{ row.response.engine_label }}</td>
+      <td>{{ row.response.query }}</td>
+      <td>
+        {% if row.llm.hallucination_flags %}
+          <ul style="margin: 0; padding-left: 18px;">
+            {% for f in row.llm.hallucination_flags %}<li>{{ f }}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <span class="pill warn">low confidence</span>
+        {% endif %}
+      </td>
+      <td>{{ '%.2f' | format(row.llm.confidence) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No responses flagged.</div>
+{% endif %}
+
+<!-- ===== Per-query drill-down ===== -->
+<h2>
+  <span class="left">Per-query drill-down<span class="info">?<span class="tip"><strong>The raw evidence.</strong>Every query, with all engine responses.</span></span></span>
+  <span class="cost-badge">${{ '%.4f' | format(costs.sections.drilldown.cost) }}
+    <span class="cost-pct">{{ '%.0f' | format(costs.sections.drilldown.pct) }}% of run</span>
+    <span class="tip"><strong>How this section cost is calculated</strong>{{ costs.sections.drilldown.note }}</span>
+  </span>
+</h2>
+<div class="callout">
+  <p><strong>Cost note:</strong> {{ costs.sections.drilldown.note }} Each query row below shows its individual cost in green.</p>
+</div>
+{% for query, query_rows in agg.by_query.items() %}
+<details>
+  <summary>
+    {{ query }}
+    <span class="pill">{{ query_rows[0].response.query_type }}</span>
+    {% set visible_count = query_rows | selectattr('deterministic.mentioned') | list | length %}
+    <span class="pill {% if visible_count > 0 %}good{% else %}bad{% endif %}">
+      mentioned in {{ visible_count }}/{{ query_rows | length }}
+    </span>
+    <span class="pill money">${{ '%.4f' | format(costs.by_query.get(query, 0)) }}</span>
+  </summary>
+  {% for row in query_rows %}
+    <div class="engine-block">
+      <strong>{{ row.response.engine_label }}</strong>
+      <span class="pill money">${{ '%.4f' | format(costs.by_call.get(row.response.engine_label ~ '||' ~ row.response.query, 0)) }}</span>
+      {% if row.response.error %}
+        <span class="pill bad">error (free)</span>
+        <div class="response-text">{{ row.response.error }}</div>
+      {% else %}
+        {% if row.deterministic.mentioned %}<span class="pill good">mentioned</span>{% endif %}
+        {% if row.deterministic.cited_as_source %}<span class="pill good">cited (#{{ row.deterministic.citation_rank }})</span>{% endif %}
+        {% if row.deterministic.competitors_mentioned %}
+          <span class="pill warn">vs {{ row.deterministic.competitors_mentioned | join(', ') }}</span>
+        {% endif %}
+        <div class="response-text">{{ row.response.response_text }}</div>
+        {% if row.response.citations %}
+        <div class="citations">
+          <strong>Citations:</strong>
+          {% for c in row.response.citations %}
+            <div>{{ c.position }}. <a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.title or c.domain }}</a> <span style="color:#999;">({{ c.domain }})</span></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% endfor %}
+</details>
+{% endfor %}
+
+<p style="text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px;">
+Generated from <code>raw_responses.json</code> — no API calls made for this report.
+</p>
+
+</body>
+</html>
