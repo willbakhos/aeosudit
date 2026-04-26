@@ -117,24 +117,31 @@ def _aggregate(rows: list[ScoredRow], config: SiteConfig) -> dict[str, Any]:
     }
 
 
+PREVIEW_TIERS = {"free", "spotlight"}
+
+
 def write_html(
     rows: list[ScoredRow],
     config: SiteConfig,
     output_dir: Path,
-    tier: str = "paid",
+    tier: str = "full",
     screenshot: str | None = None,
+    action_plan: list[dict] | None = None,
 ) -> Path:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
         autoescape=select_autoescape(["html"]),
     )
-    template_name = "report_free.html.j2" if tier == "free" else "report.html.j2"
+    template_name = (
+        "report_free.html.j2" if tier in PREVIEW_TIERS else "report.html.j2"
+    )
     template = env.get_template(template_name)
     ctx = {
         "config": config,
         "agg": _aggregate(rows, config),
         "tier": tier,
         "screenshot": screenshot,
+        "action_plan": action_plan,
     }
     html = template.render(**ctx)
     path = output_dir / "report.html"

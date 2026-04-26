@@ -642,7 +642,7 @@
     position: relative;
     overflow: hidden;
     margin-top: 30px;
-    padding: 38px;
+    padding: 44px 38px;
     border-radius: 30px;
     color: white;
     background:
@@ -652,22 +652,120 @@
     text-align: center;
   }
   .cta-block h2 { color: white; font-size: clamp(31px, 4vw, 50px); }
-  .cta-block p { margin: 12px auto 0; max-width: 670px; color: rgba(255,255,255,.78); }
-  .cta-block .specs {
+  .cta-block > p { margin: 12px auto 28px; max-width: 670px; color: rgba(255,255,255,.78); }
+
+  .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
-    gap: 14px;
-    margin: 28px 0;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 16px;
+    margin: 32px 0 8px;
     text-align: left;
   }
-  .cta-block .specs div {
-    padding: 18px;
-    border-radius: 20px;
-    background: rgba(255,255,255,.10);
-    border: 1px solid rgba(255,255,255,.14);
+  .price-card {
+    position: relative;
+    padding: 24px 22px 26px;
+    border-radius: 22px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.16);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
-  .cta-block .specs strong { display: block; font-size: 34px; line-height: 1; letter-spacing: -.05em; }
-  .cta-block .specs span { display: block; margin-top: 6px; color: rgba(255,255,255,.75); font-size: 12px; }
+  .price-card.featured {
+    background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+    border-color: rgba(255,255,255,.42);
+    box-shadow: 0 22px 50px rgba(6,182,212,.25);
+    transform: translateY(-4px);
+  }
+  .price-card .badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    box-shadow: 0 8px 18px rgba(249,115,22,.32);
+  }
+  .price-card .tier-name {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.72);
+  }
+  .price-card .tier-price {
+    font-size: 44px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -.05em;
+    color: white;
+  }
+  .price-card .tier-price small {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,.6);
+    margin-left: 4px;
+  }
+  .price-card .tier-tagline {
+    margin: 0;
+    color: rgba(255,255,255,.78);
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 42px;
+  }
+  .price-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    display: grid;
+    gap: 8px;
+  }
+  .price-card li {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: rgba(255,255,255,.86);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .price-card li::before {
+    content: "✓";
+    color: #34d399;
+    font-weight: 900;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .price-card .tier-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: auto;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: white;
+    color: #1d4ed8;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .price-card.featured .tier-cta {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    box-shadow: 0 14px 28px rgba(249,115,22,.35);
+  }
+  .price-card.outline .tier-cta {
+    background: transparent;
+    color: white;
+    border: 1px solid rgba(255,255,255,.4);
+  }
+  .price-footnote { margin: 18px auto 0 !important; font-size: 12px; opacity: .72; max-width: 720px; }
 
   .footer-note {
     margin: 26px 0 0;
@@ -678,7 +776,9 @@
 
   @media (max-width: 930px) {
     .hero-grid, .insight-grid { grid-template-columns: 1fr; }
-    .cards, .cta-block .specs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .price-card.featured { transform: none; }
     .hero { padding: 26px; }
     .section { padding: 22px; }
   }
@@ -686,7 +786,7 @@
   @media (max-width: 620px) {
     .page-shell { width: min(100% - 24px, 1180px); padding-top: 16px; }
     .topbar, .section-header { align-items: flex-start; flex-direction: column; }
-    .cards, .cta-block .specs, .mini-score { grid-template-columns: 1fr; }
+    .cards, .mini-score { grid-template-columns: 1fr; }
     .bar-row { grid-template-columns: 1fr; gap: 8px; }
     .bar-row .num { text-align: left; }
     .takeaway { grid-template-columns: 1fr; }
@@ -1307,7 +1407,7 @@
             <div class="lock-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 11V8a5 5 0 0110 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 11h12v9H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
             <h4>See how every engine ranks {{ config.brand.name }}, side-by-side</h4>
             <p>Some engines may cite the brand while others never mention it. The full report shows the exact blind spots to fix first.</p>
-            <a href="#upgrade" class="btn blue">Unlock for $99</a>
+            <a href="#upgrade" class="btn blue">See pricing →</a>
           </div>
         </div>
       </div>
@@ -1326,7 +1426,7 @@
             <div class="lock-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 9v4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
             <h4>Find false claims before customers see them</h4>
             <p>Every answer is checked against business ground truth so incorrect claims can be corrected before they influence buyers.</p>
-            <a href="#upgrade" class="btn blue">Unlock for $99</a>
+            <a href="#upgrade" class="btn blue">See pricing →</a>
           </div>
         </div>
       </div>
@@ -1343,24 +1443,62 @@
             <div class="lock-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 11V8a5 5 0 0110 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 11h12v9H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
             <h4>Read every answer from every engine</h4>
             <p>Unlock 200 responses across 40 queries, each tagged with sentiment, citations, competitor mentions and recommended content actions.</p>
-            <a href="#upgrade" class="btn blue">Unlock for $99</a>
+            <a href="#upgrade" class="btn blue">See pricing →</a>
           </div>
         </div>
       </div>
     </section>
 
     <section class="cta-block" id="upgrade">
-      <span class="eyebrow">Full audit package</span>
-      <h2>Get the complete {{ config.brand.name }} AEO audit</h2>
-      <p>Tested across all 5 major AI engines with hallucination scoring, competitor analysis and query-level evidence your content team can act on.</p>
-      <div class="specs">
-        <div><strong>5</strong><span>AI engines: Claude, ChatGPT, Perplexity, Gemini and Google</span></div>
-        <div><strong>40</strong><span>queries across brand, category, problem, comparison and vertical intent</span></div>
-        <div><strong>200</strong><span>individual AI answers analysed and tagged</span></div>
-        <div><strong>Yes</strong><span>hallucination detection, sentiment scoring and CSV export</span></div>
+      <span class="eyebrow">Choose your audit tier</span>
+      <h2>How deep should we look at {{ config.brand.name }}?</h2>
+      <p>Three audit tiers — pick the one that matches the decision you're trying to make.</p>
+
+      <div class="pricing-grid">
+        <div class="price-card outline">
+          <div class="tier-name">Spotlight</div>
+          <div class="tier-price">$49<small>once</small></div>
+          <p class="tier-tagline">Google AI Overviews + one engine of your choice. The smallest audit that still reveals patterns.</p>
+          <ul>
+            <li>Google AI Overviews + 1 chosen engine</li>
+            <li>20 queries across brand, category &amp; comparison</li>
+            <li>Competitor &amp; source-domain analysis</li>
+            <li>PDF export</li>
+          </ul>
+          <a href="mailto:hello@example.com?subject=Spotlight AEO audit for {{ config.brand.name }}&amp;body=Tier: Spotlight ($49)%0ABrand: {{ config.brand.name }}%0ADomain: {{ config.brand.domain }}" class="tier-cta">Start with Spotlight →</a>
+        </div>
+
+        <div class="price-card featured">
+          <span class="badge">Most popular</span>
+          <div class="tier-name">Full Audit</div>
+          <div class="tier-price">$149<small>once</small></div>
+          <p class="tier-tagline">Every major AI engine, the full 40-query matrix and hallucination scoring. The complete diagnostic.</p>
+          <ul>
+            <li>All 5 engines: Claude, ChatGPT, Perplexity, Gemini &amp; Google</li>
+            <li>40 queries × 5 engines = 200 AI answers</li>
+            <li>Hallucination &amp; sentiment scoring</li>
+            <li>Engine heatmap, citation map, competitor share-of-voice</li>
+            <li>CSV + PDF export</li>
+          </ul>
+          <a href="mailto:hello@example.com?subject=Full AEO audit for {{ config.brand.name }}&amp;body=Tier: Full Audit ($149)%0ABrand: {{ config.brand.name }}%0ADomain: {{ config.brand.domain }}" class="tier-cta">Get the Full Audit →</a>
+        </div>
+
+        <div class="price-card">
+          <div class="tier-name">Audit + Action Plan</div>
+          <div class="tier-price">$349<small>once</small></div>
+          <p class="tier-tagline">Everything in Full Audit, plus 10 done-for-you recommendations with example copy your content team can publish.</p>
+          <ul>
+            <li>Everything in Full Audit</li>
+            <li>10 specific written recommendations</li>
+            <li>Example schema, FAQ &amp; About-page copy</li>
+            <li>PR &amp; link-building target list</li>
+            <li>Re-audit credit (run again in 60 days)</li>
+          </ul>
+          <a href="mailto:hello@example.com?subject=AEO Audit + Action Plan for {{ config.brand.name }}&amp;body=Tier: Audit + Action Plan ($349)%0ABrand: {{ config.brand.name }}%0ADomain: {{ config.brand.domain }}" class="tier-cta">Get the Action Plan →</a>
+        </div>
       </div>
-      <a href="mailto:hello@example.com?subject=Full AEO audit for {{ config.brand.name }}" class="btn primary">Get the full report — $99</a>
-      <p style="font-size:12px;opacity:.78;margin-top:16px;">Delivered within 24 hours. Includes CSV export for your team.</p>
+
+      <p class="price-footnote">All tiers delivered within 24 hours. Upgrade between tiers anytime — we credit what you've already paid.</p>
     </section>
 
     <p class="footer-note">This is a free preview. The data above is generated from Google AI Overviews queries for {{ config.brand.name }}.</p>

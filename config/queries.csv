@@ -1,41 +1,41 @@
-query,type,free
-What is Capify?,brand,true
-Is Capify a legitimate lender?,brand,true
-Capify reviews,brand,false
-Capify Australia interest rates,brand,false
-Capify loan eligibility requirements,brand,false
-How does Capify work?,brand,false
-Is Capify safe to borrow from?,brand,false
-Capify customer service contact,brand,false
-Best unsecured business loans in Australia,category,true
-Fast business loans Australia no security,category,true
-Top small business lenders in Australia,category,false
-Australian alternative business lenders 2026,category,false
-Best non-bank business loans Australia,category,false
-Quick approval business loans Australia,category,false
-Business loans for bad credit Australia,category,false
-Working capital loans for Australian SMEs,category,false
-How do I get funding for my restaurant in Australia?,problem,true
-My bank declined my business loan - what are my options?,problem,true
-How can I finance new equipment for my small business?,problem,false
-I need $100k to expand my cafe - where do I start?,problem,false
-What lenders work with sole traders in Australia?,problem,false
-How do I get a business loan without property as security?,problem,false
-Cash flow loan options for seasonal businesses Australia,problem,false
-Capify vs Prospa,comparison,true
-Capify vs Moula,comparison,false
-Prospa vs Moula vs Capify,comparison,false
-Lumi vs Capify business loans,comparison,false
-OnDeck vs Capify Australia,comparison,false
-GetCapital vs Capify comparison,comparison,false
-Best alternative to Prospa in Australia,comparison,true
-Best business loans for beauty salons Australia,vertical,false
-Business loans for tradies Australia,vertical,false
-Business loans for retail shops Australia,vertical,false
-Truck and transport business financing Australia,vertical,false
-Business loans for medical practices Australia,vertical,false
-Restaurant and hospitality business loans Australia,vertical,false
-Business financing for construction companies Australia,vertical,false
-Loans for ecommerce businesses Australia,vertical,false
-Franchise business loans Australia,vertical,false
-Business loans for gyms and fitness studios Australia,vertical,false
+query,type,free,spotlight
+What is Capify?,brand,true,true
+Is Capify a legitimate lender?,brand,true,true
+Capify reviews,brand,false,true
+Capify Australia interest rates,brand,false,false
+Capify loan eligibility requirements,brand,false,false
+How does Capify work?,brand,false,true
+Is Capify safe to borrow from?,brand,false,false
+Capify customer service contact,brand,false,false
+Best unsecured business loans in Australia,category,true,true
+Fast business loans Australia no security,category,true,true
+Top small business lenders in Australia,category,false,true
+Australian alternative business lenders 2026,category,false,false
+Best non-bank business loans Australia,category,false,false
+Quick approval business loans Australia,category,false,false
+Business loans for bad credit Australia,category,false,false
+Working capital loans for Australian SMEs,category,false,false
+How do I get funding for my restaurant in Australia?,problem,true,true
+My bank declined my business loan - what are my options?,problem,true,true
+How can I finance new equipment for my small business?,problem,false,true
+I need $100k to expand my cafe - where do I start?,problem,false,false
+What lenders work with sole traders in Australia?,problem,false,false
+How do I get a business loan without property as security?,problem,false,true
+Cash flow loan options for seasonal businesses Australia,problem,false,false
+Capify vs Prospa,comparison,true,true
+Capify vs Moula,comparison,false,true
+Prospa vs Moula vs Capify,comparison,false,false
+Lumi vs Capify business loans,comparison,false,false
+OnDeck vs Capify Australia,comparison,false,false
+GetCapital vs Capify comparison,comparison,false,false
+Best alternative to Prospa in Australia,comparison,true,true
+Best business loans for beauty salons Australia,vertical,false,false
+Business loans for tradies Australia,vertical,false,true
+Business loans for retail shops Australia,vertical,false,false
+Truck and transport business financing Australia,vertical,false,false
+Business loans for medical practices Australia,vertical,false,false
+Restaurant and hospitality business loans Australia,vertical,false,false
+Business financing for construction companies Australia,vertical,false,false
+Loans for ecommerce businesses Australia,vertical,false,false
+Franchise business loans Australia,vertical,false,false
+Business loans for gyms and fitness studios Australia,vertical,false,false

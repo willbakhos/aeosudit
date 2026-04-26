@@ -14,7 +14,18 @@ cp .env.example .env
 ## Run
 
 ```bash
-python -m src.main audit --config config/site.yaml
+# Free preview (Google AI Overviews, ~8 queries, ~$0.03)
+python -m src.main audit --config config/site.yaml --tier free
+
+# Spotlight ($49 product — Google + 1 chosen engine, ~20 queries)
+python -m src.main audit --config config/site.yaml --tier spotlight \
+  --spotlight-engine ChatGPT
+
+# Full Audit ($149 product — all 5 engines, 40 queries, LLM scoring)
+python -m src.main audit --config config/site.yaml --tier full
+
+# Audit + Action Plan ($349 product — Full + Sonnet recommendations)
+python -m src.main audit --config config/site.yaml --tier action_plan
 ```
 
 Outputs land in `output/{timestamp}/`:
@@ -52,6 +63,32 @@ A site config defines: brand name + aliases + domain, competitor list, ground-tr
 - Scoring is two-pass: deterministic (regex on text + URL parse on citations) → LLM (Haiku via OpenRouter for sentiment, accuracy vs ground truth, and hallucination detection).
 - Model IDs in `site.yaml` should be verified against current IDs on openrouter.ai/models before each run.
 - Results drift run-to-run even with identical queries — that's expected; don't chase determinism.
+
+## Stripe checkout + email/PDF delivery
+
+A FastAPI server in [src/server.py](src/server.py) handles Stripe Checkout, listens for webhooks, runs the audit, generates a PDF, and emails the customer via Resend.
+
+```bash
+# Install macOS system deps for WeasyPrint (PDF rendering)
+brew install pango glib
+
+# Fill in Stripe + Resend keys in .env (see .env.example for the full list)
+# Required:
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, PUBLIC_BASE_URL
+#   STRIPE_PRICE_SPOTLIGHT, STRIPE_PRICE_FULL, STRIPE_PRICE_ACTION_PLAN
+#   RESEND_API_KEY, REPORT_FROM_EMAIL
+
+uvicorn src.server:app --reload --port 8000
+
+# In another terminal, forward webhooks for local dev:
+stripe listen --forward-to localhost:8000/webhooks/stripe
+```
+
+Endpoints:
+- `POST /checkout` — body: `{tier, brand_name, domain, email, spotlight_engine?}` → returns Stripe Checkout URL
+- `POST /webhooks/stripe` — fires the audit on `checkout.session.completed`
+- `GET /report/{run_id}` — serves the hosted HTML report
+- `GET /report/{run_id}/pdf` — serves the rendered PDF
 
 ## Project layout
 

@@ -45,6 +45,7 @@ class Query(BaseModel):
     query: str
     type: str
     free: bool = False
+    spotlight: bool = False
 
 
 # ---------- engine output ----------

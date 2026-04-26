@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import typer
 import yaml
 from dotenv import load_dotenv
 
+from src.action_plan import generate as generate_action_plan
 from src.engines.apify import ApifyEngine
 from src.engines.base import Engine
 from src.engines.openrouter import OpenRouterEngine
@@ -34,6 +36,9 @@ def _load_config(path: Path) -> SiteConfig:
     return SiteConfig.model_validate(data)
 
 
+_TRUE_VALUES = {"true", "1", "yes", "y"}
+
+
 def _load_queries(path: Path) -> list[Query]:
     queries: list[Query] = []
     with path.open() as f:
@@ -41,9 +46,10 @@ def _load_queries(path: Path) -> list[Query]:
         for row in reader:
             q = (row.get("query") or "").strip()
             t = (row.get("type") or "general").strip()
-            free = (row.get("free") or "").strip().lower() in {"true", "1", "yes", "y"}
+            free = (row.get("free") or "").strip().lower() in _TRUE_VALUES
+            spotlight = (row.get("spotlight") or "").strip().lower() in _TRUE_VALUES
             if q:
-                queries.append(Query(query=q, type=t, free=free))
+                queries.append(Query(query=q, type=t, free=free, spotlight=spotlight))
     return queries
 
 
@@ -69,6 +75,7 @@ def _build_engines(
 
 
 FREE_TIER_ENGINE = "Google AI Overviews"
+VALID_TIERS = {"free", "spotlight", "full", "action_plan"}
 
 
 @app.command()
@@ -84,24 +91,33 @@ def audit(
         False, "--skip-llm-scoring", help="Skip the Haiku scoring pass"
     ),
     engines: str | None = typer.Option(
-        None, "--engines", help="Comma-separated engine labels (default: all)"
+        None, "--engines", help="Comma-separated engine labels (overrides tier defaults)"
     ),
     tier: str = typer.Option(
-        "paid",
+        "full",
         "--tier",
         help=(
-            "free = teaser report (1 engine, ~8 queries flagged free=true, "
-            "no LLM scoring, locked sections + CTA in HTML). "
-            "paid = full audit (all engines × queries, LLM scoring on)."
+            "free = Google only, ~8 queries (lead magnet). "
+            "spotlight = Google + 1 chosen engine, ~20 queries ($49). "
+            "full = all engines × 40 queries + LLM scoring ($149). "
+            "action_plan = full + Sonnet recommendations ($349)."
         ),
+    ),
+    spotlight_engine: str | None = typer.Option(
+        None,
+        "--spotlight-engine",
+        help="Engine label to pair with Google for the Spotlight tier (Claude / ChatGPT / Perplexity / Gemini).",
     ),
 ) -> None:
     """Run an AEO audit and emit CSV + HTML report."""
     load_dotenv()
 
     tier = tier.lower().strip()
-    if tier not in {"free", "paid"}:
-        typer.echo(f"Unknown --tier {tier!r}. Use 'free' or 'paid'.", err=True)
+    if tier not in VALID_TIERS:
+        typer.echo(
+            f"Unknown --tier {tier!r}. Use one of: {', '.join(sorted(VALID_TIERS))}.",
+            err=True,
+        )
         raise typer.Exit(code=1)
 
     site = _load_config(config)
@@ -113,12 +129,37 @@ def audit(
         skip_llm_scoring = True
         if not query_list:
             typer.echo(
-                "No queries flagged free=true in queries.csv. "
-                "Mark ~8 queries with free=true to use --tier free.",
+                "No queries flagged free=true in queries.csv. Mark ~8 with free=true.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+    elif tier == "spotlight":
+        query_list = [q for q in query_list if q.spotlight or q.free]
+        if not spotlight_engine:
+            typer.echo(
+                "Spotlight tier requires --spotlight-engine "
+                "(e.g. --spotlight-engine ChatGPT).",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        valid_openrouter = {e.label for e in site.engines.openrouter}
+        if spotlight_engine not in valid_openrouter:
+            typer.echo(
+                f"Unknown spotlight engine {spotlight_engine!r}. "
+                f"Configured: {sorted(valid_openrouter)}",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        only_labels = {FREE_TIER_ENGINE, spotlight_engine}
+        skip_llm_scoring = True
+        if not query_list:
+            typer.echo(
+                "No queries flagged spotlight=true (or free=true) in queries.csv.",
                 err=True,
             )
             raise typer.Exit(code=1)
     else:
+        # full / action_plan: use all engines unless --engines overrides
         only_labels = (
             {s.strip() for s in engines.split(",") if s.strip()} if engines else None
         )
@@ -163,6 +204,18 @@ def audit(
         for r, llm in zip(responses, llm_scores)
     ]
 
+    action_plan: list[dict] | None = None
+    if tier == "action_plan":
+        typer.echo("Generating action plan via Sonnet…")
+        action_plan = generate_action_plan(rows, site)
+        if action_plan:
+            (run_dir / "action_plan.json").write_text(
+                json.dumps(action_plan, indent=2)
+            )
+            typer.echo(f"  Action plan: {len(action_plan)} recommendations")
+        else:
+            typer.echo("  Action plan: generation failed (continuing without)")
+
     csv_path = write_csv(rows, run_dir)
     html_path = write_html(
         rows,
@@ -170,6 +223,7 @@ def audit(
         run_dir,
         tier=tier,
         screenshot=screenshot_path.name if screenshot_path else None,
+        action_plan=action_plan,
     )
 
     errors = sum(1 for r in responses if r.error)
