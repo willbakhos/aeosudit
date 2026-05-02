@@ -1,0 +1,282 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'aeo-vs-seo' %}
+{% set canonical_path = "/aeo-vs-seo" %}
+{% set page_description = "AEO vs SEO explained. SEO ranks pages on a results list. AEO gets your brand named (and your domain cited) inside the AI's answer. Side-by-side comparison, when each matters and how to track both." %}
+{% block title %}AEO vs SEO — what's the difference? | AEO Audit{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _base_url }}/aeo-vs-seo#article",
+      "headline": "AEO vs SEO — what's the difference?",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "author": { "@id": "{{ _base_url }}/#org" },
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _base_url }}/aeo-vs-seo#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is AEO replacing SEO?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not yet — but it is eating the top of the funnel. Today, more than 70% of buyer journeys still touch Google's blue-link results somewhere. By 2027 to 2028 that share will be substantially lower. Treat AEO as an additive program for now and a primary one within 24 months."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do my SEO efforts help my AEO?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Mostly yes. Strong on-page content gives the AI better source material. Quality backlinks on authoritative domains often coincide with the citations AI engines value. The exceptions: technical SEO tactics like sitemap optimisation, internal linking and page speed help SEO directly but only weakly help AEO."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I track AEO in Google Search Console?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Search Console shows clicks from Google's blue-link results. AI Overview impressions are partially reported but not citation-level. ChatGPT, Claude, Perplexity and Gemini do not report to anyone — you have to query them directly to know if you appear. That is what AEO Audit does."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the fastest way to improve my AEO score?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Get cited on the domains the AI already trusts in your category. Our audit shows you exactly which domains those are. Pitch them, get reviewed by them, contribute to them — earned mentions on those sources compound into AI citations within weeks."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does schema markup help AEO?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, more than it ever helped SEO. AI engines parse structured data aggressively to extract factual claims. FAQ schema, Product schema and Organisation schema are the highest-leverage additions for most sites."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .compare { width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0; background: white; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+  .compare th, .compare td { padding: 16px 18px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .compare th { background: #f8fafc; font-weight: 800; color: var(--ink); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  .compare th.dim { color: var(--muted); }
+  .compare tr:last-child td { border-bottom: 0; }
+  .compare td.label { font-weight: 800; color: var(--ink); width: 22%; }
+
+  .scenario { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .scenario h3 { margin-top: 0; font-size: 18px; }
+  .scenario .tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+  .scenario.seo .tag { background: #fef3c7; color: var(--warning); }
+  .scenario.aeo .tag { background: #dcfce7; color: var(--success); }
+  .scenario p { color: var(--muted); font-size: 14px; margin: 0; }
+
+  .verdict { padding: 28px; border-radius: 22px; background: linear-gradient(160deg, #1d4ed8 0%, #4338ca 50%, #6d28d9 100%); color: white; box-shadow: var(--shadow); }
+  .verdict h3 { margin: 0 0 10px; color: white; font-size: 22px; }
+  .verdict p { color: rgba(255,255,255,.86); margin: 0; }
+
+  .faq-item { padding: 22px 24px; background: white; border: 1px solid var(--line); border-radius: 16px; margin-bottom: 12px; }
+  .faq-item h4 { margin: 0 0 6px; font-size: 16px; }
+  .faq-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Resources</span>
+<h1 class="page-title">AEO vs SEO — what's the difference?</h1>
+<p class="page-lede">Both want to win the question. SEO wants to rank a page on a results list. AEO wants the brand named (and the domain cited) inside the AI's answer. Same intent, different game.</p>
+
+<h2>The two-second answer</h2>
+<div class="grid-2">
+  <div class="scenario seo">
+    <span class="tag">Search Engine Optimisation</span>
+    <h3>SEO is about ranking pages</h3>
+    <p>Optimise titles. Earn backlinks. Match keywords to pages. Win the click. The page that ranks #1 wins. Measured in positions, impressions and CTR.</p>
+  </div>
+  <div class="scenario aeo">
+    <span class="tag">Answer Engine Optimisation</span>
+    <h3>AEO is about being included in the answer</h3>
+    <p>Be cited as a trusted source. Be named in the prose. Be the brand the AI recommends. There's no #1 — only "named or not named." Measured in visibility, citation rate and competitor share-of-voice.</p>
+  </div>
+</div>
+
+<h2>The same query, treated two ways</h2>
+<p>Below is the same buyer question — first as a 2018-era SERP, then as a 2026-era AI answer. Notice how the buyer's experience changes, and that the AI's answer carries <strong>two signals at once</strong>: the brands named in the prose, and the citation links it hands the user to click.</p>
+
+<div class="grid-2" style="margin-top: 18px;">
+  <div>
+    <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:0;">SEO world — 2018</h3>
+    <div class="mock-serp">
+      <div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">google.com/search?q=best+hotels+in+bali+for+families</div></div>
+      <div class="organic"><strong>Best Family Hotels in Bali 2024 — Booking.com</strong>Compare 800+ family-friendly properties from $40/night…</div>
+      <div class="organic"><strong>Top 10 Family Resorts in Bali — TripAdvisor</strong>Real reviews from travellers staying with kids…</div>
+      <div class="organic"><strong>Hilton Bali Resort — Family Stays in Nusa Dua</strong>Connecting rooms, kids' club, beachfront pools…</div>
+      <div class="organic"><strong>Marriott Bonvoy — Bali Resorts</strong>Browse Marriott, Westin and Le Méridien properties…</div>
+    </div>
+    <p class="lede" style="margin-top: 10px; font-size: 14px;">If <strong>Hilton</strong> ranks, the family sees their listing. They click and compare 3–5 sites before deciding.</p>
+  </div>
+
+  <div>
+    <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:0;">AEO world — 2026</h3>
+    <div class="mock-serp">
+      <div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">chatgpt.com</div></div>
+      <div class="ai-block">
+        <div class="label">AI answer · web search</div>
+        <p>For families visiting Bali, the most popular options are large international resorts like <strong>Marriott</strong> (multiple Bonvoy properties in Nusa Dua), <strong>Hyatt</strong> (Regency Bali, well-reviewed for kids' clubs) and <strong>The Mulia</strong>. <strong>Airbnb</strong> and <strong>Vrbo</strong> also list hundreds of family villas in Seminyak and Ubud with pools and kitchens.</p>
+        <div class="sources">
+          <span class="src competitor">marriott.com</span>
+          <span class="src competitor">hyatt.com</span>
+          <span class="src competitor">airbnb.com</span>
+          <span class="src">tripadvisor.com</span>
+          <span class="src">lonelyplanet.com</span>
+        </div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top: 10px; font-size: 14px;"><strong>Hilton</strong> is invisible — not named in the answer text and not cited as a clickable source. The family books a Marriott without ever seeing a Hilton listing.</p>
+  </div>
+</div>
+
+<h2>Side-by-side comparison</h2>
+<table class="compare">
+  <thead>
+    <tr>
+      <th class="dim">What you measure</th>
+      <th>SEO</th>
+      <th>AEO</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="label">Goal</td>
+      <td>Rank a page on the results list</td>
+      <td>Be named in the answer; be cited as a source</td>
+    </tr>
+    <tr>
+      <td class="label">Primary metric</td>
+      <td>Position in SERP, organic clicks, impressions</td>
+      <td>Visibility %, citation rate, competitor share-of-voice</td>
+    </tr>
+    <tr>
+      <td class="label">Outcome unit</td>
+      <td>A click on your listing</td>
+      <td>Your brand mentioned in the prose, <em>and</em> your domain handed back as a clickable citation link</td>
+    </tr>
+    <tr>
+      <td class="label">Where it happens</td>
+      <td>Google's blue-link results page</td>
+      <td>ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews</td>
+    </tr>
+    <tr>
+      <td class="label">Authority signals</td>
+      <td>Backlinks, domain authority, on-page optimisation</td>
+      <td>Citations from sources the AI trusts (review sites, industry pubs, gov registries, Wikipedia, Reddit)</td>
+    </tr>
+    <tr>
+      <td class="label">Content shape</td>
+      <td>Long pages targeting a keyword cluster</td>
+      <td>Clear factual claims, structured Q&amp;A, schema, public ground truth</td>
+    </tr>
+    <tr>
+      <td class="label">Buyer behaviour</td>
+      <td>Compare 3–5 sites before deciding</td>
+      <td>Read the AI summary; click maybe one cited source</td>
+    </tr>
+    <tr>
+      <td class="label">Tracking tools</td>
+      <td>Google Search Console, Ahrefs, Semrush</td>
+      <td>AEO Audit, manual prompting, competitor mention monitoring</td>
+    </tr>
+    <tr>
+      <td class="label">Time to result</td>
+      <td>3–12 months for new content to rank</td>
+      <td>Days to weeks once cited on a source the AI trusts</td>
+    </tr>
+    <tr>
+      <td class="label">Failure mode</td>
+      <td>Buried on page 2; no clicks</td>
+      <td>Invisible in the answer; competitors get the recommendation</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>What's the same between SEO and AEO</h2>
+<ul class="bullets">
+  <li><strong>Authority compounds.</strong> Quality backlinks help SEO. Quality citations help AEO. The publications that drive one tend to drive the other — but with different intent (linking vs being quoted).</li>
+  <li><strong>Content quality wins.</strong> Vague pages don't rank in Google and don't get cited by AI. Specific, factual, well-structured content does both.</li>
+  <li><strong>Brand matters.</strong> Brand search volume helps SEO. Brand recognition in training data and recent web mentions helps AEO. Building brand is upstream of both.</li>
+  <li><strong>Competitor pressure exists.</strong> SEO has a finite top-10. AEO has a finite "named or not" set, often 2–5 brands per category. Both are zero-sum-ish.</li>
+</ul>
+
+<h2>What's different — and what trips teams up</h2>
+<ul class="bullets">
+  <li><strong>There's no rank in AEO.</strong> Either the AI named you or it didn't. Position is replaced by "share of answer" — what % of relevant questions name you across engines.</li>
+  <li><strong>The AI rewrites your content.</strong> Your beautifully-crafted landing page gets summarised in 2 sentences. Optimise the <em>facts</em> and <em>structure</em>, not just the prose.</li>
+  <li><strong>Drift is normal.</strong> AI answers shift week-to-week even on identical questions. SEO rankings are also volatile, but AEO drift is faster and noisier. Track patterns, not single answers.</li>
+  <li><strong>Citations &gt; mentions.</strong> A passing mention in the AI's prose is worth less than a citation that links back to your domain. Citations are how new traffic actually flows.</li>
+  <li><strong>You can't game it.</strong> Black-hat SEO tactics (link farms, doorway pages) work momentarily; AI engines are aggressive about discounting low-quality citations and sources. AEO rewards earned authority more strictly than late-2010s SEO did.</li>
+</ul>
+
+<h2>When SEO matters more than AEO</h2>
+<ul class="bullets">
+  <li>You sell an <strong>obscure niche product</strong> with low search volume — AI engines may not have learned your category yet, but a specific Google query will still find you.</li>
+  <li>Your buyer journey is <strong>research-heavy</strong> (e.g. enterprise software with 6-month sales cycles). The buyer will read 10 pages even after the AI summarises.</li>
+  <li>You depend on <strong>local search</strong> (Google Maps, "near me" queries). AI Overviews are weaker here today; classical local SEO still dominates.</li>
+</ul>
+
+<h2>When AEO matters more than SEO</h2>
+<ul class="bullets">
+  <li>You compete in a <strong>commodity-feeling category</strong> (loans, insurance, SaaS tools, retail). Buyers ask AI "what are the best X" and act on the answer.</li>
+  <li>Your category has a <strong>"top 3" perception</strong> (e.g. "best CRMs", "alternatives to Notion"). If you're not in the AI's top 3, you're invisible.</li>
+  <li>You're a <strong>newer or smaller brand</strong> trying to displace incumbents. AI engines will name the same 3 incumbents repeatedly until you fix the citation gap.</li>
+  <li>You sell to <strong>technical or AI-fluent buyers</strong> (engineers, marketers, founders) who default to ChatGPT or Perplexity over Google.</li>
+</ul>
+
+<h2>Should you stop doing SEO?</h2>
+<div class="verdict">
+  <h3>No — but the balance is shifting.</h3>
+  <p>SEO still drives clicks today. The smart move is to keep your SEO program running while measuring your AEO position separately. As more research moves into AI engines, the team that already has good citations on the domains AI trusts (G2, Reddit, industry publications, government registries) wins both games. The teams who only optimise for blue-link rank get hollowed out as AI answers eat the top of the funnel.</p>
+</div>
+
+<h2>How AEO Audit measures this</h2>
+<p>We test your visibility on 5 AI engines (Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews) across 40 buyer-facing questions. The report tells you: which engines name you, which competitors get named instead, which sources the AI trusts in your category, and where to publish to fix the gaps.</p>
+
+<div style="display:flex; gap:14px; margin: 18px 0 32px; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+
+<h2>FAQ</h2>
+<div class="faq-item">
+  <h4>Is AEO replacing SEO?</h4>
+  <p>Not yet — but it's eating the top of the funnel. Today, 70%+ of buyer journeys still touch Google's blue links somewhere. By 2027–2028 that share will be substantially lower. Treat AEO as an additive program for now and a primary one within 24 months.</p>
+</div>
+<div class="faq-item">
+  <h4>Do my SEO efforts help my AEO?</h4>
+  <p>Mostly yes. Strong on-page content gives the AI better source material. Quality backlinks on authoritative domains often coincide with the citations AI engines value. The exceptions: technical SEO tactics (sitemap optimisation, internal linking, page speed) help SEO directly but only weakly help AEO.</p>
+</div>
+<div class="faq-item">
+  <h4>Can I track AEO in Google Search Console?</h4>
+  <p>No. Search Console shows clicks from Google's blue-link results. AI Overview impressions are partially reported but not citation-level. ChatGPT, Claude, Perplexity and Gemini don't report to anyone — you have to query them directly to know if you appear. That's what AEO Audit does.</p>
+</div>
+<div class="faq-item">
+  <h4>What's the fastest way to improve my AEO score?</h4>
+  <p>Get cited on the domains the AI already trusts in your category. Our audit shows you exactly which domains those are. Pitch them, get reviewed by them, contribute to them — earned mentions on those sources compound into AI citations within weeks.</p>
+</div>
+<div class="faq-item">
+  <h4>Does schema markup help AEO?</h4>
+  <p>Yes, more than it ever helped SEO. AI engines parse structured data aggressively to extract factual claims. FAQ schema, Product schema and Organisation schema are the highest-leverage additions for most sites.</p>
+</div>
+{% endblock %}

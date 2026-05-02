@@ -1,0 +1,85 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/support" %}
+{% set page_description = "Need help with an AEO Audit? Open a support ticket — we respond within one business day. Common issues, refund requests and agency enquiries all welcome." %}
+{% block title %}Support — AEO Audit{% endblock %}
+
+{% block extra_css %}
+  .support-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 26px; margin-top: 16px; }
+  .ticket-form { padding: 30px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .ticket-form .field { display: grid; gap: 6px; margin-bottom: 16px; }
+  .ticket-form label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .ticket-form input, .ticket-form textarea, .ticket-form select { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); font: inherit; font-size: 15px; background: white; }
+  .ticket-form textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
+  .ticket-form input:focus, .ticket-form textarea:focus, .ticket-form select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .ticket-form button { padding: 14px 24px; border-radius: 999px; border: 0; background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 14px 28px rgba(37,99,235,.28); }
+
+  .resource { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); margin-bottom: 12px; }
+  .resource h3 { margin: 0 0 6px; font-size: 16px; }
+  .resource p { margin: 0; color: var(--muted); font-size: 13px; }
+  .resource a { color: var(--blue); font-weight: 700; text-decoration: none; font-size: 13px; }
+
+  .flash { padding: 14px 18px; background: #ecfdf5; border: 1px solid #86efac; color: #166534; border-radius: 14px; margin-bottom: 18px; font-size: 14px; }
+  .flash.err { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+
+  @media (max-width: 820px) { .support-grid { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Support</span>
+<h1 class="page-title">Need a hand? We respond within one business day.</h1>
+<p class="page-lede">Send us a ticket using the form below. For urgent issues with a paid audit (e.g. it didn't deliver), include your purchase email and we'll prioritise it.</p>
+
+{% if status == 'sent' %}
+<div class="flash">✓ Ticket received. Check your email for confirmation — we'll respond within one business day.</div>
+{% elif status == 'error' %}
+<div class="flash err">Something went wrong sending your ticket. Please email us directly at <a href="mailto:hello@example.com" style="color:#991b1b; font-weight:800;">hello@example.com</a>.</div>
+{% endif %}
+
+<div class="support-grid">
+  <form class="ticket-form" method="POST" action="/support">
+    <div class="field">
+      <label for="email">Your email</label>
+      <input id="email" name="email" type="email" required placeholder="you@company.com">
+    </div>
+    <div class="field">
+      <label for="subject">Subject</label>
+      <input id="subject" name="subject" type="text" required placeholder="Short summary of your question">
+    </div>
+    <div class="field">
+      <label for="topic">Topic</label>
+      <select id="topic" name="topic">
+        <option value="general">General question</option>
+        <option value="audit_issue">Issue with a paid audit</option>
+        <option value="refund">Refund request</option>
+        <option value="custom_audit">Custom audit / agency enquiry</option>
+        <option value="monitoring">Monitoring waitlist / early access</option>
+        <option value="bug">Bug report</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="message">Your message</label>
+      <textarea id="message" name="message" required placeholder="Tell us what's going on. If it's about a specific audit, include the URL of the report or your purchase email."></textarea>
+    </div>
+    <button type="submit">Send ticket →</button>
+  </form>
+
+  <div>
+    <div class="resource">
+      <h3>Common: my audit doesn't show me</h3>
+      <p>If visibility is 0% but the audit cited your domain, the brand-name match likely failed. Re-run the audit with the brand name typed exactly as it appears on your site (e.g. "JB Hi-Fi" not "jbhifi"). <a href="/what-is-aeo">Read more →</a></p>
+    </div>
+    <div class="resource">
+      <h3>Common: my audit hasn't arrived</h3>
+      <p>Audits take 5–15 minutes to run after payment, and are emailed when complete. Check spam. If &gt;30 minutes, send us a ticket with your purchase email.</p>
+    </div>
+    <div class="resource">
+      <h3>Common: refund</h3>
+      <p>If the audit failed (every engine errored) we refund automatically. Otherwise email us within 14 days and we'll work it out.</p>
+    </div>
+    <div class="resource">
+      <h3>Agencies / custom volume</h3>
+      <p>For 10+ domains/month, white-label PDFs or custom query sets, send a ticket with topic "Custom audit / agency" and we'll set up a call.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

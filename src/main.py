@@ -21,6 +21,7 @@ from src.report import write_csv, write_html
 from src.runner import run_audit
 from src.scorer import score_response
 from src.screenshot import capture as capture_screenshot
+from src.tech_audit import run_for_domain as run_tech_audit
 
 app = typer.Typer(add_completion=False, help="AEO Audit — query AI engines and score visibility.")
 
@@ -187,6 +188,13 @@ def audit(
     if screenshot_path:
         typer.echo(f"  Screenshot: {screenshot_path.name}")
 
+    typer.echo("Running technical AEO/GEO audit on the site itself…")
+    tech = run_tech_audit(site.brand.domain)
+    typer.echo(
+        f"  Tech score: {tech.overall_score}/100 "
+        f"(pass={tech.pass_count} warn={tech.warn_count} fail={tech.fail_count})"
+    )
+
     responses = asyncio.run(run_audit(engine_list, query_list, run_dir))
 
     if skip_llm_scoring:
@@ -224,6 +232,7 @@ def audit(
         tier=tier,
         screenshot=screenshot_path.name if screenshot_path else None,
         action_plan=action_plan,
+        tech=tech,
     )
 
     errors = sum(1 for r in responses if r.error)

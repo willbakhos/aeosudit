@@ -96,3 +96,34 @@ class ScoredRow(BaseModel):
     response: EngineResponse
     deterministic: ScoringResult
     llm: LLMScore | None = None
+
+
+# ---------- technical AEO/GEO audit ----------
+
+CheckStatus = Literal["pass", "warn", "fail", "info"]
+
+
+class TechCheck(BaseModel):
+    id: str
+    title: str
+    category: Literal[
+        "crawlability", "structured_data", "meta", "content",
+        "performance", "entity",
+    ]
+    tier: int  # 1 = visible in free preview; 2 = paid only
+    expected: str
+    why: str
+    status: CheckStatus
+    score_label: str
+    detail: str = ""
+    fix: str | None = None
+
+
+class TechAudit(BaseModel):
+    domain: str
+    overall_score: int  # 0-100
+    checks: list[TechCheck] = Field(default_factory=list)
+    pass_count: int = 0
+    warn_count: int = 0
+    fail_count: int = 0
+    error: str | None = None

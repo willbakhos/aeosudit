@@ -1,0 +1,78 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/terms" %}
+{% set page_description = "Terms of service for AEO Audit — service description, refund policy, acceptable use, governing law (NSW, Australia)." %}
+{% block title %}Terms of Service — AEO Audit{% endblock %}
+
+{% block content %}
+<div class="narrow">
+  <span class="eyebrow">Legal</span>
+  <h1 class="page-title">Terms of Service</h1>
+  <p class="lede">Last updated: {{ updated_date or 'May 2026' }}.</p>
+
+  <p>By using AEO Audit you agree to these terms. They are written to be plain-English; if anything is unclear, ask us via <a href="/support" style="color:var(--blue);">Support</a>.</p>
+
+  <h2>The service</h2>
+  <p>AEO Audit ("the service", "we") is an audit tool that measures how AI answer engines describe, cite and recommend a domain. The service is provided as-is. We make a reasonable effort to keep it accurate and available; we do not guarantee it.</p>
+
+  <h2>Your account and use</h2>
+  <ul class="bullets">
+    <li>You must be at least 18 and able to enter into a contract.</li>
+    <li>You may only audit domains you own or have explicit permission to audit. You are responsible for that authorisation.</li>
+    <li>You may not use the service to harass, defame, or harm any third party (including auditing a competitor's domain to publish misleading findings).</li>
+    <li>You may not attempt to circumvent rate limits, bypass payment, or otherwise abuse the service.</li>
+  </ul>
+
+  <h2>Pricing and payment</h2>
+  <ul class="bullets">
+    <li>Audit prices are listed on the <a href="/pricing" style="color:var(--blue);">Pricing page</a> and shown at checkout.</li>
+    <li>All payments are processed by Stripe in the currency listed at checkout. Tax is calculated and added by Stripe where applicable.</li>
+    <li>One-off audits are charged once. Monitoring (when launched) will be a recurring subscription billed monthly or annually.</li>
+  </ul>
+
+  <h2>Refunds</h2>
+  <ul class="bullets">
+    <li>If your audit fails to run successfully (e.g. because every engine errored), we issue a full automatic refund.</li>
+    <li>If your audit runs and you're not satisfied with the result, contact <a href="/support" style="color:var(--blue);">Support</a> within 14 days. We'll either re-run the audit or refund you in full.</li>
+    <li>Recurring Monitoring subscriptions can be cancelled anytime; cancellation takes effect at the end of the current billing period and is not pro-rated.</li>
+  </ul>
+
+  <h2>What the report is and isn't</h2>
+  <ul class="bullets">
+    <li>The report is a measurement of AI answer behaviour at the time of the audit. AI engines change daily — your numbers will drift.</li>
+    <li>The report is informational. It is not legal, financial, marketing, or PR advice. We do not warrant any specific business outcome from acting on it.</li>
+    <li>Recommendations in the Action Plan tier are educated suggestions; you remain responsible for evaluating and implementing them.</li>
+  </ul>
+
+  <h2>Intellectual property</h2>
+  <ul class="bullets">
+    <li>You retain all rights to your brand, domain, content and any data you submit.</li>
+    <li>We retain ownership of the AEO Audit software, methodology and report templates.</li>
+    <li>You may freely share the report you receive with your team, your clients, or publish it externally with attribution.</li>
+    <li>AI-generated answer text inside the report is reproduced under fair-use commentary; rights to the underlying answers belong to the respective AI providers.</li>
+  </ul>
+
+  <h2>Liability</h2>
+  <p>To the maximum extent permitted by law, our total liability for any claim arising from your use of the service is capped at the amount you paid us in the prior 12 months. We are not liable for indirect, consequential, or lost-profit damages.</p>
+
+  <h2>Acceptable use</h2>
+  <p>You agree not to use the service to:</p>
+  <ul class="bullets">
+    <li>Audit a domain you don't own without the owner's permission.</li>
+    <li>Generate reports designed to mislead third parties about a competitor's AI visibility.</li>
+    <li>Attempt to extract, reverse-engineer or resell the underlying audit methodology.</li>
+    <li>Submit volumes of requests intended to overload the service.</li>
+  </ul>
+
+  <h2>Termination</h2>
+  <p>We may suspend or terminate your access if you breach these terms. You can stop using the service at any time. Pre-paid one-off audits already delivered are not refunded on termination unless required by law.</p>
+
+  <h2>Governing law</h2>
+  <p>These terms are governed by the laws of New South Wales, Australia. Any dispute will be heard in courts of New South Wales.</p>
+
+  <h2>Changes</h2>
+  <p>We may update these terms from time to time. Material changes will be communicated by email to active customers and reflected in the "last updated" date above.</p>
+
+  <h2>Contact</h2>
+  <p>Questions: use the <a href="/support" style="color:var(--blue);">Support page</a>.</p>
+</div>
+{% endblock %}

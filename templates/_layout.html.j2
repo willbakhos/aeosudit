@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% set _site_name = "AEO Audit" %}
+{% set _base_url = base_url or "https://aeoaudit.com" %}
+{% set _canonical = _base_url ~ (canonical_path or "/") %}
+{% set _description = page_description or "See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe, cite and recommend your brand. Free 8-question preview, full audit from $49." %}
+{% set _og_image = (page_og_image or "/static/og-default.png") %}
+{% if _og_image.startswith('/') %}{% set _og_image = _base_url ~ _og_image %}{% endif %}
+<title>{% block title %}{{ _site_name }} — AI answer visibility audit{% endblock %}</title>
+
+<meta name="description" content="{{ _description }}">
+<link rel="canonical" href="{{ _canonical }}">
+<meta name="robots" content="index,follow,max-image-preview:large">
+
+<!-- Open Graph -->
+<meta property="og:site_name" content="{{ _site_name }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ _canonical }}">
+<meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+<meta property="og:description" content="{{ _description }}">
+<meta property="og:image" content="{{ _og_image }}">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ self.og_title() }}">
+<meta name="twitter:description" content="{{ _description }}">
+<meta name="twitter:image" content="{{ _og_image }}">
+
+<!-- Sitewide JSON-LD: Organization + WebSite -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "{{ _base_url }}/#org",
+      "name": "{{ _site_name }}",
+      "url": "{{ _base_url }}/",
+      "description": "Audit how AI answer engines (Claude, ChatGPT, Perplexity, Gemini, Google AI Overviews) describe, cite and recommend your brand.",
+      "slogan": "See how AI engines describe your brand."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "{{ _base_url }}/#website",
+      "url": "{{ _base_url }}/",
+      "name": "{{ _site_name }}",
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "inLanguage": "en"
+    }
+  ]
+}
+</script>
+{% block schema %}{% endblock %}
+<style>
+  :root {
+    --ink: #0f172a;
+    --ink-2: #1e293b;
+    --muted: #64748b;
+    --soft-muted: #94a3b8;
+    --line: rgba(15,23,42,.10);
+    --bg: #f6f8fc;
+    --panel: rgba(255,255,255,.78);
+    --panel-solid: #fff;
+    --blue: #2563eb;
+    --purple: #7c3aed;
+    --cyan: #06b6d4;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --radius: 28px;
+    --shadow: 0 24px 70px rgba(15,23,42,.10);
+    --shadow-soft: 0 14px 35px rgba(15,23,42,.08);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(37,99,235,.16), transparent 32rem),
+      radial-gradient(circle at 85% 8%, rgba(124,58,237,.12), transparent 30rem),
+      linear-gradient(180deg, #f8fbff 0%, #f8fafc 38%, #eef4ff 100%);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+
+  .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 24px 0 60px; }
+  .narrow { max-width: 760px; margin: 0 auto; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.03em; text-decoration: none; color: var(--ink); }
+  .brand .logo { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; color: white; background: linear-gradient(135deg, var(--blue), var(--purple)); box-shadow: 0 14px 30px rgba(37,99,235,.26); }
+  .nav { display: flex; align-items: center; gap: 26px; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .nav a { text-decoration: none; }
+  .nav a:hover, .nav a.active { color: var(--blue); }
+
+  /* Extend the parent's hover area downward via padding so the cursor
+     never crosses an unhoverable gap between the trigger and the dropdown. */
+  .nav .has-sub { position: relative; padding-bottom: 16px; margin-bottom: -16px; }
+  .nav .has-sub > a::after { content: " ▾"; font-size: 9px; color: var(--soft-muted); }
+  .nav .submenu {
+    position: absolute; top: 100%; left: -14px; min-width: 220px;
+    background: white; border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--shadow-soft); padding: 10px;
+    display: none; z-index: 50;
+  }
+  .nav .has-sub:hover .submenu,
+  .nav .has-sub:focus-within .submenu { display: block; }
+  .nav .submenu a {
+    display: block; padding: 10px 12px; border-radius: 10px;
+    color: var(--ink); font-weight: 700; font-size: 14px;
+  }
+  .nav .submenu a:hover { background: #f1f5f9; color: var(--blue); }
+  .nav .submenu .desc { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .nav .cta {
+    display: inline-flex; align-items: center; padding: 10px 16px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--blue), var(--purple)); color: white;
+    font-weight: 800; box-shadow: 0 12px 24px rgba(37,99,235,.26);
+  }
+  .nav .cta:hover { color: white; }
+
+  .footer {
+    margin-top: 64px; padding: 32px 0; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 26px;
+    color: var(--muted); font-size: 13px;
+  }
+  .footer h4 { color: var(--ink); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
+  .footer ul { list-style: none; padding: 0; margin: 0; }
+  .footer li { margin-bottom: 8px; }
+  .footer a { text-decoration: none; }
+  .footer a:hover { color: var(--blue); }
+  .footer .legal { grid-column: 1 / -1; padding-top: 20px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--soft-muted); }
+
+  /* shared building blocks used across pages */
+  h1.page-title { margin: 0 0 12px; font-size: clamp(40px, 5.4vw, 60px); line-height: 1.02; letter-spacing: -.06em; }
+  p.page-lede { margin: 0 0 32px; font-size: 18px; color: var(--muted); max-width: 720px; }
+  h2 { margin: 56px 0 12px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.04em; line-height: 1.1; }
+  h3 { margin: 28px 0 8px; font-size: 20px; letter-spacing: -.02em; }
+  p { line-height: 1.7; color: var(--ink-2); }
+  .lede { font-size: 17px; color: var(--muted); }
+
+  .panel { padding: 28px; border-radius: var(--radius); background: var(--panel-solid); border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .panel + .panel { margin-top: 18px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #eff6ff; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 16px; }
+
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; padding: 2px 6px; background: rgba(15,23,42,.06); border-radius: 8px; color: #1e293b; }
+
+  .btn-primary { display: inline-flex; align-items: center; padding: 14px 22px; border-radius: 999px; background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; font-weight: 800; text-decoration: none; box-shadow: 0 18px 36px rgba(37,99,235,.28); }
+  .btn-secondary { display: inline-flex; align-items: center; padding: 14px 22px; border-radius: 999px; background: white; color: var(--ink); font-weight: 800; text-decoration: none; border: 1px solid var(--line); }
+
+  ul.bullets { padding-left: 0; list-style: none; }
+  ul.bullets li { padding: 8px 0; padding-left: 28px; position: relative; }
+  ul.bullets li::before { content: "✓"; position: absolute; left: 0; top: 8px; width: 20px; height: 20px; border-radius: 50%; background: #ecfdf5; color: var(--success); font-size: 12px; font-weight: 900; display: grid; place-items: center; }
+
+  /* Mock SERP / AI overview screenshots used on the What is AEO page */
+  .mock-serp { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow-soft); }
+  .mock-serp .browser { display: flex; align-items: center; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .mock-serp .browser .dot { width: 10px; height: 10px; border-radius: 999px; background: #e2e8f0; }
+  .mock-serp .browser .url { flex: 1; padding: 6px 12px; background: #f1f5f9; border-radius: 999px; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  .mock-serp .ai-block { padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #e0e7ff; margin-bottom: 12px; }
+  .mock-serp .ai-block .label { font-size: 11px; font-weight: 800; color: var(--purple); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .mock-serp .ai-block p { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
+  .mock-serp .ai-block .sources { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mock-serp .ai-block .src { font-size: 11px; padding: 3px 8px; background: white; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); font-weight: 700; }
+  .mock-serp .ai-block .src.you { background: #dcfce7; color: var(--success); border-color: #86efac; }
+  .mock-serp .ai-block .src.competitor { background: #fee2e2; color: var(--danger); border-color: #fca5a5; }
+  .mock-serp .organic { padding: 8px 0; font-size: 12px; color: var(--muted); }
+  .mock-serp .organic strong { color: var(--blue); display: block; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+
+  @media (max-width: 930px) {
+    .grid-2, .grid-3, .grid-4, .footer { grid-template-columns: 1fr 1fr; }
+    .nav { gap: 14px; }
+  }
+  @media (max-width: 620px) {
+    .grid-2, .grid-3, .grid-4, .footer { grid-template-columns: 1fr; }
+    .nav .desktop-only { display: none; }
+    h1.page-title { font-size: 36px; }
+  }
+  {% block extra_css %}{% endblock %}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <a class="brand" href="/">
+      <div class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span>AEO Audit</span>
+    </a>
+    <nav class="nav">
+      <a href="/what-is-aeo" class="desktop-only{% if active=='aeo' %} active{% endif %}">What is AEO</a>
+      <div class="has-sub desktop-only">
+        <a href="/product/audit"{% if active=='audit' or active=='monitoring' %} class="active"{% endif %}>Product</a>
+        <div class="submenu">
+          <a href="/product/audit">Audit<span class="desc">One-off audits across 5 AI engines</span></a>
+          <a href="/product/monitoring">Monitoring<span class="desc">Track AI visibility every month</span></a>
+        </div>
+      </div>
+      <a href="/how-it-works" class="desktop-only{% if active=='how' %} active{% endif %}">How it works</a>
+      <a href="/pricing"{% if active=='pricing' %} class="active"{% endif %}>Pricing</a>
+      <a href="/#preview" class="cta">Free preview →</a>
+    </nav>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer class="footer">
+    <div>
+      <a class="brand" href="/" style="margin-bottom:12px;">
+        <div class="logo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span>AEO Audit</span>
+      </a>
+      <p style="margin:12px 0 0; max-width:280px;">See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe your brand — and what to fix.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul>
+        <li><a href="/product/audit">Audit</a></li>
+        <li><a href="/product/monitoring">Monitoring</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/how-it-works">How it works</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Resources</h4>
+      <ul>
+        <li><a href="/what-is-aeo">What is AEO</a></li>
+        <li><a href="/what-is-geo">What is GEO</a></li>
+        <li><a href="/aeo-vs-seo">AEO vs SEO</a></li>
+        <li><a href="/#preview">Run a free preview</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <ul>
+        <li><a href="/support">Support</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
+      </ul>
+    </div>
+    <div class="legal">
+      <span>© AEO Audit · Built for the AI answer era</span>
+      <span><a href="/support">Get help →</a></span>
+    </div>
+  </footer>
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

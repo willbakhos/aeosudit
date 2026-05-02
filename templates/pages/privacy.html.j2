@@ -1,0 +1,82 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/privacy" %}
+{% set page_description = "Privacy policy for AEO Audit — what data we collect, why, how long we keep it, and which third-party services process it." %}
+{% block title %}Privacy Policy — AEO Audit{% endblock %}
+
+{% block content %}
+<div class="narrow">
+  <span class="eyebrow">Legal</span>
+  <h1 class="page-title">Privacy Policy</h1>
+  <p class="lede">Last updated: {{ updated_date or 'May 2026' }}.</p>
+
+  <p>This document explains what data AEO Audit collects, why, and how we handle it. If anything is unclear, email us via the <a href="/support" style="color:var(--blue);">Support page</a>.</p>
+
+  <h2>What we collect</h2>
+  <h3>Information you give us</h3>
+  <ul class="bullets">
+    <li><strong>Audit subject:</strong> the domain, brand name and category you submit through the form.</li>
+    <li><strong>Email address:</strong> when you purchase an audit or join the Monitoring waitlist.</li>
+    <li><strong>Payment information:</strong> processed by Stripe — we never see your card details. We only receive a payment confirmation token.</li>
+    <li><strong>Support requests:</strong> anything you write to us via the support form or by email.</li>
+  </ul>
+
+  <h3>Information we generate</h3>
+  <ul class="bullets">
+    <li><strong>Audit responses:</strong> the AI-generated answers and citations we capture from Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews when running your audit.</li>
+    <li><strong>Site screenshot:</strong> a single screenshot of the audited domain's homepage, captured via screenshotapi.net.</li>
+    <li><strong>Aggregate metrics:</strong> visibility, citation rate, competitor counts and similar derived statistics.</li>
+  </ul>
+
+  <h3>Information we don't collect</h3>
+  <ul class="bullets">
+    <li>We don't run analytics or tracking pixels that follow you around the web.</li>
+    <li>We don't sell, rent or share your audit data with third parties.</li>
+    <li>We don't access any private data on your domain — only what's publicly available to AI engines.</li>
+  </ul>
+
+  <h2>How we use it</h2>
+  <ul class="bullets">
+    <li>To run the audit you paid for and deliver the resulting report to you by email.</li>
+    <li>To improve the audit pipeline (for example, identifying which buyer questions yield the most useful signal).</li>
+    <li>To respond to support requests.</li>
+    <li>To send you transactional emails relating to audits you've purchased (delivery, follow-up if a re-audit credit is unused, billing receipts).</li>
+  </ul>
+  <p>We do <strong>not</strong> send marketing emails unless you've explicitly opted in (e.g. by joining the Monitoring waitlist).</p>
+
+  <h2>Where it's stored</h2>
+  <p>Audit data is stored on application servers in the European Union. Stripe handles payment data on its own infrastructure under PCI-DSS Level 1. Resend (our email provider) processes outbound email and may retain delivery metadata for diagnostic purposes.</p>
+
+  <h2>How long we keep it</h2>
+  <ul class="bullets">
+    <li><strong>Raw AI responses:</strong> 90 days after the audit completes, then permanently deleted.</li>
+    <li><strong>Hosted reports:</strong> accessible for 12 months at the URL we email you, then archived.</li>
+    <li><strong>Email records:</strong> 24 months for purchase receipts and support history (legal/financial requirement).</li>
+    <li><strong>Site screenshots:</strong> deleted at the same cadence as the raw responses.</li>
+  </ul>
+
+  <h2>Third-party services we use</h2>
+  <ul class="bullets">
+    <li><strong>OpenRouter</strong> — model gateway for Claude, ChatGPT, Perplexity and Gemini calls.</li>
+    <li><strong>Apify</strong> — Google AI Overview scraping.</li>
+    <li><strong>screenshotapi.net</strong> — site screenshots.</li>
+    <li><strong>Stripe</strong> — payment processing.</li>
+    <li><strong>Resend</strong> — transactional email.</li>
+  </ul>
+  <p>Each of these processes a narrow slice of audit data. None of them receive your full report, and none of them are given permission to use your data for their own model training or marketing.</p>
+
+  <h2>Your rights</h2>
+  <p>You can request a copy of any data we hold about you, request deletion, or request a correction at any time by emailing us via <a href="/support" style="color:var(--blue);">Support</a>. We respond within 14 days.</p>
+
+  <h2>Cookies</h2>
+  <p>We don't use tracking cookies. The site uses a single session cookie to keep you signed in if you have an account (currently a future feature). No analytics cookies, no advertising cookies.</p>
+
+  <h2>Children</h2>
+  <p>This service is for businesses and is not directed at anyone under 18. We do not knowingly collect personal data from children.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If we materially change this policy, we'll update the "last updated" date and email anyone with an active subscription or paid audit in the last 12 months.</p>
+
+  <h2>Contact</h2>
+  <p>Privacy questions: use the <a href="/support" style="color:var(--blue);">Support page</a>. We aim to respond within one business day.</p>
+</div>
+{% endblock %}

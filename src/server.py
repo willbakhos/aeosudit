@@ -11,17 +11,35 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import threading
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import stripe
 import yaml
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, Form, HTTPException, Request, Response
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pydantic import BaseModel, EmailStr, Field
+
+from src.models import (
+    ApifyEngineConfig,
+    BrandConfig,
+    EnginesConfig,
+    LocaleConfig,
+    OpenRouterEngineConfig,
+    Query,
+)
 
 from src.action_plan import generate as generate_action_plan
 from src.delivery import send_report
@@ -30,11 +48,11 @@ from src.engines.openrouter import OpenRouterEngine
 from src.llm_scorer import score_all
 from src.main import FREE_TIER_ENGINE, _load_queries, VALID_TIERS
 from src.models import LLMScore, ScoredRow, SiteConfig
-from src.pdf import render as render_pdf
 from src.report import write_csv, write_html
 from src.runner import run_audit
 from src.scorer import score_response
 from src.screenshot import capture as capture_screenshot
+from src.tech_audit import run_for_domain_async as run_tech_audit_async
 
 load_dotenv()
 
@@ -52,7 +70,17 @@ TIER_PRICES = {
     "action_plan": os.environ.get("STRIPE_PRICE_ACTION_PLAN", ""),
 }
 
-app = FastAPI(title="AEO Audit Checkout & Delivery")
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+_jinja = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(["html"]),
+)
+
+# In-memory job tracker for free previews. Fine for single-process MVP;
+# swap for Redis when you scale beyond one uvicorn worker.
+PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
+
+app = FastAPI(title="AEO Audit")
 
 
 class CheckoutRequest(BaseModel):
@@ -63,16 +91,345 @@ class CheckoutRequest(BaseModel):
     spotlight_engine: str | None = None  # required when tier=spotlight
 
 
+SITE_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://aeoaudit.com").rstrip("/")
+
+
+def _render(name: str, **ctx: Any) -> HTMLResponse:
+    """Render a template (auto-prefixes 'pages/' for static pages).
+    Always injects base_url so the layout can build canonical/og URLs."""
+    if "/" not in name:
+        name = f"pages/{name}"
+    ctx.setdefault("base_url", SITE_BASE_URL)
+    return HTMLResponse(_jinja.get_template(name).render(**ctx))
+
+
 @app.get("/", response_class=HTMLResponse)
-def index() -> str:
-    return """
-    <html><body style="font-family: system-ui; padding: 40px; max-width: 640px; margin: auto;">
-      <h1>AEO Audit checkout</h1>
-      <p>POST /checkout with JSON to start a Stripe Checkout session.</p>
-      <p>POST /webhooks/stripe is the Stripe webhook receiver.</p>
-      <p>GET /report/{run_id} serves a completed report.</p>
-    </body></html>
-    """
+def index() -> HTMLResponse:
+    return HTMLResponse(
+        _jinja.get_template("landing.html.j2").render(base_url=SITE_BASE_URL)
+    )
+
+
+# Pages eligible for the public sitemap (path, change-frequency, priority).
+SITEMAP_PAGES: list[tuple[str, str, str]] = [
+    ("/", "weekly", "1.0"),
+    ("/pricing", "monthly", "0.9"),
+    ("/what-is-aeo", "monthly", "0.8"),
+    ("/what-is-geo", "monthly", "0.8"),
+    ("/aeo-vs-seo", "monthly", "0.8"),
+    ("/product/audit", "monthly", "0.8"),
+    ("/product/monitoring", "monthly", "0.6"),
+    ("/how-it-works", "monthly", "0.7"),
+    ("/support", "monthly", "0.4"),
+    ("/privacy", "yearly", "0.2"),
+    ("/terms", "yearly", "0.2"),
+]
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots_txt() -> PlainTextResponse:
+    body = (
+        "# AEO Audit\n"
+        "# We welcome AI training crawlers — being indexed is the point.\n"
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /report/\n"
+        "Disallow: /preview/\n"
+        "Disallow: /checkout/\n"
+        "Disallow: /webhooks/\n"
+        "\n"
+        "User-agent: GPTBot\nAllow: /\n\n"
+        "User-agent: ClaudeBot\nAllow: /\n\n"
+        "User-agent: PerplexityBot\nAllow: /\n\n"
+        "User-agent: Google-Extended\nAllow: /\n\n"
+        "User-agent: anthropic-ai\nAllow: /\n\n"
+        "User-agent: cohere-ai\nAllow: /\n\n"
+        f"Sitemap: {SITE_BASE_URL}/sitemap.xml\n"
+    )
+    return PlainTextResponse(body, media_type="text/plain")
+
+
+@app.get("/sitemap.xml")
+def sitemap_xml() -> Response:
+    today = datetime.now().strftime("%Y-%m-%d")
+    urls = "\n".join(
+        f"  <url>\n"
+        f"    <loc>{SITE_BASE_URL}{path}</loc>\n"
+        f"    <lastmod>{today}</lastmod>\n"
+        f"    <changefreq>{freq}</changefreq>\n"
+        f"    <priority>{prio}</priority>\n"
+        f"  </url>"
+        for path, freq, prio in SITEMAP_PAGES
+    )
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{urls}\n"
+        "</urlset>\n"
+    )
+    return Response(content=body, media_type="application/xml")
+
+
+@app.get("/pricing", response_class=HTMLResponse)
+def page_pricing() -> HTMLResponse:
+    return _render("pricing.html.j2")
+
+
+@app.get("/what-is-aeo", response_class=HTMLResponse)
+def page_what_is_aeo() -> HTMLResponse:
+    return _render("what_is_aeo.html.j2")
+
+
+@app.get("/aeo-vs-seo", response_class=HTMLResponse)
+def page_aeo_vs_seo() -> HTMLResponse:
+    return _render("aeo_vs_seo.html.j2")
+
+
+@app.get("/what-is-geo", response_class=HTMLResponse)
+def page_what_is_geo() -> HTMLResponse:
+    return _render("what_is_geo.html.j2")
+
+
+@app.get("/product/audit", response_class=HTMLResponse)
+def page_product_audit() -> HTMLResponse:
+    return _render("product_audit.html.j2")
+
+
+@app.get("/product/monitoring", response_class=HTMLResponse)
+def page_product_monitoring() -> HTMLResponse:
+    return _render("product_monitoring.html.j2")
+
+
+@app.get("/how-it-works", response_class=HTMLResponse)
+def page_how_it_works() -> HTMLResponse:
+    return _render("how_it_works.html.j2")
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def page_privacy() -> HTMLResponse:
+    return _render("privacy.html.j2")
+
+
+@app.get("/terms", response_class=HTMLResponse)
+def page_terms() -> HTMLResponse:
+    return _render("terms.html.j2")
+
+
+@app.get("/support", response_class=HTMLResponse)
+def page_support(status: str = "") -> HTMLResponse:
+    return _render("support.html.j2", status=status or None)
+
+
+SUPPORT_TO_EMAIL = os.environ.get("SUPPORT_TO_EMAIL", "hello@example.com")
+
+
+@app.post("/support", response_class=HTMLResponse)
+def submit_support(
+    email: str = Form(...),
+    subject: str = Form(...),
+    topic: str = Form("general"),
+    message: str = Form(...),
+) -> HTMLResponse:
+    """Receive a support ticket and email it to SUPPORT_TO_EMAIL via Resend.
+    Falls back to a graceful failure if Resend isn't configured yet."""
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    sent = False
+    if api_key:
+        try:
+            import resend
+            resend.api_key = api_key
+            from_addr = os.environ.get(
+                "REPORT_FROM_EMAIL", "AEO Audit <reports@example.com>"
+            )
+            body_html = (
+                f"<p><strong>From:</strong> {email}</p>"
+                f"<p><strong>Topic:</strong> {topic}</p>"
+                f"<hr>"
+                f"<p>{message.replace(chr(10), '<br>')}</p>"
+            )
+            resend.Emails.send({
+                "from": from_addr,
+                "to": [SUPPORT_TO_EMAIL],
+                "reply_to": email,
+                "subject": f"[Support · {topic}] {subject}",
+                "html": body_html,
+            })
+            sent = True
+        except Exception:  # noqa: BLE001
+            sent = False
+    return _render("support.html.j2", status="sent" if sent else "error")
+
+
+@app.post("/monitoring/waitlist", response_class=HTMLResponse)
+def monitoring_waitlist(
+    email: str = Form(...),
+    domain: str = Form(...),
+) -> HTMLResponse:
+    """Stub: store waitlist signups. For now, email them to support inbox."""
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if api_key:
+        try:
+            import resend
+            resend.api_key = api_key
+            from_addr = os.environ.get(
+                "REPORT_FROM_EMAIL", "AEO Audit <reports@example.com>"
+            )
+            resend.Emails.send({
+                "from": from_addr,
+                "to": [SUPPORT_TO_EMAIL],
+                "subject": "[Waitlist] New Monitoring signup",
+                "html": f"<p><strong>{email}</strong> · domain: {domain}</p>",
+            })
+        except Exception:  # noqa: BLE001
+            pass
+    return HTMLResponse(
+        '<div style="font-family:Inter,system-ui;padding:60px;text-align:center;">'
+        '<h1>You\'re on the list ✓</h1>'
+        '<p>We\'ll email <strong>' + email + '</strong> when Monitoring opens up.</p>'
+        '<p style="margin-top:20px;"><a href="/">← Back to home</a></p>'
+        '</div>'
+    )
+
+
+# -----------------------------------------------------------------------------
+# Free preview flow
+# -----------------------------------------------------------------------------
+
+def _normalise_domain(raw: str) -> str:
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    if "://" not in raw:
+        raw = "https://" + raw
+    netloc = urlparse(raw).netloc.lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    return netloc.split("/")[0]
+
+
+def _brand_from_domain(domain: str) -> str:
+    """Cheap brand-name guess from the domain — capitalise the first label."""
+    label = domain.split(".")[0]
+    label = re.sub(r"[-_]+", " ", label)
+    return label.title()
+
+
+def _generic_free_queries(brand: str, category: str | None) -> list[Query]:
+    """Generates 8 buyer-facing questions that work for any brand. If a category
+    is provided we use it to sharpen category/problem queries."""
+    cat = (category or "").strip() or "this category"
+    return [
+        Query(query=f"What is {brand}?", type="brand", free=True),
+        Query(query=f"Is {brand} legitimate?", type="brand", free=True),
+        Query(query=f"{brand} reviews", type="brand", free=True),
+        Query(query=f"Best {cat}", type="category", free=True),
+        Query(query=f"Top {cat} 2026", type="category", free=True),
+        Query(query=f"How do I choose a provider for {cat}?", type="problem", free=True),
+        Query(query=f"Best alternatives to {brand}", type="comparison", free=True),
+        Query(query=f"{brand} vs competitors", type="comparison", free=True),
+    ]
+
+
+def _build_preview_site(domain: str, brand_name: str) -> SiteConfig:
+    return SiteConfig(
+        brand=BrandConfig(name=brand_name, domain=domain, aliases=[domain]),
+        competitors=[],
+        ground_truth=[],
+        locale=LocaleConfig(country="US", language="en"),
+        engines=EnginesConfig(
+            openrouter=[],
+            apify=[ApifyEngineConfig(label=FREE_TIER_ENGINE)],
+        ),
+    )
+
+
+def _run_preview_job(
+    run_id: str, domain: str, brand_name: str, category: str | None
+) -> None:
+    """Background worker for a free preview. Updates PREVIEW_JOBS as it progresses."""
+    PREVIEW_JOBS[run_id] = {"status": "running", "started_at": run_id}
+    try:
+        site = _build_preview_site(domain, brand_name)
+        queries = _generic_free_queries(brand_name, category)
+        engine_objs = [
+            ApifyEngine(
+                label=FREE_TIER_ENGINE,
+                country_code=site.locale.country,
+                language_code=site.locale.language,
+            )
+        ]
+        run_dir = OUTPUT_ROOT / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        screenshot_path = capture_screenshot(domain, run_dir)
+
+        async def _gather():
+            return await asyncio.gather(
+                run_audit(engine_objs, queries, run_dir),
+                run_tech_audit_async(domain),
+            )
+
+        responses, tech = asyncio.run(_gather())
+        rows = [
+            ScoredRow(
+                response=r,
+                deterministic=score_response(r, site),
+                llm=LLMScore(),
+            )
+            for r in responses
+        ]
+        write_csv(rows, run_dir)
+        write_html(
+            rows,
+            site,
+            run_dir,
+            tier="free",
+            screenshot=screenshot_path.name if screenshot_path else None,
+            tech=tech,
+        )
+        PREVIEW_JOBS[run_id] = {"status": "ready", "run_dir": str(run_dir)}
+    except Exception as exc:  # noqa: BLE001
+        PREVIEW_JOBS[run_id] = {
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+@app.post("/preview", response_class=HTMLResponse)
+def submit_preview(
+    domain: str = Form(...),
+    brand_name: str = Form(...),
+    category: str = Form(""),
+) -> HTMLResponse:
+    norm = _normalise_domain(domain)
+    if not norm or "." not in norm:
+        raise HTTPException(400, "Please enter a valid domain (e.g. capify.com.au)")
+    brand = brand_name.strip()
+    if not brand:
+        raise HTTPException(
+            400,
+            "Brand name is required — type it exactly as you brand it "
+            "(e.g. 'JB Hi-Fi', not 'jbhifi'). We use this to match your name "
+            "in AI answers.",
+        )
+    run_id = uuid.uuid4().hex[:12]
+    threading.Thread(
+        target=_run_preview_job,
+        args=(run_id, norm, brand, category.strip() or None),
+        daemon=True,
+    ).start()
+    PREVIEW_JOBS[run_id] = {"status": "queued"}
+    html = _jinja.get_template("loading.html.j2").render(
+        run_id=run_id, brand_name=brand
+    )
+    return HTMLResponse(html)
+
+
+@app.get("/preview/{run_id}/status")
+def preview_status(run_id: str) -> JSONResponse:
+    job = PREVIEW_JOBS.get(run_id)
+    if not job:
+        return JSONResponse({"status": "unknown"}, status_code=404)
+    return JSONResponse(job)
 
 
 @app.post("/checkout")
@@ -144,13 +501,47 @@ async def stripe_webhook(request: Request) -> JSONResponse:
     return JSONResponse({"received": True})
 
 
+RUN_ANOTHER_BAR = """
+<div style="position: fixed; bottom: 22px; right: 22px; z-index: 9999;
+            font-family: Inter, system-ui, sans-serif;">
+  <a href="/" style="display: inline-flex; align-items: center; gap: 8px;
+                     padding: 12px 18px; border-radius: 999px;
+                     background: linear-gradient(135deg, #2563eb, #7c3aed);
+                     color: white; text-decoration: none; font-weight: 800;
+                     font-size: 13px; letter-spacing: -.01em;
+                     box-shadow: 0 18px 38px rgba(37,99,235,.34);">
+    + Run another preview
+  </a>
+</div>
+"""
+
+
 @app.get("/report/{run_id}", response_class=HTMLResponse)
 def serve_report(run_id: str) -> HTMLResponse:
     run_dir = OUTPUT_ROOT / run_id
     html_path = run_dir / "report.html"
     if not html_path.exists():
         raise HTTPException(404, "Report not found")
-    return HTMLResponse(html_path.read_text())
+    html = html_path.read_text()
+    # Inject <base> so relative asset paths (site_screenshot.png) resolve to
+    # /report/{run_id}/… instead of /report/…
+    base_tag = f'<base href="/report/{run_id}/">'
+    if "<head>" in html:
+        html = html.replace("<head>", f"<head>{base_tag}", 1)
+    # Inject a floating "Run another preview" CTA when served over HTTP, so
+    # visitors can audit a new domain without backing out manually.
+    if "<body>" in html:
+        html = html.replace("<body>", f"<body>{RUN_ANOTHER_BAR}", 1)
+    return HTMLResponse(html)
+
+
+@app.get("/report/{run_id}/site_screenshot.png")
+def serve_screenshot(run_id: str):
+    from fastapi.responses import FileResponse
+    p = OUTPUT_ROOT / run_id / "site_screenshot.png"
+    if not p.exists():
+        raise HTTPException(404, "Screenshot not found")
+    return FileResponse(p, media_type="image/png")
 
 
 @app.get("/report/{run_id}/pdf")
@@ -213,7 +604,14 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
 
     screenshot_path = capture_screenshot(site.brand.domain, run_dir)
-    responses = asyncio.run(run_audit(engine_objs, queries, run_dir))
+
+    async def _gather():
+        return await asyncio.gather(
+            run_audit(engine_objs, queries, run_dir),
+            run_tech_audit_async(site.brand.domain),
+        )
+
+    responses, tech = asyncio.run(_gather())
 
     if tier in {"spotlight"}:
         llm_scores: list[LLMScore | None] = [None] * len(responses)
@@ -241,9 +639,11 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
         tier=tier,
         screenshot=screenshot_path.name if screenshot_path else None,
         action_plan=action_plan,
+        tech=tech,
     )
     pdf_path: Path | None = None
     try:
+        from src.pdf import render as render_pdf
         pdf_path = render_pdf(run_dir)
     except Exception:  # noqa: BLE001
         pdf_path = None

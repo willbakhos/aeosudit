@@ -1,0 +1,209 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'home' %}
+{% set canonical_path = "/" %}
+{% set page_description = "See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe, cite and recommend your brand. Free 8-question preview in 30 seconds. Full audits from $49." %}
+{% block title %}AEO Audit — see how AI engines describe your brand{% endblock %}
+
+{% block extra_css %}
+  .hero { position: relative; overflow: hidden; border-radius: 34px; padding: 56px 44px; background: linear-gradient(135deg, rgba(15,23,42,.97) 0%, rgba(30,41,59,.96) 48%, rgba(30,64,175,.94) 100%); color: white; box-shadow: var(--shadow); }
+  .hero::before { content: ""; position: absolute; inset: -2px; background: radial-gradient(circle at 78% 20%, rgba(6,182,212,.28), transparent 24rem), radial-gradient(circle at 8% 90%, rgba(124,58,237,.32), transparent 22rem); pointer-events: none; }
+  .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr .95fr; gap: 38px; align-items: center; }
+  .hero .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.15); color: rgba(255,255,255,.82); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 0; }
+  .hero h1 { margin: 18px 0 14px; font-size: clamp(40px, 5.6vw, 64px); line-height: .98; letter-spacing: -.06em; max-width: 540px; }
+  .hero-lede { margin: 0; max-width: 520px; color: rgba(255,255,255,.82); font-size: 17px; }
+  .hero-lede strong { color: white; }
+
+  .form-card { background: rgba(255,255,255,.96); color: var(--ink); border-radius: 24px; padding: 26px; box-shadow: 0 22px 56px rgba(0,0,0,.22); }
+  .form-card h3 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+  .form-card p.sub { margin: 0 0 18px; font-size: 13px; color: var(--muted); }
+  .field { display: grid; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .field input { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); font: inherit; font-size: 15px; background: white; }
+  .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .form-card button { width: 100%; padding: 14px; border-radius: 999px; border: 0; background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 14px 28px rgba(37,99,235,.28); }
+  .form-card .smallprint { margin: 12px 0 0; font-size: 12px; color: var(--soft-muted); text-align: center; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+  .stat { padding: 22px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: 0 12px 28px rgba(15,23,42,.055); }
+  .stat .label { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
+  .stat .num { margin-top: 8px; font-size: 38px; font-weight: 900; line-height: 1; letter-spacing: -.05em; color: var(--ink); }
+  .stat .desc { margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+  .how { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .how-step { padding: 22px; border-radius: 22px; background: white; border: 1px solid var(--line); }
+  .how-step .num { font-size: 13px; font-weight: 900; color: var(--blue); letter-spacing: .04em; }
+  .how-step h4 { margin: 6px 0; font-size: 17px; letter-spacing: -.02em; }
+  .how-step p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .engine-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
+  .engine-strip .e { padding: 14px; border-radius: 16px; background: rgba(255,255,255,.78); border: 1px solid var(--line); text-align: center; font-weight: 700; font-size: 13px; color: var(--ink-2); }
+
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 28px 0 14px; }
+  .price-card { position: relative; padding: 28px 24px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 12px; }
+  .price-card.featured { background: linear-gradient(160deg, #1d4ed8 0%, #4338ca 50%, #6d28d9 100%); color: white; transform: translateY(-4px); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 30px 60px rgba(67,56,202,.32); }
+  .price-card.featured .tagline, .price-card.featured li { color: rgba(255,255,255,.84); }
+  .price-card.featured ul li::before { background: rgba(52,211,153,.2); color: #34d399; }
+  .price-card .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #f97316); color: white; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 8px 18px rgba(249,115,22,.32); }
+  .price-card .tier-name { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .price-card.featured .tier-name { color: rgba(255,255,255,.72); }
+  .price-card .tier-price { font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -.05em; }
+  .price-card .tier-price small { font-size: 14px; font-weight: 700; color: var(--muted); margin-left: 4px; }
+  .price-card.featured .tier-price small { color: rgba(255,255,255,.6); }
+  .price-card .tagline { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; min-height: 50px; }
+  .price-card ul { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 8px; }
+  .price-card li { display: flex; gap: 8px; align-items: flex-start; color: var(--ink-2); font-size: 13px; line-height: 1.4; }
+  .price-card li::before { content: "✓"; color: var(--success); font-weight: 900; flex-shrink: 0; }
+  .price-card.featured li::before { color: #34d399; }
+  .price-card .tier-cta { display: inline-flex; align-items: center; justify-content: center; margin-top: auto; padding: 12px 18px; border-radius: 999px; background: var(--ink); color: white; text-decoration: none; font-weight: 800; font-size: 14px; }
+  .price-card.featured .tier-cta { background: white; color: #1d4ed8; box-shadow: 0 14px 28px rgba(0,0,0,.22); }
+
+  @media (max-width: 930px) { .hero-grid { grid-template-columns: 1fr; } .stats, .how, .engine-strip, .pricing-grid { grid-template-columns: 1fr 1fr; } .hero { padding: 36px 26px; } .price-card.featured { transform: none; } }
+  @media (max-width: 560px) { .stats, .how, .engine-strip, .pricing-grid { grid-template-columns: 1fr; } .hero h1 { font-size: 38px; } }
+{% endblock %}
+
+{% block content %}
+<section class="hero" id="preview">
+  <div class="hero-grid">
+    <div>
+      <span class="eyebrow">AI answer visibility audit</span>
+      <h1>How does AI describe your business?</h1>
+      <p class="hero-lede">
+        ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews answer thousands of buyer-facing questions every day in your category. <strong>If they don't name you, they're naming someone else.</strong> Run a free 8-query snapshot in under a minute.
+      </p>
+      <div style="display:flex; gap:10px; margin-top:22px; flex-wrap:wrap;">
+        <span class="eyebrow">5 AI engines</span>
+        <span class="eyebrow">40+ buyer questions</span>
+        <span class="eyebrow">Hallucination check</span>
+      </div>
+    </div>
+
+    <form class="form-card" method="POST" action="/preview">
+      <h3>Run a free preview</h3>
+      <p class="sub">Tests Google AI Overviews on 8 questions in your category. ~30 seconds.</p>
+      <div class="field">
+        <label for="domain">Your website</label>
+        <input id="domain" name="domain" required type="text" placeholder="capify.com.au" autocomplete="url">
+      </div>
+      <div class="field">
+        <label for="brand_name">Brand name</label>
+        <input id="brand_name" name="brand_name" required type="text" placeholder="e.g. JB Hi-Fi (with the hyphen, capitalisation and spaces exactly as you brand it)">
+      </div>
+      <div class="field">
+        <label for="category">Category or niche <span style="color:var(--soft-muted); text-transform:none; letter-spacing:0; font-weight:600;">(optional, sharpens the queries)</span></label>
+        <input id="category" name="category" type="text" placeholder="e.g. family hotels in Bali">
+      </div>
+      <button type="submit">Generate free preview →</button>
+      <p class="smallprint">No account, no credit card. Real Google AI Overview data.</p>
+    </form>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="stat"><div class="label">Engines covered</div><div class="num">5</div><div class="desc">Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews</div></div>
+  <div class="stat"><div class="label">Queries per audit</div><div class="num">40</div><div class="desc">Brand, category, problem, comparison and vertical questions</div></div>
+  <div class="stat"><div class="label">Per usable answer</div><div class="num">$0.03</div><div class="desc">Internal cost per answer captured — passed back as low pricing</div></div>
+</div>
+
+<h2 id="how">How it works</h2>
+<p class="lede" style="margin-top:0;">Four steps from URL to action plan. Zero work for your team beyond reading the report.</p>
+<div class="how">
+  <div class="how-step"><div class="num">01</div><h4>Tell us your domain</h4><p>One field. Optional brand + category. We auto-derive the buyer questions to test.</p></div>
+  <div class="how-step"><div class="num">02</div><h4>We query AI engines</h4><p>Real-time questions sent to Google AI Overviews + (paid) Claude, ChatGPT, Perplexity, Gemini.</p></div>
+  <div class="how-step"><div class="num">03</div><h4>We score every answer</h4><p>Visibility, citations, competitors named, sentiment and hallucinations against your ground truth.</p></div>
+  <div class="how-step"><div class="num">04</div><h4>You get an action plan</h4><p>Specific recommendations with example schema, FAQ copy and PR target list.</p></div>
+</div>
+<div class="engine-strip" style="margin-top:24px;">
+  <div class="e">Google AI Overviews</div>
+  <div class="e">ChatGPT</div>
+  <div class="e">Claude</div>
+  <div class="e">Perplexity</div>
+  <div class="e">Gemini</div>
+</div>
+
+<h2 id="aeo-vs-seo">AEO vs SEO — what's actually changing</h2>
+<p class="lede" style="margin-top:0;">SEO optimises for the click. AEO optimises for being inside the answer — both as a <strong>named brand</strong> in the prose and as a <strong>cited link</strong> the AI hands the user. Same buyer question, completely different game.</p>
+
+<div class="grid-2" style="margin-top: 18px;">
+  <div>
+    <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:0;">SEO world — 2018</h3>
+    <div class="mock-serp">
+      <div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">google.com/search?q=best+hotels+in+bali+for+families</div></div>
+      <div class="organic"><strong>Best Family Hotels in Bali 2024 — Booking.com</strong>Compare 800+ family-friendly properties from $40/night…</div>
+      <div class="organic"><strong>Top 10 Family Resorts in Bali — TripAdvisor</strong>Real reviews from travellers staying with kids…</div>
+      <div class="organic"><strong>Hilton Bali Resort — Family Stays in Nusa Dua</strong>Connecting rooms, kids' club, beachfront pools…</div>
+      <div class="organic"><strong>Marriott Bonvoy — Bali Resorts</strong>Browse Marriott, Westin and Le Méridien properties…</div>
+    </div>
+    <p class="lede" style="margin-top: 10px; font-size: 14px;">If <strong>Hilton</strong> ranks, the family sees their listing. They click and compare 3–5 sites.</p>
+  </div>
+
+  <div>
+    <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:0;">AEO world — 2026</h3>
+    <div class="mock-serp">
+      <div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">chatgpt.com</div></div>
+      <div class="ai-block">
+        <div class="label">AI answer · web search</div>
+        <p>For families visiting Bali, the most popular options are large international resorts like <strong>Marriott</strong> (multiple Bonvoy properties in Nusa Dua), <strong>Hyatt</strong> (Regency Bali, well-reviewed for kids' clubs) and <strong>The Mulia</strong>. <strong>Airbnb</strong> and <strong>Vrbo</strong> also list hundreds of family villas in Seminyak and Ubud with pools and kitchens.</p>
+        <div class="sources">
+          <span class="src competitor">marriott.com</span>
+          <span class="src competitor">hyatt.com</span>
+          <span class="src competitor">airbnb.com</span>
+          <span class="src">tripadvisor.com</span>
+          <span class="src">lonelyplanet.com</span>
+        </div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top: 10px; font-size: 14px;"><strong>Hilton</strong> is invisible — not named in the answer, not cited as a source. The family books a Marriott without ever seeing a Hilton listing.</p>
+  </div>
+</div>
+
+<p style="margin-top: 14px; color: var(--muted); font-size: 14px;"><strong>Two signals matter:</strong> the brands named in the AI's prose, and the source links it cites underneath. We measure both — the named brands tell you who the AI <em>recommends</em>; the cited links tell you which sites it <em>trusts</em>.</p>
+
+<p style="margin-top: 18px;"><a href="/aeo-vs-seo" style="color:var(--blue); font-weight:700;">Read the full AEO vs SEO breakdown →</a></p>
+
+<h2 id="pricing">Pricing</h2>
+<p class="lede" style="margin-top:0;">Three audit tiers. Pay once — no subscription, no upsells.</p>
+
+<div class="pricing-grid">
+  <div class="price-card">
+    <div class="tier-name">Spotlight</div>
+    <div class="tier-price">$49<small>once</small></div>
+    <p class="tagline">Google AI Overviews + one engine of your choice. The smallest audit that still reveals patterns.</p>
+    <ul>
+      <li>Google AI Overviews + 1 chosen engine</li>
+      <li>20 queries across brand, category &amp; comparison</li>
+      <li>Competitor &amp; source-domain analysis</li>
+      <li>Online report + PDF export</li>
+    </ul>
+    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+  </div>
+  <div class="price-card featured">
+    <span class="badge">Most popular</span>
+    <div class="tier-name">Full Audit</div>
+    <div class="tier-price">$149<small>once</small></div>
+    <p class="tagline">Every major AI engine, the full 40-query matrix and hallucination scoring. The complete diagnostic.</p>
+    <ul>
+      <li>All 5 engines: Claude, ChatGPT, Perplexity, Gemini &amp; Google</li>
+      <li>40 queries × 5 engines = 200 AI answers</li>
+      <li>Hallucination &amp; sentiment scoring</li>
+      <li>Engine heatmap + competitor share-of-voice</li>
+      <li>CSV + PDF export</li>
+    </ul>
+    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+  </div>
+  <div class="price-card">
+    <div class="tier-name">Audit + Action Plan</div>
+    <div class="tier-price">$349<small>once</small></div>
+    <p class="tagline">Everything in Full Audit, plus 10 done-for-you recommendations with example copy your content team can publish.</p>
+    <ul>
+      <li>Everything in Full Audit</li>
+      <li>10 specific written recommendations</li>
+      <li>Example schema, FAQ &amp; About-page copy</li>
+      <li>PR &amp; link-building target list</li>
+      <li>Re-audit credit (run again in 60 days)</li>
+    </ul>
+    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+  </div>
+</div>
+
+<p style="margin-top: 14px;"><a href="/pricing" style="color:var(--blue); font-weight:700;">See full pricing &amp; feature comparison →</a></p>
+{% endblock %}

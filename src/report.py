@@ -127,6 +127,7 @@ def write_html(
     tier: str = "full",
     screenshot: str | None = None,
     action_plan: list[dict] | None = None,
+    tech=None,  # TechAudit | None
 ) -> Path:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
@@ -142,6 +143,7 @@ def write_html(
         "tier": tier,
         "screenshot": screenshot,
         "action_plan": action_plan,
+        "tech": tech,
     }
     html = template.render(**ctx)
     path = output_dir / "report.html"

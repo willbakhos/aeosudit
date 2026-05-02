@@ -104,6 +104,39 @@
   .site-shot .caption { padding: 8px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); display: flex; justify-content: space-between; background: white; }
   .site-shot .caption a { color: var(--accent); text-decoration: none; }
 
+  /* tech audit (AEO/GEO foundations section) */
+  .tech-score { display: flex; gap: 18px; align-items: center; padding: 18px 22px; border-radius: 12px; background: white; border: 1px solid var(--line); margin: 12px 0 16px; }
+  .tech-score .ring { width: 84px; height: 84px; border-radius: 50%; background: conic-gradient(var(--good) 0deg, #eef0f3 0deg); display: grid; place-items: center; position: relative; flex-shrink: 0; }
+  .tech-score .ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: white; }
+  .tech-score .ring strong { position: relative; font-size: 22px; font-weight: 800; }
+  .tech-score .summary h3 { margin: 0 0 4px; font-size: 18px; }
+  .tech-score .summary p { margin: 0; color: var(--muted); font-size: 13px; }
+  .tech-score .pillrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .tech-score .pillrow span { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+  .tech-score .pillrow .p { background: #dcfce7; color: var(--good); }
+  .tech-score .pillrow .w { background: #fef3c7; color: var(--warn); }
+  .tech-score .pillrow .f { background: #fee2e2; color: var(--bad); }
+
+  .tech-check { background: white; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 16px 18px; }
+  .tech-check-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tech-check-head .num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); font-size: 13px; }
+  .tech-check-head h3 { margin: 0; font-size: 16px; flex: 1; }
+  .tech-check-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+  .tech-check-pill.pass { background: #dcfce7; color: var(--good); }
+  .tech-check-pill.warn { background: #fef3c7; color: var(--warn); }
+  .tech-check-pill.fail { background: #fee2e2; color: var(--bad); }
+  .tech-check-pill.info { background: #eef0f3; color: var(--muted); }
+  .tech-cat { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+  .tech-check dl { margin: 4px 0 0; display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; }
+  .tech-check dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; padding-top: 2px; }
+  .tech-check dd { margin: 0; font-size: 13px; line-height: 1.55; }
+  .tech-check dd.score { font-weight: 700; }
+  .tech-check dd.score.pass { color: var(--good); }
+  .tech-check dd.score.warn { color: var(--warn); }
+  .tech-check dd.score.fail { color: var(--bad); }
+  .tech-check dd.detail { color: var(--muted); }
+  .tech-check dd.fix { background: #f8fafc; border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.45; }
+
   /* action plan ($349 tier) */
   .ap-rec { background: white; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 16px 18px; }
   .ap-rec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
@@ -167,6 +200,47 @@
   {% if agg.errors | length > 0 %} <strong>{{ agg.errors | length }} calls failed</strong> — those are excluded from the rates above, so the real picture may differ once errors are resolved.{% endif %}</p>
   {% if agg.errors | length > 0 %}<p class="fix">Fix errors first: open <code>errors.log</code> next to this file. If you see <code>402</code>, top up OpenRouter credits. If <code>404</code>, the model ID in <code>config/site.yaml</code> is stale — check openrouter.ai/models for the current ID.</p>{% endif %}
 </div>
+
+{% if tech %}
+<h2>Technical AEO/GEO foundations<span class="info">?<span class="tip"><strong>The technical layer underneath your AI visibility.</strong>15 checks covering crawlability, structured data, metadata, content, performance and entity signals. Fix the failures here before you invest in content — they're the foundation everything else sits on.</span></span></h2>
+<div class="callout">
+  <p><strong>What this is:</strong> Direct inspection of your site (not the AI engines). We fetched <code>{{ tech.domain }}</code> and ran 15 checks to see whether your foundations are AI-ready. <em>Failures here cap your visibility ceiling.</em></p>
+  <p class="fix">Tier 1 (the first 3 checks) covers crawlability — the most common silent killer. Tier 2 covers structured data, metadata, and content quality. Hand this section to your engineering team as a punch list.</p>
+</div>
+
+<div class="tech-score">
+  <div class="ring" style="background: conic-gradient({% if tech.overall_score >= 70 %}var(--good){% elif tech.overall_score >= 40 %}var(--warn){% else %}var(--bad){% endif %} {{ tech.overall_score * 3.6 }}deg, #eef0f3 0deg);">
+    <strong>{{ tech.overall_score }}</strong>
+  </div>
+  <div class="summary">
+    <h3>{% if tech.overall_score >= 70 %}Strong AEO foundations{% elif tech.overall_score >= 40 %}Mixed — fix the failures{% else %}Weak foundations — start here{% endif %}</h3>
+    <p>Overall AEO readiness score across {{ tech.checks | length }} checks on <code>{{ tech.domain }}</code>.</p>
+    <div class="pillrow">
+      <span class="p">{{ tech.pass_count }} pass</span>
+      <span class="w">{{ tech.warn_count }} warn</span>
+      <span class="f">{{ tech.fail_count }} fail</span>
+    </div>
+  </div>
+</div>
+
+{% for c in tech.checks %}
+<div class="tech-check">
+  <div class="tech-check-head">
+    <span class="num">{{ '%02d' | format(loop.index) }}</span>
+    <h3>{{ c.title }}</h3>
+    <span class="tech-check-pill {{ c.status }}">{{ c.status }}</span>
+    <span class="tech-cat">{{ c.category | replace('_', ' ') }}</span>
+  </div>
+  <dl>
+    <dt>Check</dt><dd>{{ c.title }}</dd>
+    <dt>What we'd expect</dt><dd>{{ c.expected }}</dd>
+    <dt>Why it matters</dt><dd>{{ c.why }}</dd>
+    <dt>How you scored</dt><dd class="score {{ c.status }}">{{ c.score_label }}{% if c.detail %} <span style="color: var(--muted); font-weight: normal;">— {{ c.detail }}</span>{% endif %}</dd>
+    {% if c.fix %}<dt>How to fix</dt><dd class="fix">{{ c.fix }}</dd>{% endif %}
+  </dl>
+</div>
+{% endfor %}
+{% endif %}
 
 {% if action_plan %}
 <h2>Your action plan<span class="info">?<span class="tip"><strong>10 specific recommendations</strong>Generated by Claude Sonnet from your audit data. Each item names the gap, the action, an actual example to ship, and how you'll know it worked. Prioritised — start at the top.</span></span></h2>

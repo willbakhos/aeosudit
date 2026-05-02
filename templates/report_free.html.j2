@@ -1047,6 +1047,49 @@
     .engine-panel-head, .engine-detail-grid, .engine-locked-grid { grid-template-columns: 1fr; }
     .engine-tabs { padding-top: 14px; }
   }
+
+  /* Tech AEO/GEO foundations */
+  .tech-section { margin: 28px 0; }
+  .tech-banner { padding: 22px 26px; border-radius: 22px; background: linear-gradient(135deg, #f0f9ff 0%, #ede9fe 100%); border: 1px solid rgba(37,99,235,.16); display: flex; gap: 22px; align-items: center; box-shadow: var(--shadow-soft); }
+  .tech-banner .ring { width: 100px; height: 100px; border-radius: 50%; display: grid; place-items: center; position: relative; flex-shrink: 0; }
+  .tech-banner .ring::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: white; }
+  .tech-banner .ring strong { position: relative; font-size: 28px; font-weight: 900; letter-spacing: -.04em; color: var(--ink); }
+  .tech-banner .meta h3 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.025em; }
+  .tech-banner .meta p { margin: 0; color: var(--muted); font-size: 14px; }
+  .tech-banner .pillrow { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tech-banner .pillrow span { font-size: 11px; padding: 3px 9px; border-radius: 999px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+  .tech-banner .pillrow .p { background: #dcfce7; color: var(--success); }
+  .tech-banner .pillrow .w { background: #fef3c7; color: var(--warning); }
+  .tech-banner .pillrow .f { background: #fee2e2; color: var(--danger); }
+
+  .tcheck { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; margin: 12px 0; box-shadow: var(--shadow-soft); }
+  .tcheck-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tcheck-head .num { font-variant-numeric: tabular-nums; font-weight: 900; color: var(--blue); font-size: 14px; min-width: 28px; }
+  .tcheck-head h4 { margin: 0; font-size: 17px; letter-spacing: -.02em; flex: 1; }
+  .tcheck-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; font-weight: 800; }
+  .tcheck-pill.pass { background: #dcfce7; color: var(--success); }
+  .tcheck-pill.warn { background: #fef3c7; color: var(--warning); }
+  .tcheck-pill.fail { background: #fee2e2; color: var(--danger); }
+  .tcheck-pill.info { background: #eef0f3; color: var(--muted); }
+  .tcheck-pill.locked { background: #eef2ff; color: #4f46e5; }
+  .tcheck dl { margin: 0; display: grid; grid-template-columns: 130px 1fr; gap: 10px 16px; }
+  .tcheck dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; padding-top: 4px; }
+  .tcheck dd { margin: 0; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+  .tcheck dd.score-pass { color: var(--success); font-weight: 700; }
+  .tcheck dd.score-warn { color: var(--warning); font-weight: 700; }
+  .tcheck dd.score-fail { color: var(--danger); font-weight: 700; }
+
+  .tcheck.locked .score-row { position: relative; min-height: 70px; }
+  .tcheck.locked .score-blur { filter: blur(6px); opacity: .55; user-select: none; pointer-events: none; }
+  .tcheck.locked .score-overlay { position: absolute; inset: -4px; display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(180deg, rgba(255,255,255,.4) 0%, rgba(255,255,255,.95) 70%); border-radius: 12px; }
+  .tcheck.locked .score-overlay a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; text-decoration: none; font-weight: 800; font-size: 13px; box-shadow: 0 10px 22px rgba(37,99,235,.28); }
+
+  @media (max-width: 620px) {
+    .tech-banner { flex-direction: column; text-align: center; }
+    .tcheck dl { grid-template-columns: 1fr; gap: 4px; }
+    .tcheck dt { padding-top: 8px; }
+  }
+
 </style>
 </head>
 <body>
@@ -1088,6 +1131,9 @@
               {{ config.brand.name }} appears in Google AI Overviews — but who else is being cited?
             {% endif %}
           </h1>
+          <p class="hero-lede" style="margin-bottom: 14px;">
+            <strong>Up to 30% of buyer research now starts inside an AI engine</strong> — Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini. If they don't name your business, that traffic goes to whoever they do name.
+          </p>
           <p class="hero-lede">
             {% if visible == 0 %}
               <strong>Google's AI did not mention {{ config.brand.name }} once</strong> across {{ total_queries }} commercial questions in this category. This preview shows the visibility gap and where Google is sourcing answers instead.
@@ -1308,6 +1354,65 @@
       </div>
     </section>
 
+    {% if tech %}
+    <section class="section tech-section">
+      <div class="section-header">
+        <div>
+          <h2>Technical AEO/GEO foundations</h2>
+          <p class="section-subtitle">15 checks on <code>{{ tech.domain }}</code> covering crawlability, structured data, metadata, content and performance. <strong>The first 3 are visible below — the rest are blurred and unlock with the full audit.</strong> Failures here cap your AI visibility ceiling no matter what content you publish.</p>
+        </div>
+        <span class="chip dark">{{ tech.checks | length }} checks</span>
+      </div>
+
+      <div class="tech-banner">
+        <div class="ring" style="background: conic-gradient({% if tech.overall_score >= 70 %}var(--success){% elif tech.overall_score >= 40 %}var(--warning){% else %}var(--danger){% endif %} {{ tech.overall_score * 3.6 }}deg, #eef0f3 0deg);">
+          <strong>{{ tech.overall_score }}</strong>
+        </div>
+        <div class="meta">
+          <h3>{% if tech.overall_score >= 70 %}Strong AEO foundations{% elif tech.overall_score >= 40 %}Mixed — fixable{% else %}Weak foundations — start here{% endif %}</h3>
+          <p>Overall AEO/GEO readiness score across {{ tech.checks | length }} technical checks.</p>
+          <div class="pillrow">
+            <span class="p">{{ tech.pass_count }} pass</span>
+            <span class="w">{{ tech.warn_count }} warn</span>
+            <span class="f">{{ tech.fail_count }} fail</span>
+          </div>
+        </div>
+      </div>
+
+      {% for c in tech.checks %}
+        {% set is_locked = (c.tier > 1) %}
+        <div class="tcheck {% if is_locked %}locked{% endif %}">
+          <div class="tcheck-head">
+            <span class="num">{{ '%02d' | format(loop.index) }}</span>
+            <h4>{{ c.title }}</h4>
+            {% if is_locked %}
+              <span class="tcheck-pill locked">🔒 Unlock</span>
+            {% else %}
+              <span class="tcheck-pill {{ c.status }}">{{ c.status }}</span>
+            {% endif %}
+          </div>
+          <dl>
+            <dt>Check</dt><dd>{{ c.title }}</dd>
+            <dt>What we'd expect</dt><dd>{{ c.expected }}</dd>
+            <dt>Why it matters</dt><dd>{{ c.why }}</dd>
+            <dt>How you scored</dt>
+            {% if is_locked %}
+              <dd class="score-row">
+                <div class="score-blur">{{ c.score_label }} — {{ c.detail or 'Detailed finding hidden in preview.' }}</div>
+                <div class="score-overlay">
+                  <a href="#upgrade">🔒 Unlock score →</a>
+                </div>
+              </dd>
+            {% else %}
+              <dd class="score-{{ c.status }}">{{ c.score_label }}{% if c.detail %} <span style="color: var(--muted); font-weight: normal;">— {{ c.detail }}</span>{% endif %}</dd>
+              {% if c.fix %}<dt>How to fix</dt><dd style="background:#f8fafc; border-left:3px solid var(--blue); padding:10px 14px; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.55;">{{ c.fix }}</dd>{% endif %}
+            {% endif %}
+          </dl>
+        </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
     <section class="section">
       <div class="section-header">
         <div>
@@ -1352,34 +1457,6 @@
           {% endif %}
         </div>
       </div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <h2>Sample answer evidence</h2>
-          <p class="section-subtitle">The full report includes all {{ total_queries }} answers from this run plus 32 more queries across Claude, ChatGPT, Perplexity and Gemini.</p>
-        </div>
-      </div>
-      {% if first_query %}
-      <details open>
-        <summary>
-          {{ first_query }}
-          <span class="pill">{{ first_rows[0].response.query_type }}</span>
-          {% set v = first_rows | selectattr('deterministic.mentioned') | list | length %}
-          {% if v > 0 %}
-            <span class="pill good">{{ config.brand.name }} appears</span>
-          {% else %}
-            <span class="pill bad">{{ config.brand.name }} does not appear</span>
-          {% endif %}
-        </summary>
-        {% for row in first_rows %}
-          {% if not row.response.error %}
-            <div class="response-text">{{ row.response.response_text[:600] }}{% if row.response.response_text|length > 600 %}…{% endif %}</div>
-          {% endif %}
-        {% endfor %}
-      </details>
-      {% endif %}
     </section>
 
     <section class="section">
@@ -1498,7 +1575,7 @@
         </div>
       </div>
 
-      <p class="price-footnote">All tiers delivered within 24 hours. Upgrade between tiers anytime — we credit what you've already paid.</p>
+      <p class="price-footnote">All tiers delivered within minutes. Upgrade between tiers anytime — we credit what you've already paid.</p>
     </section>
 
     <p class="footer-note">This is a free preview. The data above is generated from Google AI Overviews queries for {{ config.brand.name }}.</p>

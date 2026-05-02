@@ -1,0 +1,124 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'how' %}
+{% set canonical_path = "/how-it-works" %}
+{% set page_description = "Step-by-step: how AEO Audit takes a domain and turns it into an action plan. Query generation, 5-engine parallel testing, deterministic scoring, LLM hallucination check, action plan generation. Plain-English, no black box." %}
+{% block title %}How it works — from domain to action plan | AEO Audit{% endblock %}
+
+{% block extra_css %}
+  .step-card { padding: 28px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); margin-bottom: 18px; display: grid; grid-template-columns: 90px 1fr; gap: 22px; align-items: start; }
+  .step-num { font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -.05em; color: var(--blue); opacity: .35; }
+  .step-card h3 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.025em; }
+  .step-card p { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; }
+  .step-card ul.bullets li { font-size: 14px; padding: 4px 0 4px 28px; }
+  .tech-strip { padding: 16px 22px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #e0e7ff; border-radius: 14px; margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+  .tech-strip strong { color: var(--purple); }
+
+  @media (max-width: 620px) { .step-card { grid-template-columns: 1fr; } .step-num { font-size: 32px; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">How it works</span>
+<h1 class="page-title">From a domain to an action plan in minutes.</h1>
+<p class="page-lede">Here's exactly what happens between you typing your URL into the form and getting a finished report. No black box.</p>
+
+<div class="step-card">
+  <div class="step-num">01</div>
+  <div>
+    <h3>You give us your domain, brand and category</h3>
+    <p>Three fields. The brand name has to be exactly how you brand it (e.g. "JB Hi-Fi" not "jbhifi") because that's what AI engines write — we match on the literal string. Category sharpens the buyer questions we'll test.</p>
+    <ul class="bullets">
+      <li>Domain becomes the audit subject (also the site we screenshot).</li>
+      <li>Brand name + aliases are how we detect "you appear in this answer."</li>
+      <li>Category drives the auto-generated query set (e.g. "best family hotels in Bali" or "alternatives to Airbnb").</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">02</div>
+  <div>
+    <h3>We generate a 40-question buyer-query set</h3>
+    <p>Five intent buckets: <strong>brand</strong> (people who already know you), <strong>category</strong> (discovery), <strong>problem</strong> (the pain that drives buying), <strong>comparison</strong> (head-to-head decisions), and <strong>vertical</strong> (industry-specific intent). The free preview uses 8 of these; full audit uses all 40.</p>
+    <div class="tech-strip"><strong>Why 40?</strong> Fewer is too noisy. More is overkill. 40 questions × 5 engines = 200 individual answers, which is enough to see real patterns rather than single-answer drift.</div>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">03</div>
+  <div>
+    <h3>We query 5 AI engines in parallel</h3>
+    <p>Each engine sees the same questions and gets to use its native web search. We capture the full answer text plus the source citations.</p>
+    <ul class="bullets">
+      <li><strong>Google AI Overviews</strong> via the Apify google-search-scraper actor</li>
+      <li><strong>ChatGPT</strong> (gpt-5-mini with built-in web search)</li>
+      <li><strong>Claude</strong> (Haiku 4.5 with built-in web search)</li>
+      <li><strong>Perplexity</strong> (Sonar — search-native model)</li>
+      <li><strong>Gemini</strong> (2.5 Flash with grounding)</li>
+    </ul>
+    <div class="tech-strip"><strong>Why these models?</strong> They're the cheapest tier of each provider that still uses native search. The expensive frontier models give the same answers — we tested. Saves you ~75% on cost without losing signal.</div>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">04</div>
+  <div>
+    <h3>In parallel: we run a GEO audit on your site</h3>
+    <p>While the AI engines are answering, we directly inspect your site with 15 technical checks — <strong>GEO (Generative Engine Optimisation)</strong>. Crawlability (robots.txt allows GPTBot, sitemap.xml, llms.txt), structured data (Organization, FAQPage, Product schema), metadata (description, OG, canonical), content shape (single H1, server-rendered HTML), and performance (HTTPS, mobile viewport, response time).</p>
+    <p>Each check returns a status (pass/warn/fail), what we'd expect, why it matters, and how to fix it. This catches the silent killers — like a robots.txt that accidentally blocks ChatGPT, or a JS-only site invisible to AI crawlers. <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">Learn more about GEO →</a></p>
+    <div class="tech-strip"><strong>Why this matters:</strong> AEO measures the outcome (does the AI mention you). GEO measures the foundation (can the AI even read you). Bad GEO caps your AEO ceiling — fix it first.</div>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">05</div>
+  <div>
+    <h3>We score every AI answer two ways</h3>
+    <p>First: <strong>deterministic</strong>. Regex on the brand name. URL parse on every cited domain. Substring match for competitors. Fast, repeatable, no LLM needed for these signals.</p>
+    <p>Second: <strong>LLM scoring</strong> (Full Audit + Action Plan tiers only). A second-pass call to Claude Haiku checks each answer against your business's ground-truth facts and tags sentiment, accuracy, and any specific false claims.</p>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">06</div>
+  <div>
+    <h3>We assemble the report</h3>
+    <p>Headline metrics, engine heatmap, top-cited domains, competitor share-of-voice, hallucination flags, per-query drill-down. The hosted report is a single self-contained HTML page with inline CSS — opens in any browser, prints to PDF cleanly.</p>
+    <ul class="bullets">
+      <li>CSV export for your team</li>
+      <li>PDF export delivered with the report email</li>
+      <li>Raw responses archived so we can re-score offline if you need to pivot the analysis</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">07</div>
+  <div>
+    <h3>(Action Plan tier) We generate 10 specific recommendations</h3>
+    <p>A Sonnet pass takes the audit findings and produces 10 concrete, prioritised action items. Each one names the gap, the action, an actual <strong>example</strong> (real schema markup, real FAQ paragraph, real PR pitch), and how to measure impact.</p>
+    <div class="tech-strip"><strong>Why this is different from a generic SEO checklist:</strong> the recommendations are grounded in your specific data — which engines under-rank you, which competitors dominate, which sources are getting cited. No "improve your meta descriptions" filler.</div>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">08</div>
+  <div>
+    <h3>You get the report by email</h3>
+    <p>One email. Hosted report link. PDF attachment. CSV attachment. Subject line: "Your [Brand] AEO audit is ready." Delivered within minutes of payment — usually under 10.</p>
+  </div>
+</div>
+
+<h2>What we don't do</h2>
+<ul class="bullets">
+  <li><strong>We don't scrape the AI engines without permission.</strong> We use OpenRouter's official tool-use API for the LLMs and Apify's compliant SERP scraper for Google.</li>
+  <li><strong>We don't store your audit data forever.</strong> Raw responses live on our servers for 90 days then are deleted. The hosted report stays accessible for 12 months.</li>
+  <li><strong>We don't do an SEO audit.</strong> If you want backlink analysis, on-page recommendations or keyword research, use Ahrefs or Semrush. We measure something different.</li>
+  <li><strong>We don't claim guaranteed AI rankings.</strong> No one can. AI engines change weekly. What we give you is measurement and direction.</li>
+</ul>
+
+<h2>Ready?</h2>
+<div style="display:flex; gap:14px; margin-top: 12px; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+{% endblock %}

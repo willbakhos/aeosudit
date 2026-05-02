@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generating preview… | AEO Audit</title>
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(37,99,235,.16), transparent 32rem),
+      radial-gradient(circle at 85% 8%, rgba(124,58,237,.12), transparent 30rem),
+      linear-gradient(180deg, #f8fbff 0%, #f8fafc 38%, #eef4ff 100%);
+    color: #0f172a;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 28px;
+  }
+  .card {
+    width: min(560px, 100%);
+    background: rgba(255,255,255,.92);
+    border-radius: 28px;
+    padding: 40px 36px;
+    box-shadow: 0 24px 70px rgba(15,23,42,.10);
+    text-align: center;
+  }
+  .spinner {
+    width: 52px; height: 52px; margin: 0 auto 20px;
+    border-radius: 50%;
+    border: 4px solid #e2e8f0;
+    border-top-color: #2563eb;
+    animation: spin .9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.03em; }
+  p { margin: 0; color: #64748b; font-size: 14px; line-height: 1.55; }
+  .progress {
+    margin-top: 22px;
+    height: 6px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+  .progress > div {
+    height: 100%;
+    width: 5%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    transition: width .6s ease;
+  }
+  .step {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+  }
+  .err {
+    margin-top: 18px; padding: 12px 14px;
+    background: #fef2f2; color: #991b1b;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner" id="spinner"></div>
+    <h1>Generating your preview…</h1>
+    <p>Querying Google AI Overviews with 8 buyer-facing questions about <strong>{{ brand_name }}</strong>. Usually finishes in 20–40 seconds.</p>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="step" id="step">Starting up…</div>
+    <div class="err" id="err" style="display:none;"></div>
+  </div>
+<script>
+  const runId = "{{ run_id }}";
+  const bar = document.getElementById("bar");
+  const step = document.getElementById("step");
+  const err = document.getElementById("err");
+  let elapsed = 0;
+  const tickEvery = 2000;
+
+  function nudgeBar() {
+    elapsed += tickEvery;
+    // Asymptote to 90% so it never fakes completion
+    const pct = Math.min(90, 5 + (elapsed / 60000) * 85);
+    bar.style.width = pct + "%";
+    step.textContent = `Working… ${Math.round(elapsed/1000)}s elapsed`;
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch(`/preview/${runId}/status`);
+      const data = await r.json();
+      if (data.status === "ready") {
+        bar.style.width = "100%";
+        step.textContent = "Done — opening report…";
+        setTimeout(() => window.location.href = `/report/${runId}`, 400);
+        return;
+      }
+      if (data.status === "failed") {
+        err.textContent = data.error || "Something went wrong. Please try again.";
+        err.style.display = "block";
+        document.getElementById("spinner").style.display = "none";
+        return;
+      }
+      nudgeBar();
+      setTimeout(poll, tickEvery);
+    } catch (e) {
+      // Network blip — keep polling
+      nudgeBar();
+      setTimeout(poll, tickEvery);
+    }
+  }
+  poll();
+</script>
+</body>
+</html>

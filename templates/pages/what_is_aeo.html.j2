@@ -1,0 +1,305 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'aeo' %}
+{% set canonical_path = "/what-is-aeo" %}
+{% set page_description = "AEO (Answer Engine Optimisation) is making sure AI engines — ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews — name and cite your business when buyers ask high-intent questions. The metrics, the difference from SEO, and what to measure." %}
+{% block title %}What is AEO? Answer Engine Optimisation explained | AEO Audit{% endblock %}
+
+{% block extra_css %}
+  .timeline { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin: 18px 0; }
+  .era { padding: 22px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .era .when { font-size: 11px; font-weight: 900; color: var(--blue); letter-spacing: .08em; text-transform: uppercase; }
+  .era h4 { margin: 6px 0; font-size: 16px; }
+  .era p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .era.now { background: linear-gradient(160deg, #1d4ed8, #6d28d9); color: white; border: 1px solid rgba(255,255,255,.2); }
+  .era.now .when { color: rgba(255,255,255,.78); }
+  .era.now p { color: rgba(255,255,255,.86); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 18px 0; }
+  .stat-row .stat { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+  .stat-row .num { font-size: 38px; font-weight: 900; line-height: 1; letter-spacing: -.05em; color: var(--blue); }
+  .stat-row .lab { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .stat-row .src { color: var(--soft-muted); font-size: 11px; margin-top: 6px; }
+
+  @media (max-width: 820px) { .timeline, .stat-row { grid-template-columns: 1fr; } }
+
+  /* "Signal you used to track is gone" graphic */
+  .signal-section { margin-top: 24px; }
+  .signal-title { text-align: center; margin: 0 0 6px; font-size: clamp(28px, 4vw, 44px); letter-spacing: -.045em; line-height: 1.1; font-weight: 900; }
+  .signal-title .gone { background: linear-gradient(135deg, var(--blue), var(--purple)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .signal-sub { text-align: center; color: var(--muted); margin: 0 0 24px; font-size: 16px; }
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 1fr 56px 1fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .signal-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .signal-card .head { font-size: 16px; font-weight: 800; color: var(--ink); margin: 0 0 14px; text-align: center; }
+  .signal-row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .signal-row:last-of-type { border-bottom: 0; }
+  .signal-icon {
+    width: 56px; height: 56px; border-radius: 999px;
+    background: #eef4ff;
+    display: grid; place-items: center;
+    color: var(--blue);
+  }
+  .signal-icon.openai { background: #ecfdf5; color: #10a37f; }
+  .signal-icon.anthropic { background: #fff7ed; color: #d97706; }
+  .signal-icon.google { background: #eff6ff; color: var(--blue); }
+  .signal-row h4 { margin: 0 0 4px; font-size: 17px; letter-spacing: -.02em; }
+  .signal-row p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .signal-row p .brand { font-weight: 800; }
+  .signal-row p .brand.openai { color: #10a37f; }
+  .signal-row p .brand.anthropic { color: #d97706; }
+  .signal-row p .brand.google { color: var(--blue); }
+  .signal-row p em { color: var(--ink-2); font-style: italic; }
+  .signal-footer {
+    margin-top: auto;
+    margin-top: 16px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .signal-footer.ok { background: #eff6ff; color: var(--blue); }
+  .signal-footer.warn { background: #f5f3ff; color: var(--purple); }
+  .signal-footer .icon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+  .signal-footer.ok .icon { background: var(--blue); color: white; }
+  .signal-footer.warn .icon { background: var(--purple); color: white; }
+  .signal-arrow {
+    align-self: center;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: white; border: 1px solid var(--line);
+    display: grid; place-items: center;
+    color: var(--ink); font-size: 20px;
+    box-shadow: var(--shadow-soft);
+  }
+  @media (max-width: 820px) {
+    .signal-grid { grid-template-columns: 1fr; gap: 14px; }
+    .signal-arrow { transform: rotate(90deg); justify-self: center; }
+  }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">What is AEO</span>
+<h1 class="page-title">When buyers ask AI a question, are you in the answer?</h1>
+<p class="page-lede">Answer Engine Optimisation (AEO) is the practice of making sure AI engines — ChatGPT, Claude, Perplexity, Gemini and Google's AI Overviews — describe, cite and recommend your business when potential customers ask high-intent questions.</p>
+
+<h2>How buyer research has changed in 24 months</h2>
+<div class="timeline">
+  <div class="era">
+    <div class="when">2010 – 2022</div>
+    <h4>Ten blue links</h4>
+    <p>Google returned a list of pages. Buyers clicked, compared 3–5 sites, and made a decision. SEO was about ranking page titles and earning backlinks.</p>
+  </div>
+  <div class="era">
+    <div class="when">2023 – 2024</div>
+    <h4>The shift to AI answers</h4>
+    <p>ChatGPT crossed 100M users in 2 months. Perplexity, Claude and Gemini followed. Google launched AI Overviews. Buyers stopped clicking — they read the AI summary instead.</p>
+  </div>
+  <div class="era now">
+    <div class="when">2025 onward</div>
+    <h4>The AI answer is the new homepage</h4>
+    <p>Up to 30% of buyer research now starts inside an AI engine. The AI's answer — including which brands it names — replaces the old search results page entirely.</p>
+  </div>
+</div>
+
+<div class="signal-section">
+  <h2 class="signal-title">The signal you used to track <span class="gone">is gone</span></h2>
+  <p class="signal-sub">In the old world, you measured success by:</p>
+
+  <div class="signal-grid">
+    <!-- LEFT: old metrics -->
+    <div class="signal-card">
+      <div class="signal-row">
+        <div class="signal-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M3 21h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <rect x="5" y="13" width="3" height="7" rx="1" fill="currentColor"/>
+            <rect x="10.5" y="9" width="3" height="11" rx="1" fill="currentColor"/>
+            <rect x="16" y="5" width="3" height="15" rx="1" fill="currentColor"/>
+            <path d="M5 9l5-3 4 2 6-5" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 3h4v4" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h4>SERP rank</h4>
+          <p>Where do I sit on page one of Google?</p>
+        </div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M9 4l11 8-5 1-1 5L9 4z" fill="currentColor"/>
+            <path d="M3 3l1.5 3M3 9l3-1M9 14l-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h4>Click-through rate</h4>
+          <p>What percentage of impressions click my listing?</p>
+        </div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h4>Backlinks</h4>
+          <p>Who links to me, and how authoritative are they?</p>
+        </div>
+      </div>
+      <div class="signal-footer ok">
+        <span class="icon">✓</span> These metrics shaped SEO for years.
+      </div>
+    </div>
+
+    <!-- ARROW -->
+    <div class="signal-arrow">→</div>
+
+    <!-- RIGHT: AI engines -->
+    <div class="signal-card">
+      <div class="head">But none of these tell you:</div>
+      <div class="signal-row">
+        <div class="signal-icon openai">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.28 9.84a5.39 5.39 0 00-.46-4.43 5.46 5.46 0 00-5.88-2.62 5.45 5.45 0 00-9.24 1.97 5.45 5.45 0 00-3.65 2.64 5.46 5.46 0 00.67 6.4 5.39 5.39 0 00.46 4.43 5.46 5.46 0 005.88 2.62 5.45 5.45 0 009.24-1.97 5.46 5.46 0 003.65-2.64 5.46 5.46 0 00-.67-6.4zM13.26 20.5a4.04 4.04 0 01-2.6-.94l.13-.07 4.32-2.5a.7.7 0 00.36-.62v-6.1l1.83 1.06a.07.07 0 01.04.05v5.04a4.06 4.06 0 01-4.08 4.08zM4.49 16.76a4.04 4.04 0 01-.49-2.71l.13.08 4.32 2.5a.7.7 0 00.71 0l5.27-3.05v2.11a.07.07 0 01-.03.06l-4.36 2.52a4.08 4.08 0 01-5.55-1.51zm-1.13-9.4a4.06 4.06 0 012.12-1.79v5.13a.7.7 0 00.35.61l5.27 3.04-1.83 1.06a.07.07 0 01-.06 0L4.86 13a4.08 4.08 0 01-1.5-5.64zm14.93 3.46l-5.27-3.05L14.85 6.7a.07.07 0 01.07 0l4.37 2.52a4.08 4.08 0 01-.61 7.34v-5.13a.7.7 0 00-.39-.61zm1.81-2.74l-.13-.08-4.31-2.51a.7.7 0 00-.71 0l-5.27 3.05V6.43a.07.07 0 01.03-.06l4.36-2.52a4.08 4.08 0 016.03 4.23zM9.13 12.97l-1.83-1.06a.07.07 0 01-.04-.05V6.82a4.08 4.08 0 016.69-3.13l-.13.07-4.32 2.5a.7.7 0 00-.36.62zm.99-2.14l2.36-1.36 2.35 1.36v2.71l-2.35 1.36-2.36-1.36z"/>
+          </svg>
+        </div>
+        <div>
+          <p>Whether <span class="brand openai">ChatGPT</span> mentions you when someone asks <em>"best family hotels in Bali."</em></p>
+        </div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-icon anthropic">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14.94 4h-2.88l-5.5 16h3.16l1.13-3.41h5.3L17.28 20h3.16L14.94 4zm-3.21 9.95L13.5 8.6l1.77 5.36h-3.54z"/>
+          </svg>
+        </div>
+        <div>
+          <p>Whether <span class="brand anthropic">Anthropic (Claude)</span> cites your site as a source.</p>
+        </div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-icon google">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M21.6 12.23c0-.65-.06-1.27-.17-1.87H12v3.55h5.39a4.6 4.6 0 01-2 3.02v2.51h3.24c1.9-1.75 2.97-4.32 2.97-7.21z" fill="#4285F4"/>
+            <path d="M12 22c2.7 0 4.97-.9 6.63-2.43l-3.24-2.5c-.9.6-2.05.96-3.39.96-2.6 0-4.81-1.76-5.6-4.13H3.05v2.59A10 10 0 0012 22z" fill="#34A853"/>
+            <path d="M6.4 13.9a6 6 0 010-3.8V7.5H3.05a10 10 0 000 9l3.35-2.6z" fill="#FBBC04"/>
+            <path d="M12 5.96a5.42 5.42 0 013.83 1.5l2.87-2.87A10 10 0 0012 2 10 10 0 003.05 7.5l3.35 2.6c.79-2.37 3-4.14 5.6-4.14z" fill="#EA4335"/>
+          </svg>
+        </div>
+        <div>
+          <p>Whether <span class="brand google">Google (Gemini)</span> named your competitor and not you.</p>
+        </div>
+      </div>
+      <div class="signal-footer warn">
+        <span class="icon">✗</span> Old metrics can't see AI visibility.
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>What an AI answer looks like — and why it matters</h2>
+<p>Below is a stylised example of how a single buyer question now gets answered. The "old" SERP is the blue-link list everyone knows. The "new" answer engine result is what the user actually reads. Notice that the AI's answer has <strong>two layers</strong>: the brands named in the prose, and the clickable source citations underneath. <em>Both</em> matter, and they're scored separately.</p>
+
+<div class="grid-2" style="margin-top: 18px;">
+  <div>
+    <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:0;">2018 — Old SERP</h3>
+    <div class="mock-serp">
+      <div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">google.com/search?q=best+hotels+in+bali+for+families</div></div>
+      <div class="organic"><strong>Best Family Hotels in Bali 2024 — Booking.com</strong>Compare 800+ family-friendly properties from $40/night…</div>
+      <div class="organic"><strong>Top 10 Family Resorts in Bali — TripAdvisor</strong>Real reviews from travellers staying with kids…</div>
+      <div class="organic"><strong>Hilton Bali Resort — Family Stays in Nusa Dua</strong>Connecting rooms, kids' club, beachfront pools…</div>
+      <div class="organic"><strong>Marriott Bonvoy — Bali Resorts</strong>Browse Marriott, Westin and Le Méridien properties…</div>
+    </div>
+    <p class="lede" style="margin-top: 10px; font-size: 14px;">If <strong>Hilton</strong> ranks, the family sees their listing. They click and compare.</p>
+  </div>
+
+  <div>
+    <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:0;">2026 — AI Overview / ChatGPT</h3>
+    <div class="mock-serp">
+      <div class="browser"><span class="dot"></span><span class="dot"></span><span class="dot"></span><div class="url">chatgpt.com</div></div>
+      <div class="ai-block">
+        <div class="label">AI answer · web search</div>
+        <p>For families visiting Bali, the most popular options are large international resorts like <strong>Marriott</strong> (multiple Bonvoy properties in Nusa Dua), <strong>Hyatt</strong> (Regency Bali, well-reviewed for kids' clubs) and <strong>The Mulia</strong>. <strong>Airbnb</strong> and <strong>Vrbo</strong> also list hundreds of family villas in Seminyak and Ubud with pools and kitchens.</p>
+        <div class="sources">
+          <span class="src competitor">marriott.com</span>
+          <span class="src competitor">hyatt.com</span>
+          <span class="src competitor">airbnb.com</span>
+          <span class="src">tripadvisor.com</span>
+          <span class="src">lonelyplanet.com</span>
+        </div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top: 10px; font-size: 14px;"><strong>Hilton</strong> is invisible — not named in the answer text, and not cited as a source the user can click. The family books elsewhere without ever seeing a Hilton listing.</p>
+  </div>
+</div>
+
+<p style="margin-top: 14px; padding: 16px 20px; background: rgba(37,99,235,.06); border-left: 3px solid var(--blue); border-radius: 0 12px 12px 0; color: var(--ink-2);">
+  <strong>The two layers explained:</strong> AI engines return prose <em>and</em> a list of source URLs. The brands named in the prose are who the AI <strong>recommends</strong>. The cited URLs are what the AI <strong>trusts</strong> — they're real, clickable links the user can follow. A brand can be named without being cited (often: well-known, but no obvious source page) or cited without being named (often: a comparison page that lists you among options). Strong AEO covers both.
+</p>
+
+<h2>What you actually want to measure</h2>
+<div class="stat-row">
+  <div class="stat">
+    <div class="num">Visibility</div>
+    <div class="lab">Does the AI <strong>name your brand</strong> in the prose of its answer? This is who the AI <em>recommends</em> to the buyer.</div>
+  </div>
+  <div class="stat">
+    <div class="num">Citation</div>
+    <div class="lab">Does the AI <strong>cite your domain</strong> as a clickable source link the buyer can follow? This is who the AI <em>trusts</em>.</div>
+  </div>
+  <div class="stat">
+    <div class="num">Accuracy</div>
+    <div class="lab">When AI <strong>does describe you</strong>, is it telling the truth — or hallucinating wrong claims?</div>
+  </div>
+</div>
+
+<h2>Why it's different from SEO</h2>
+<div class="grid-2">
+  <div class="panel">
+    <h3 style="margin-top:0;">SEO is about ranking pages</h3>
+    <p>Optimise titles. Earn backlinks. Match keywords. Win the click. The page that ranks #1 wins.</p>
+  </div>
+  <div class="panel">
+    <h3 style="margin-top:0;">AEO is about being included in the answer</h3>
+    <p>Be cited as a trusted source. Be named in the prose. Be the brand the AI recommends. There is no #1 — there's "named or not named."</p>
+  </div>
+</div>
+
+<h2>What changes if you ignore AEO</h2>
+<ul class="bullets">
+  <li>Your <strong>brand traffic</strong> stays flat or shrinks because AI answers steal the click your homepage used to get.</li>
+  <li>Your <strong>category traffic</strong> goes to whichever competitor the AI happens to name — typically the 2–3 brands AI engines have decided are the "default."</li>
+  <li>Your <strong>review and comparison traffic</strong> gets summarised and dismissed by the AI before the buyer ever clicks a real review.</li>
+  <li>Your <strong>brand-defence position</strong> erodes — if a competitor pays for SEO that ranks an unflattering comparison, the AI may quote it.</li>
+</ul>
+
+<h2>Where to start</h2>
+<p>Run a <a href="/#preview" style="color:var(--blue); font-weight:700;">free 8-question preview</a> to see whether you appear in Google AI Overviews today. It takes 30 seconds and costs nothing. The full audit shows you the same picture across Claude, ChatGPT, Perplexity and Gemini, plus exactly what to publish to fix the gaps.</p>
+
+<div style="margin: 32px 0; display:flex; gap:14px; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+{% endblock %}

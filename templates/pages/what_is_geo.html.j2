@@ -1,0 +1,158 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'geo' %}
+{% set canonical_path = "/what-is-geo" %}
+{% set page_description = "GEO (Generative Engine Optimisation) is the technical and content layer that decides whether AI engines can actually read, understand, parse and trust your site. The 15 things that matter — robots.txt for AI bots, llms.txt, JSON-LD schema, server-rendered content, and more." %}
+{% block title %}What is GEO? Generative Engine Optimisation explained | AEO Audit{% endblock %}
+
+{% block extra_css %}
+  .pillar { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .pillar h3 { margin-top: 0; font-size: 18px; }
+  .pillar p { color: var(--muted); font-size: 14px; margin-bottom: 0; }
+  .pillar .icon { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--blue), var(--purple)); display: grid; place-items: center; color: white; font-size: 18px; font-weight: 900; margin-bottom: 12px; }
+
+  .checklist { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); margin: 16px 0; }
+  .checklist h4 { margin-top: 0; font-size: 16px; }
+  .checklist ul { margin: 0; padding-left: 0; list-style: none; }
+  .checklist li { padding: 6px 0 6px 28px; position: relative; font-size: 14px; color: var(--ink-2); }
+  .checklist li::before { content: "✓"; position: absolute; left: 0; top: 6px; width: 20px; height: 20px; border-radius: 50%; background: #ecfdf5; color: var(--success); font-size: 12px; font-weight: 900; display: grid; place-items: center; }
+
+  .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .vs-card { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+  .vs-card.aeo { border-left: 4px solid var(--blue); }
+  .vs-card.geo { border-left: 4px solid var(--purple); }
+  .vs-card .tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+  .vs-card.aeo .tag { background: #eff6ff; color: var(--blue); }
+  .vs-card.geo .tag { background: #f5f3ff; color: var(--purple); }
+
+  .verdict { padding: 28px; border-radius: 22px; background: linear-gradient(160deg, #1d4ed8, #6d28d9); color: white; box-shadow: var(--shadow); }
+  .verdict h3 { color: white; margin: 0 0 10px; font-size: 22px; }
+  .verdict p { color: rgba(255,255,255,.86); margin: 0; }
+
+  @media (max-width: 820px) { .vs-grid { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Resources</span>
+<h1 class="page-title">What is GEO? Generative Engine Optimisation explained.</h1>
+<p class="page-lede">GEO is the technical and content-quality layer underneath AEO. It's what decides whether AI engines can actually <em>read, parse and trust</em> your site — before any question of whether they recommend you. If AEO is "do they name me," GEO is "can they even see me, and do they have what they need to cite me confidently."</p>
+
+<h2>AEO vs GEO — they're related but different</h2>
+<div class="vs-grid">
+  <div class="vs-card aeo">
+    <span class="tag">AEO</span>
+    <h3 style="margin-top:0;">Answer Engine Optimisation</h3>
+    <p>The <em>outcome</em> layer. Are you named in the AI's prose? Is your domain cited as a source? Which competitors are surfaced instead? Measured by querying AI engines directly with buyer questions.</p>
+  </div>
+  <div class="vs-card geo">
+    <span class="tag">GEO</span>
+    <h3 style="margin-top:0;">Generative Engine Optimisation</h3>
+    <p>The <em>foundation</em> layer. Can AI crawlers fetch your site? Is your content server-rendered? Do you have schema markup, llms.txt, FAQ structure, clear factual claims? Measured by inspecting the site itself.</p>
+  </div>
+</div>
+<p style="margin-top:14px; padding: 14px 18px; background: rgba(37,99,235,.06); border-left: 3px solid var(--blue); border-radius: 0 12px 12px 0;"><strong>The relationship:</strong> Bad GEO caps your AEO ceiling. You can write the best content in the world, but if your robots.txt blocks GPTBot or your site is JS-only and AI crawlers see a blank page, no AEO investment will help. <strong>GEO comes first.</strong></p>
+
+<h2>The six pillars of GEO</h2>
+<div class="grid-3">
+  <div class="pillar">
+    <div class="icon">🤖</div>
+    <h3>Crawlability</h3>
+    <p>Can the AI bots actually reach your pages? robots.txt allowlist, sitemap.xml, llms.txt, server-rendered HTML, fast response times.</p>
+  </div>
+  <div class="pillar">
+    <div class="icon">🧱</div>
+    <h3>Structured data</h3>
+    <p>JSON-LD schema for Organization, Product, Service, FAQPage, Article, BreadcrumbList. The most parseable signal of "what is this page about."</p>
+  </div>
+  <div class="pillar">
+    <div class="icon">📋</div>
+    <h3>Metadata</h3>
+    <p>Title, meta description, canonical, Open Graph, Twitter Card. AI engines often quote these verbatim when summarising.</p>
+  </div>
+  <div class="pillar">
+    <div class="icon">📄</div>
+    <h3>Content shape</h3>
+    <p>One H1, logical heading hierarchy, FAQ-formatted Q&amp;A, clear factual claims, citation-quality writing (your own content cites authoritative sources).</p>
+  </div>
+  <div class="pillar">
+    <div class="icon">⚡</div>
+    <h3>Performance</h3>
+    <p>Sub-1s server response, mobile-responsive, HTTPS, no JS-required content. AI crawlers run on tight per-page budgets.</p>
+  </div>
+  <div class="pillar">
+    <div class="icon">🪪</div>
+    <h3>Entity signals</h3>
+    <p>Wikipedia/Wikidata presence, consistent brand naming across the web, structured author/organisation markup. Tells the AI "this brand is a real, distinct entity."</p>
+  </div>
+</div>
+
+<h2>What we check on your site</h2>
+<p>The Full Audit and Audit + Action Plan tiers run 15 GEO checks against your domain — directly, not via AI. Each check returns: <strong>what we'd expect</strong>, <strong>why it matters</strong>, <strong>how you scored</strong>, and (where applicable) <strong>how to fix it</strong> with example markup.</p>
+
+<div class="checklist">
+  <h4>Crawlability (visible in free preview)</h4>
+  <ul>
+    <li>AI bots allowed in robots.txt — GPTBot, ClaudeBot, PerplexityBot, Google-Extended and more</li>
+    <li>sitemap.xml present, reachable, and ideally with &lt;lastmod&gt; dates</li>
+    <li>llms.txt file published — the emerging standard for AI-readable site summaries</li>
+  </ul>
+</div>
+
+<div class="checklist">
+  <h4>Structured data (paid)</h4>
+  <ul>
+    <li>Organization or LocalBusiness JSON-LD on the homepage</li>
+    <li>FAQPage schema on Q&amp;A content (4× more likely to surface in Google AI Overviews)</li>
+    <li>Product or Service schema with Offer + price + currency</li>
+  </ul>
+</div>
+
+<div class="checklist">
+  <h4>Metadata (paid)</h4>
+  <ul>
+    <li>Meta description present, 120–160 characters</li>
+    <li>Open Graph tags complete (og:title, og:description, og:image, og:url)</li>
+    <li>Twitter Card tag for social sharing</li>
+    <li>Canonical URL declared</li>
+  </ul>
+</div>
+
+<div class="checklist">
+  <h4>Content shape + performance (paid)</h4>
+  <ul>
+    <li>Single, descriptive H1 per page</li>
+    <li>Critical content server-rendered (not JS-only) — the #1 silent killer for SPA sites</li>
+    <li>Mobile viewport meta tag</li>
+    <li>HTTPS with valid certificate</li>
+    <li>Homepage response &lt; 1.5 seconds</li>
+  </ul>
+</div>
+
+<h2>What changes if you ignore GEO</h2>
+<ul class="bullets">
+  <li><strong>SPAs go invisible.</strong> If your React/Vue/Angular site renders content client-side, AI crawlers see a blank page. This is the most common silent killer — and the easiest to miss because the site looks fine to humans.</li>
+  <li><strong>Your brand gets confused with competitors.</strong> Without Organization schema and a clear entity graph, AI engines may merge you with similarly-named brands or skip you entirely.</li>
+  <li><strong>Stale content gets ignored.</strong> Without &lt;lastmod&gt; dates and freshness signals, AI engines treat your content as undated and downrank it for time-sensitive queries.</li>
+  <li><strong>Citations skip you for "safer" sources.</strong> Without schema, the AI can't extract structured claims from your site, so it cites Wikipedia or a competitor's clearer page instead.</li>
+</ul>
+
+<h2>Should you do GEO before or after content?</h2>
+<div class="verdict">
+  <h3>GEO first. Always.</h3>
+  <p>Content investment is amplified by good GEO and capped by bad GEO. Spending three months writing a beautiful FAQ page is wasted if your robots.txt blocks GPTBot or your site requires JavaScript to render. Run a GEO audit, fix the foundations, then invest in content. The same content shipped on a well-optimised site gets cited 3–5× more often than on a poorly-optimised one.</p>
+</div>
+
+<h2>How to start</h2>
+<p>Run a <a href="/#preview" style="color:var(--blue); font-weight:700;">free preview</a> — you'll see the first 3 GEO checks (crawlability) immediately. The Full Audit ($149) unlocks all 15 checks with specific fix instructions and example markup. The Audit + Action Plan ($349) adds 10 written content recommendations on top.</p>
+
+<div style="display:flex; gap:14px; margin: 24px 0; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Run a free GEO + AEO preview →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+
+<h2>Related</h2>
+<p>
+  <a href="/what-is-aeo" style="color:var(--blue); font-weight:700;">What is AEO?</a> — the outcome layer.<br>
+  <a href="/aeo-vs-seo" style="color:var(--blue); font-weight:700;">AEO vs SEO</a> — how the new game is different.<br>
+  <a href="/how-it-works" style="color:var(--blue); font-weight:700;">How it works</a> — the full audit pipeline, end to end.
+</p>
+{% endblock %}

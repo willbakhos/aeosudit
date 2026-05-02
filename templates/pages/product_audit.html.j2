@@ -1,0 +1,143 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'audit' %}
+{% set canonical_path = "/product/audit" %}
+{% set page_description = "A complete diagnostic of your AI visibility in minutes. 5 AI engines × 40 buyer-facing queries = 200 individual answers, scored for visibility, citations, competitors and hallucinations. From $49." %}
+{% block title %}Audit — AI visibility diagnostic | AEO Audit{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "@id": "{{ _base_url }}/product/audit#service",
+  "serviceType": "AI answer engine visibility audit",
+  "provider": { "@id": "{{ _base_url }}/#org" },
+  "areaServed": "Worldwide",
+  "description": "{{ page_description }}",
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Spotlight",
+      "price": "49",
+      "priceCurrency": "USD",
+      "url": "{{ _base_url }}/pricing"
+    },
+    {
+      "@type": "Offer",
+      "name": "Full Audit",
+      "price": "149",
+      "priceCurrency": "USD",
+      "url": "{{ _base_url }}/pricing"
+    },
+    {
+      "@type": "Offer",
+      "name": "Audit + Action Plan",
+      "price": "349",
+      "priceCurrency": "USD",
+      "url": "{{ _base_url }}/pricing"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .feature { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .feature h3 { margin-top: 0; }
+  .feature p { color: var(--muted); font-size: 14px; margin-bottom: 0; }
+  .icon-box { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--blue), var(--purple)); display: grid; place-items: center; color: white; font-size: 20px; font-weight: 900; margin-bottom: 12px; }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Product · Audit</span>
+<h1 class="page-title">A complete diagnostic of your AI visibility, in minutes.</h1>
+<p class="page-lede">Two layers, one report. <strong>AEO measurement</strong> tests how Claude, ChatGPT, Perplexity, Gemini and Google's AI Overview describe, cite and recommend you across 40 buyer questions. <strong>GEO foundations</strong> inspects your site directly with 15 technical checks — robots.txt, schema, llms.txt, server rendering and more. <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">Why GEO matters →</a></p>
+
+<div style="display:flex; gap:14px; margin-bottom: 28px; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Start with a free preview →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+
+<h2>What's inside every audit</h2>
+<div class="grid-3">
+  <div class="feature">
+    <div class="icon-box">🧱</div>
+    <h3>GEO foundations check</h3>
+    <p>15 technical checks on your site itself: robots.txt for AI bots, sitemap, llms.txt, schema.org markup, server-rendered content, metadata, performance. <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">Learn more →</a></p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">📊</div>
+    <h3>Visibility &amp; citation scoring</h3>
+    <p>For every (engine × query) we measure whether your brand was named in the answer text and whether your domain was cited as a source.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">🌡</div>
+    <h3>Engine heatmap</h3>
+    <p>Visibility % broken down by engine and query type. See where you're strong (probably brand questions) and where you're missing (usually category and comparison).</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">🥇</div>
+    <h3>Competitor share-of-voice</h3>
+    <p>Which rivals AI engines name in the same answers — and how often. The brands you compete with for the AI's attention.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">🔗</div>
+    <h3>Top-cited source map</h3>
+    <p>The 20 domains AI engines pulled from when answering questions in your category. This is your PR target list — get mentioned on these and you'll start getting cited too.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">⚠</div>
+    <h3>Hallucination flags</h3>
+    <p>A second-pass LLM checks every answer against your business's ground-truth facts and flags any unsupported claims for you to correct.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">📂</div>
+    <h3>Per-query drill-down</h3>
+    <p>The raw evidence — every AI answer side-by-side, with sentiment tags, citation lists and competitor mentions. The brief your content team needs.</p>
+  </div>
+</div>
+
+<h2>What an audit covers</h2>
+<div class="panel">
+  <div class="grid-2" style="gap: 20px;">
+    <div>
+      <h3 style="margin-top:0;">5 AI engines</h3>
+      <ul class="bullets">
+        <li>Google AI Overviews (via SERP scraping)</li>
+        <li>ChatGPT (GPT-5-mini with native web search)</li>
+        <li>Claude (Haiku 4.5 with native web search)</li>
+        <li>Perplexity (Sonar)</li>
+        <li>Gemini (2.5 Flash with grounding)</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-top:0;">40 buyer-facing queries</h3>
+      <ul class="bullets">
+        <li><strong>Brand:</strong> "What is X?", "Is X legit?", "X reviews"</li>
+        <li><strong>Category:</strong> "Best [thing] in [region]"</li>
+        <li><strong>Problem:</strong> "How do I solve [pain] with…"</li>
+        <li><strong>Comparison:</strong> "X vs Y", "Best alternative to Z"</li>
+        <li><strong>Vertical:</strong> "[Thing] for [industry]"</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2>Three audit tiers</h2>
+<p>From a $49 spotlight check on one engine to a $349 audit with 10 done-for-you written recommendations.</p>
+<div style="margin: 12px 0;">
+  <a href="/pricing" class="btn-primary">See full pricing →</a>
+</div>
+
+<h2>What you'll know after one audit</h2>
+<ul class="bullets">
+  <li>Whether AI engines are <strong>recommending you</strong> when buyers in your category ask high-intent questions.</li>
+  <li>Which <strong>specific competitors</strong> are being named in your absence — and on which engines.</li>
+  <li>Which <strong>publications, review sites and reference domains</strong> AI engines treat as authoritative — your earned-mention target list.</li>
+  <li>Whether AI engines are <strong>making false claims</strong> about your business that you need to correct in source content.</li>
+  <li>The <strong>specific gaps</strong> by query type (brand vs category vs comparison) so you know where to point your content team.</li>
+</ul>
+
+<h2>Looking for ongoing tracking?</h2>
+<p>An audit is a snapshot. AI engines drift weekly — answers change, new competitors enter, citations shuffle. The <a href="/product/monitoring" style="color:var(--blue); font-weight:700;">Monitoring product</a> re-runs your audit every month and emails you a diff when things move.</p>
+{% endblock %}

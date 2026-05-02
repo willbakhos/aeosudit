@@ -1,0 +1,242 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'pricing' %}
+{% set canonical_path = "/pricing" %}
+{% set page_description = "Three audit tiers — Spotlight $49, Full Audit $149, Audit + Action Plan $349. One-off pricing, no subscriptions. Tested across 5 AI engines and 40 buyer-facing queries." %}
+{% block title %}Pricing — AEO Audit (from $49){% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Product",
+      "@id": "{{ _base_url }}/pricing#spotlight",
+      "name": "AEO Audit — Spotlight",
+      "description": "Google AI Overviews + one chosen AI engine. 20 buyer-facing queries with competitor and source-domain analysis. PDF export.",
+      "brand": { "@id": "{{ _base_url }}/#org" },
+      "offers": {
+        "@type": "Offer",
+        "price": "49",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "{{ _base_url }}/pricing"
+      }
+    },
+    {
+      "@type": "Product",
+      "@id": "{{ _base_url }}/pricing#full-audit",
+      "name": "AEO Audit — Full Audit",
+      "description": "All 5 AI engines (Claude, ChatGPT, Perplexity, Gemini, Google) across 40 buyer-facing queries. Hallucination scoring, engine heatmap, citation map, competitor share-of-voice. CSV + PDF export.",
+      "brand": { "@id": "{{ _base_url }}/#org" },
+      "offers": {
+        "@type": "Offer",
+        "price": "149",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "{{ _base_url }}/pricing"
+      }
+    },
+    {
+      "@type": "Product",
+      "@id": "{{ _base_url }}/pricing#action-plan",
+      "name": "AEO Audit — Audit + Action Plan",
+      "description": "Everything in Full Audit, plus 10 done-for-you written recommendations with example schema, FAQ copy and PR target list. Includes a re-audit credit valid for 60 days.",
+      "brand": { "@id": "{{ _base_url }}/#org" },
+      "offers": {
+        "@type": "Offer",
+        "price": "349",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "{{ _base_url }}/pricing"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _base_url }}/pricing#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What if I need more than 40 queries?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We run custom audits for agencies and large brands at $5 per additional query. There is no upper limit — email us via the support page to set up a custom run."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I switch which engine the Spotlight tier covers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You pick at checkout — ChatGPT, Claude, Perplexity or Gemini. You can also upgrade to Full Audit later and we credit your $49 toward the upgrade."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is AEO Audit different from a normal SEO audit?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Traditional SEO audits look at how Google's blue-link results rank. We measure how Google's AI Overview, ChatGPT, Claude, Perplexity and Gemini describe and recommend you when buyers ask high-intent questions. That's a different game with different rules."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do AI answer results drift between audit runs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. AI answers vary day-to-day even with identical questions. The signal you should trust is the pattern — which engines mention you, which competitors keep showing up, which sources keep getting cited. Single-answer noise is normal."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is your refund policy?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "If the audit doesn't run successfully, you get a full automatic refund. If it runs and you don't find it useful, contact support within 14 days and we will work something out."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 28px 0; }
+  .price-card { position: relative; padding: 30px 26px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 14px; }
+  .price-card.featured { background: linear-gradient(160deg, #1d4ed8 0%, #4338ca 50%, #6d28d9 100%); color: white; transform: translateY(-4px); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 30px 60px rgba(67,56,202,.32); }
+  .price-card.featured .tagline, .price-card.featured li { color: rgba(255,255,255,.84); }
+  .price-card.featured ul li::before { background: rgba(52,211,153,.2); color: #34d399; }
+  .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #f97316); color: white; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 8px 18px rgba(249,115,22,.32); }
+  .tier-name { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .price-card.featured .tier-name { color: rgba(255,255,255,.72); }
+  .tier-price { font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -.05em; }
+  .tier-price small { font-size: 14px; font-weight: 700; color: var(--muted); margin-left: 4px; }
+  .price-card.featured .tier-price small { color: rgba(255,255,255,.6); }
+  .tagline { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; min-height: 60px; }
+  .feature-list { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 10px; }
+  .feature-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+  .price-card.featured .feature-list li { color: rgba(255,255,255,.92); }
+  .feature-list li::before { content: "✓"; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #ecfdf5; color: var(--success); display: grid; place-items: center; font-weight: 900; font-size: 12px; }
+  .tier-cta { display: inline-flex; align-items: center; justify-content: center; margin-top: auto; padding: 14px 22px; border-radius: 999px; background: var(--ink); color: white; text-decoration: none; font-weight: 800; font-size: 15px; }
+  .price-card.featured .tier-cta { background: white; color: #1d4ed8; box-shadow: 0 14px 28px rgba(0,0,0,.22); }
+
+  .compare { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 16px; background: white; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+  .compare th, .compare td { padding: 14px 18px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .compare th { background: #f8fafc; font-weight: 800; color: var(--ink); font-size: 13px; }
+  .compare td:not(:first-child) { text-align: center; font-variant-numeric: tabular-nums; }
+  .compare tr:last-child td { border-bottom: 0; }
+  .compare .yes { color: var(--success); font-weight: 800; }
+  .compare .no { color: var(--soft-muted); }
+
+  .faq-item { padding: 20px 22px; background: white; border: 1px solid var(--line); border-radius: 16px; margin-bottom: 10px; }
+  .faq-item h4 { margin: 0 0 6px; font-size: 16px; }
+  .faq-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+  @media (max-width: 930px) { .pricing-grid { grid-template-columns: 1fr; } .price-card.featured { transform: none; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Pricing</span>
+<h1 class="page-title">Three audit tiers. No subscriptions.</h1>
+<p class="page-lede">Every tier includes both the <strong>AEO measurement</strong> (does the AI mention &amp; cite you?) and the <strong>GEO foundations check</strong> (can the AI even read your site?). Pick the depth that matches the decision you're trying to make. <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">Why both matter →</a></p>
+
+<div class="pricing-grid">
+  <div class="price-card">
+    <div class="tier-name">Spotlight</div>
+    <div class="tier-price">$49<small>once</small></div>
+    <p class="tagline">Google AI Overviews + one engine of your choice. The smallest audit that still reveals patterns.</p>
+    <ul class="feature-list">
+      <li>Google AI Overviews + 1 chosen engine</li>
+      <li>20 queries across brand, category &amp; comparison</li>
+      <li>GEO foundations check — first 3 of 15 unlocked</li>
+      <li>Competitor &amp; source-domain analysis</li>
+      <li>Online report + PDF export</li>
+      <li>Delivered in minutes</li>
+    </ul>
+    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+  </div>
+
+  <div class="price-card featured">
+    <span class="badge">Most popular</span>
+    <div class="tier-name">Full Audit</div>
+    <div class="tier-price">$149<small>once</small></div>
+    <p class="tagline">Every major AI engine, the full 40-query matrix and hallucination scoring. The complete diagnostic.</p>
+    <ul class="feature-list">
+      <li>All 5 engines: Claude, ChatGPT, Perplexity, Gemini &amp; Google</li>
+      <li>40 queries × 5 engines = 200 AI answers</li>
+      <li>GEO foundations check — all 15 unlocked with fix instructions</li>
+      <li>Hallucination &amp; sentiment scoring</li>
+      <li>Engine heatmap, citation map, share-of-voice</li>
+      <li>CSV + PDF export</li>
+    </ul>
+    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+  </div>
+
+  <div class="price-card">
+    <div class="tier-name">Audit + Action Plan</div>
+    <div class="tier-price">$349<small>once</small></div>
+    <p class="tagline">Everything in Full Audit, plus 10 done-for-you recommendations with example copy your content team can publish.</p>
+    <ul class="feature-list">
+      <li>Everything in Full Audit</li>
+      <li>10 specific written recommendations</li>
+      <li>Example schema, FAQ &amp; About-page copy</li>
+      <li>PR &amp; link-building target list</li>
+      <li>Re-audit credit (run again in 60 days)</li>
+    </ul>
+    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+  </div>
+</div>
+
+<h2>Compare in detail</h2>
+<table class="compare">
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Spotlight</th>
+      <th>Full Audit</th>
+      <th>Action Plan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Google AI Overviews</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>ChatGPT, Claude, Perplexity, Gemini</td><td>1 of 4</td><td class="yes">All 4</td><td class="yes">All 4</td></tr>
+    <tr><td>Buyer-facing queries tested</td><td>20</td><td>40</td><td>40</td></tr>
+    <tr><td>AI answers analysed</td><td>~40</td><td>200</td><td>200</td></tr>
+    <tr><td>Visibility, citation &amp; competitor scoring</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>GEO foundations check (15 technical checks)</td><td>3 of 15</td><td class="yes">All 15</td><td class="yes">All 15</td></tr>
+    <tr><td>Hallucination &amp; sentiment scoring</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Engine heatmap &amp; per-query drill-down</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>10 written recommendations + example copy</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+    <tr><td>Re-audit credit (60 days)</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+    <tr><td>CSV + PDF export</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Delivery</td><td>~1 min</td><td>~10 min</td><td>~15 min</td></tr>
+  </tbody>
+</table>
+
+<h2>Coming soon: Monitoring</h2>
+<p>An audit is a snapshot. AI engines drift weekly. The next product tier is recurring monthly audits with diff alerts when your visibility moves up or down. <a href="/product/monitoring" style="color:var(--blue); font-weight:700;">Learn more →</a></p>
+
+<h2>Frequently asked</h2>
+<div class="faq-item">
+  <h4>What if I need more than 40 queries?</h4>
+  <p>Email us — we run custom audits for agencies and large brands at $5 per additional query. There's no upper limit.</p>
+</div>
+<div class="faq-item">
+  <h4>Can I switch which engine the Spotlight tier covers?</h4>
+  <p>Yes. You pick at checkout — ChatGPT, Claude, Perplexity or Gemini. You can also upgrade to Full Audit later and we'll credit your $49.</p>
+</div>
+<div class="faq-item">
+  <h4>How is this different from a normal SEO audit?</h4>
+  <p>Traditional SEO audits look at how Google's <em>blue links</em> rank. We measure how Google's AI Overview, ChatGPT, Claude, Perplexity and Gemini <em>describe and recommend</em> you when buyers ask questions. That's a different game with different rules.</p>
+</div>
+<div class="faq-item">
+  <h4>Do results drift between runs?</h4>
+  <p>Yes. AI answers vary day-to-day even with identical questions. The signal you should trust is the <em>pattern</em> — which engines mention you, which competitors keep showing up, which sources keep getting cited. Single-answer noise is normal.</p>
+</div>
+<div class="faq-item">
+  <h4>What's your refund policy?</h4>
+  <p>If the audit doesn't run successfully, you get a full refund. If it runs and you don't find it useful, contact <a href="/support">support</a> and we'll work something out.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "_layout.html.j2" %}
+{% set active = 'monitoring' %}
+{% set canonical_path = "/product/monitoring" %}
+{% set page_description = "Track your AI visibility every month. Re-runs the full audit, emails a one-page diff when visibility moves, alerts on new competitors or hallucinations. Coming soon — join the waitlist." %}
+{% block title %}Monitoring — track AI visibility every month | AEO Audit{% endblock %}
+
+{% block extra_css %}
+  .feature { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .feature h3 { margin-top: 0; }
+  .feature p { color: var(--muted); font-size: 14px; margin-bottom: 0; }
+  .icon-box { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--blue), var(--purple)); display: grid; place-items: center; color: white; font-size: 20px; font-weight: 900; margin-bottom: 12px; }
+
+  .waitlist { padding: 28px; border-radius: 22px; background: linear-gradient(160deg, #1d4ed8, #6d28d9); color: white; box-shadow: var(--shadow); }
+  .waitlist h3 { margin: 0 0 6px; color: white; font-size: 22px; }
+  .waitlist p { color: rgba(255,255,255,.84); margin: 0 0 16px; }
+  .waitlist form { display: flex; gap: 10px; flex-wrap: wrap; }
+  .waitlist input { flex: 1 1 240px; padding: 14px 16px; border-radius: 999px; border: 0; font: inherit; font-size: 14px; }
+  .waitlist button { padding: 14px 24px; border-radius: 999px; background: white; color: #1d4ed8; font-weight: 800; font-size: 14px; border: 0; cursor: pointer; }
+  .waitlist .hint { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 10px; }
+
+  .preview-card { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+  .preview-card .h { font-size: 12px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+  .preview-card .delta { font-size: 28px; font-weight: 900; line-height: 1; letter-spacing: -.04em; margin: 6px 0; }
+  .preview-card .delta.up { color: var(--success); }
+  .preview-card .delta.down { color: var(--danger); }
+  .preview-card .desc { color: var(--muted); font-size: 13px; }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Product · Monitoring · Coming soon</span>
+<h1 class="page-title">Track your AI visibility every month, automatically.</h1>
+<p class="page-lede">An audit is a snapshot. AI engines change their answers daily, your <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">GEO foundations</a> can regress with every site deploy, and competitors enter the cited-domains list constantly. Monitoring re-runs your full AEO + GEO audit every month and emails you a one-page diff — what moved, who's new, and what to do about it.</p>
+
+<div class="grid-3" style="margin: 18px 0;">
+  <div class="preview-card">
+    <div class="h">Visibility — Claude</div>
+    <div class="delta down">↓ 14 pts</div>
+    <div class="desc">From 32% → 18%. Brand stopped appearing in 2 problem-led queries.</div>
+  </div>
+  <div class="preview-card">
+    <div class="h">New competitor</div>
+    <div class="delta up">+ 1</div>
+    <div class="desc">"Lendio" now cited 3× across category queries on Perplexity.</div>
+  </div>
+  <div class="preview-card">
+    <div class="h">Top-cited domain</div>
+    <div class="delta">tripadvisor.com</div>
+    <div class="desc">Still #1 source for category questions across 4 of 5 engines.</div>
+  </div>
+  <div class="preview-card">
+    <div class="h">GEO regression</div>
+    <div class="delta down">↓ 14 pts</div>
+    <div class="desc">Site deploy on the 14th broke FAQPage schema on /pricing — fix before next crawl.</div>
+  </div>
+</div>
+
+<h2>What Monitoring will give you</h2>
+<div class="grid-3">
+  <div class="feature">
+    <div class="icon-box">📅</div>
+    <h3>Monthly re-audit</h3>
+    <p>Same 5 engines, same 40 queries, run on the first business day of every month. Same scoring — directly comparable to last month's report.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">📈</div>
+    <h3>One-page changelog</h3>
+    <p>Email summary on the day the audit completes: visibility deltas by engine, new competitors, citation source changes. Action items at the bottom.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">🚨</div>
+    <h3>Alerts when things move</h3>
+    <p>Drop &gt;15% on any engine? New hallucination flagged? Major competitor enters the top-cited list? Email + optional Slack ping.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">🎯</div>
+    <h3>Quarterly action plan</h3>
+    <p>Every three months, a refreshed action plan based on what's regressed and what new opportunities have surfaced.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">📊</div>
+    <h3>Trend dashboard</h3>
+    <p>Hosted timeline of visibility, citation rate and competitor share-of-voice over time. Shareable with your team.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">🤝</div>
+    <h3>Multi-domain (agencies)</h3>
+    <p>Manage 10+ client domains in one workspace. White-labelled reports. Per-client reseller pricing for agencies.</p>
+  </div>
+</div>
+
+<h2>Pricing (planned)</h2>
+<div class="grid-3" style="margin-top: 16px;">
+  <div class="feature">
+    <h3 style="margin-top:0;">Solo</h3>
+    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$99<span style="font-size:14px; color:var(--muted);">/mo</span></div>
+    <p>One domain. Monthly audit + alerts. Annual: $999 (16% off).</p>
+  </div>
+  <div class="feature">
+    <h3 style="margin-top:0;">Growth</h3>
+    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$299<span style="font-size:14px; color:var(--muted);">/mo</span></div>
+    <p>Up to 5 domains, custom query sets, weekly cadence available.</p>
+  </div>
+  <div class="feature">
+    <h3 style="margin-top:0;">Agency</h3>
+    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$399<span style="font-size:14px; color:var(--muted);">/mo</span></div>
+    <p>10 domains, white-label PDFs, multi-client dashboard, reseller pricing.</p>
+  </div>
+</div>
+
+<div class="waitlist" style="margin-top: 28px;">
+  <h3>Get early access when we launch.</h3>
+  <p>Monitoring is in private beta. Join the waitlist — first 50 customers get 50% off for the first six months.</p>
+  <form method="POST" action="/monitoring/waitlist">
+    <input type="email" name="email" required placeholder="you@company.com">
+    <input type="text" name="domain" required placeholder="your-domain.com">
+    <button type="submit">Join the waitlist →</button>
+  </form>
+  <div class="hint">We'll only email you about Monitoring availability. No newsletter.</div>
+</div>
+{% endblock %}
