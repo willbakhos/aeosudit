@@ -73,7 +73,7 @@ TIER_PRICES = {
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 _jinja = Environment(
     loader=FileSystemLoader(TEMPLATES_DIR),
-    autoescape=select_autoescape(["html"]),
+    autoescape=select_autoescape(("html", "htm", "xml", "j2")),
 )
 
 # In-memory job tracker for free previews. Fine for single-process MVP;

@@ -131,7 +131,7 @@ def write_html(
 ) -> Path:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
-        autoescape=select_autoescape(["html"]),
+        autoescape=select_autoescape(("html", "htm", "xml", "j2")),
     )
     template_name = (
         "report_free.html.j2" if tier in PREVIEW_TIERS else "report.html.j2"

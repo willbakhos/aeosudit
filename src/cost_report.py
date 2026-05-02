@@ -588,7 +588,7 @@ def write_html_report(
 ) -> Path:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
-        autoescape=select_autoescape(["html"]),
+        autoescape=select_autoescape(("html", "htm", "xml", "j2")),
     )
     template = env.get_template("cost_report.html.j2")
     ctx = _build_audit_style_context(run_dir, blob, config)
