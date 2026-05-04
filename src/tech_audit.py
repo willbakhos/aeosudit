@@ -26,7 +26,7 @@ UA_NORMAL = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
-UA_NOJS = "AEOAudit-TechCheck/1.0 (compatible; +https://aeoaudit.com)"
+UA_NOJS = "monitoraeo-TechCheck/1.0 (compatible; +https://monitoraeo.com)"
 TIMEOUT = 15.0
 AI_BOTS = [
     "GPTBot", "ChatGPT-User", "OAI-SearchBot",

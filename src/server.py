@@ -84,7 +84,13 @@ PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
 # the audit kicks off. Keyed by Stripe session_id. Same MVP storage caveat.
 PENDING_ORDERS: dict[str, dict[str, Any]] = {}
 
-app = FastAPI(title="AEO Audit")
+app = FastAPI(title="monitoraeo")
+
+
+@app.get("/health")
+def health() -> dict[str, bool]:
+    """Liveness probe for Railway / uptime monitors."""
+    return {"ok": True}
 
 
 class CheckoutRequest(BaseModel):
@@ -95,7 +101,7 @@ class CheckoutRequest(BaseModel):
     spotlight_engine: str | None = None  # required when tier=spotlight
 
 
-SITE_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://aeoaudit.com").rstrip("/")
+SITE_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://monitoraeo.com").rstrip("/")
 
 
 def _render(name: str, **ctx: Any) -> HTMLResponse:
@@ -133,7 +139,7 @@ SITEMAP_PAGES: list[tuple[str, str, str]] = [
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def robots_txt() -> PlainTextResponse:
     body = (
-        "# AEO Audit\n"
+        "# monitoraeo\n"
         "# We welcome AI training crawlers — being indexed is the point.\n"
         "User-agent: *\n"
         "Allow: /\n"
@@ -243,7 +249,7 @@ def submit_support(
             import resend
             resend.api_key = api_key
             from_addr = os.environ.get(
-                "REPORT_FROM_EMAIL", "AEO Audit <reports@example.com>"
+                "REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>"
             )
             body_html = (
                 f"<p><strong>From:</strong> {email}</p>"
@@ -276,7 +282,7 @@ def monitoring_waitlist(
             import resend
             resend.api_key = api_key
             from_addr = os.environ.get(
-                "REPORT_FROM_EMAIL", "AEO Audit <reports@example.com>"
+                "REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>"
             )
             resend.Emails.send({
                 "from": from_addr,

@@ -31,7 +31,7 @@ class OpenRouterEngine(Engine):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://github.com/aeo-audit",
-            "X-Title": "AEO Audit",
+            "X-Title": "monitoraeo",
         }
 
     def _payload(self, prompt: str) -> dict[str, Any]:

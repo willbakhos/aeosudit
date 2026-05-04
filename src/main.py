@@ -23,12 +23,12 @@ from src.scorer import score_response
 from src.screenshot import capture as capture_screenshot
 from src.tech_audit import run_for_domain as run_tech_audit
 
-app = typer.Typer(add_completion=False, help="AEO Audit — query AI engines and score visibility.")
+app = typer.Typer(add_completion=False, help="monitoraeo — query AI engines and score visibility.")
 
 
 @app.callback()
 def _root() -> None:
-    """AEO Audit."""
+    """monitoraeo."""
 
 
 def _load_config(path: Path) -> SiteConfig:

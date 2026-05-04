@@ -57,7 +57,7 @@ def send_report(
         raise RuntimeError("RESEND_API_KEY is not set")
     resend.api_key = api_key
 
-    from_addr = os.environ.get("REPORT_FROM_EMAIL", "AEO Audit <reports@example.com>")
+    from_addr = os.environ.get("REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>")
     subject = f"Your {brand_name} AEO audit is ready"
     html = _build_html(brand_name, tier, report_url)
 

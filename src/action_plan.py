@@ -198,7 +198,7 @@ async def _call_planner(
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com/aeo-audit",
-        "X-Title": "AEO Audit",
+        "X-Title": "monitoraeo",
     }
 
     last_exc: Exception | None = None

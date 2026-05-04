@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = [
+  "python311",
+  "pango",
+  "glib",
+  "cairo",
+  "gdk-pixbuf",
+  "harfbuzz",
+  "fontconfig",
+  "libffi",
+]
+
+[start]
+cmd = "uvicorn src.server:app --host 0.0.0.0 --port $PORT"

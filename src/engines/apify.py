@@ -107,6 +107,30 @@ class ApifyEngine(Engine):
 
         text = ai_mode.get("text") or ai_mode.get("content") or ""
         sources = ai_mode.get("sources") or ai_mode.get("references") or []
+
+        # Apify's "live" AI Overview returns content="" — Google rendered the
+        # answer as per-source cards rather than a single text block. The card
+        # titles + descriptions are the actual answer text, so synthesize one
+        # so visibility scoring (does the answer mention the brand?) works.
+        if not text.strip() and sources:
+            synth: list[str] = []
+            for src in sources:
+                if not isinstance(src, dict):
+                    continue
+                title = (src.get("title") or src.get("name") or "").strip()
+                desc = (
+                    src.get("description")
+                    or src.get("snippet")
+                    or src.get("text")
+                    or ""
+                ).strip()
+                if title and desc:
+                    synth.append(f"{title}: {desc}")
+                elif title or desc:
+                    synth.append(title or desc)
+            if synth:
+                text = "\n\n".join(synth)
+
         citations: list[Citation] = []
         for idx, src in enumerate(sources, start=1):
             if not isinstance(src, dict):
