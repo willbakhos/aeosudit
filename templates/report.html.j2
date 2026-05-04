@@ -5,175 +5,744 @@
 <title>AEO Audit — {{ config.brand.name }}</title>
 <style>
   :root {
-    --bg: #fafafa;
-    --fg: #1a1a1a;
-    --muted: #6b6b6b;
-    --line: #e2e2e2;
-    --accent: #0b6cff;
-    --good: #1a8754;
-    --bad: #b91c1c;
-    --warn: #b45309;
-  }
-  body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; padding: 32px; line-height: 1.45; }
-  h1 { margin: 0 0 4px; font-size: 28px; }
-  h2 { margin: 40px 0 12px; font-size: 20px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
-  .meta { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
-  .card { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
-  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .card .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-  th, td { padding: 8px 12px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
-  th { background: #f3f4f6; font-weight: 600; }
-  tr:last-child td { border-bottom: none; }
-  .heatmap td { text-align: center; min-width: 80px; }
-  .heatmap td.cell { font-variant-numeric: tabular-nums; font-size: 13px; }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 14px; }
-  .bar-row .name { width: 140px; }
-  .bar-row .bar { flex: 1; height: 14px; background: #eef0f3; border-radius: 3px; overflow: hidden; }
-  .bar-row .bar > div { height: 100%; background: var(--accent); }
-  .bar-row .num { width: 36px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-  details { background: white; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; padding: 8px 12px; }
-  details summary { cursor: pointer; font-weight: 500; }
-  details[open] summary { margin-bottom: 8px; }
-  .engine-block { border-top: 1px solid var(--line); padding: 8px 0; }
-  .engine-block:first-child { border-top: none; }
-  .pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #eef0f3; color: var(--muted); margin-right: 4px; }
-  .pill.good { background: #dcfce7; color: var(--good); }
-  .pill.bad { background: #fee2e2; color: var(--bad); }
-  .pill.warn { background: #fef3c7; color: var(--warn); }
-  .response-text { white-space: pre-wrap; font-size: 13px; color: #2a2a2a; max-height: 320px; overflow-y: auto; background: #fafafa; padding: 8px; border-radius: 4px; border: 1px solid var(--line); }
-  .citations { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .citations a { color: var(--accent); text-decoration: none; }
-  .citations a:hover { text-decoration: underline; }
-  .empty { color: var(--muted); font-style: italic; padding: 12px; }
-  code { font-size: 12px; background: #f3f4f6; padding: 1px 4px; border-radius: 3px; }
+    --ink: #0f172a;
+    --ink-2: #1e293b;
+    --muted: #64748b;
+    --soft-muted: #94a3b8;
+    --line: rgba(15,23,42,.10);
+    --bg: #f6f8fc;
+    --panel: rgba(255,255,255,.78);
+    --panel-solid: #ffffff;
+    --blue: #2563eb;
+    --purple: #7c3aed;
+    --cyan: #06b6d4;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --radius: 28px;
+    --radius-sm: 16px;
+    --shadow: 0 24px 70px rgba(15,23,42,.10);
+    --shadow-soft: 0 14px 35px rgba(15,23,42,.08);
 
-  /* hover explainers */
-  .info {
-    display: inline-block;
-    width: 16px; height: 16px; line-height: 16px;
-    text-align: center;
-    font-size: 11px; font-weight: 600;
+    /* Backwards-compatible aliases used by inline report logic */
+    --fg: var(--ink);
+    --accent: var(--blue);
+    --good: var(--success);
+    --bad: var(--danger);
+    --warn: var(--warning);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink-2);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(37,99,235,.16), transparent 32rem),
+      radial-gradient(circle at 85% 8%, rgba(124,58,237,.12), transparent 30rem),
+      linear-gradient(180deg, #f8fbff 0%, #f8fafc 38%, #eef4ff 100%);
+  }
+  a { color: var(--blue); }
+  code {
+    font-size: 12px;
+    background: rgba(37,99,235,.08);
+    color: #1d4ed8;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(37,99,235,.10);
+  }
+
+  .shell {
+    width: min(1180px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 30px 0 56px;
+  }
+
+  .report-hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(320px, .88fr);
+    gap: 24px;
+    align-items: stretch;
+    min-height: 360px;
+    padding: clamp(28px, 4vw, 48px);
+    border-radius: 34px;
+    color: white;
+    background: linear-gradient(135deg, rgba(15,23,42,.97), rgba(30,41,59,.96) 48%, rgba(30,64,175,.94) 100%);
+    box-shadow: var(--shadow);
+  }
+  .report-hero::before {
+    content: "";
+    position: absolute;
+    inset: -40% -20% auto auto;
+    width: 580px;
+    height: 580px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(6,182,212,.28), transparent 62%);
+    pointer-events: none;
+  }
+  .hero-content, .hero-visual { position: relative; z-index: 1; }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    color: #bfdbfe;
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.14);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 0;
+    max-width: 760px;
+    color: #fff;
+    font-size: clamp(42px, 5.4vw, 64px);
+    line-height: .98;
+    letter-spacing: -.06em;
+    font-weight: 900;
+  }
+  .hero-lede {
+    max-width: 680px;
+    margin: 18px 0 0;
+    color: rgba(226,232,240,.86);
+    font-size: 18px;
+    line-height: 1.58;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 22px 0 0;
+    color: rgba(226,232,240,.82);
+    font-size: 13px;
+  }
+  .meta .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.09);
+    border: 1px solid rgba(255,255,255,.13);
+  }
+  .meta code { background: rgba(255,255,255,.10); color: #fff; border-color: rgba(255,255,255,.16); }
+
+  .hero-score-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 30px;
+  }
+  .hero-mini-stat {
+    padding: 16px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.09);
+    border: 1px solid rgba(255,255,255,.13);
+    backdrop-filter: blur(12px);
+  }
+  .hero-mini-stat .num {
+    display: block;
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: -.05em;
+    color: #fff;
+  }
+  .hero-mini-stat .lab {
+    display: block;
+    margin-top: 7px;
+    font-size: 12px;
+    font-weight: 750;
+    color: rgba(226,232,240,.75);
+  }
+
+  .hero-visual {
+    display: flex;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+  .site-shot {
+    width: 100%;
+    max-width: 520px;
+    margin: 0;
+    overflow: hidden;
+    border-radius: 26px;
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.16);
+    box-shadow: 0 24px 70px rgba(0,0,0,.22);
+  }
+  .site-shot .browserbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.13);
+  }
+  .site-shot .browserbar span {
+    width: 10px;
+    height: 10px;
+    display: block;
     border-radius: 50%;
-    background: #dbeafe; color: #1d4ed8;
+    background: rgba(255,255,255,.38);
+  }
+  .site-shot .frame { aspect-ratio: 16 / 10; overflow: hidden; background: rgba(15,23,42,.24); }
+  .site-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+  .site-shot .caption {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    color: rgba(226,232,240,.82);
+    font-size: 12px;
+    font-weight: 650;
+    background: rgba(15,23,42,.38);
+  }
+  .site-shot .caption a { color: #bfdbfe; text-decoration: none; }
+  .hero-placeholder {
+    width: 100%;
+    max-width: 440px;
+    padding: 26px;
+    border-radius: 28px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.13);
+  }
+  .hero-placeholder .line { height: 12px; border-radius: 999px; background: rgba(255,255,255,.18); margin: 14px 0; }
+  .hero-placeholder .line.short { width: 54%; }
+  .hero-placeholder .line.mid { width: 76%; }
+
+  .report-nav {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    overflow-x: auto;
+    margin: 18px 0 28px;
+    padding: 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.74);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(16px);
+  }
+  .report-nav a {
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+    padding: 9px 13px;
+    border-radius: 999px;
+  }
+  .report-nav a:hover { color: var(--blue); background: rgba(37,99,235,.08); }
+  .report-nav a.active {
+    color: white;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    box-shadow: 0 8px 18px rgba(37,99,235,.22);
+  }
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 64px 0 14px;
+    padding: 0;
+    border: 0;
+    color: var(--ink);
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.1;
+    letter-spacing: -.04em;
+    font-weight: 900;
+  }
+  h3 {
+    color: var(--ink);
+    font-size: 20px;
+    line-height: 1.2;
+    letter-spacing: -.02em;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin: 18px 0;
+  }
+  .card {
+    position: relative;
+    min-height: 158px;
+    overflow: hidden;
+    padding: 24px;
+    border-radius: var(--radius);
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+  }
+  .card::after {
+    content: "";
+    position: absolute;
+    inset: auto -28px -42px auto;
+    width: 132px;
+    height: 132px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(37,99,235,.13), transparent 66%);
+  }
+  .card .label {
+    position: relative;
+    z-index: 1;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .075em;
+  }
+  .card .value {
+    position: relative;
+    z-index: 1;
+    margin-top: 14px;
+    color: var(--ink);
+    font-size: clamp(38px, 4vw, 48px);
+    line-height: .95;
+    font-weight: 950;
+    letter-spacing: -.06em;
+  }
+  .card .info { position: absolute; top: 16px; right: 16px; margin: 0; z-index: 2; }
+
+  .callout {
+    position: relative;
+    padding: 18px 20px 18px 54px;
+    margin: 14px 0 24px;
+    color: var(--ink-2);
+    background: linear-gradient(135deg, #eff6ff, #ede9fe);
+    border: 1px solid rgba(37,99,235,.14);
+    border-radius: 24px;
+    box-shadow: 0 10px 28px rgba(37,99,235,.07);
+    font-size: 14px;
+  }
+  .callout::before {
+    content: "";
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    box-shadow: 0 8px 18px rgba(37,99,235,.25);
+  }
+  .callout p { margin: 0 0 8px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .fix { color: #1d4ed8; font-weight: 700; }
+
+  table {
+    width: 100%;
+    overflow: hidden;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: var(--shadow-soft);
+  }
+  th, td {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    position: sticky;
+    top: 62px;
+    z-index: 2;
+    background: #f8fafc;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  tr:last-child td { border-bottom: none; }
+  .hallucinations-table td { padding: 20px 16px; }
+  .hallucinations-table th { position: static; }
+  .heatmap { table-layout: fixed; }
+  .heatmap th, .heatmap td { text-align: center; }
+  .heatmap td:first-child, .heatmap th:first-child { text-align: left; }
+  .heatmap td.cell {
+    min-width: 88px;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--ink);
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 210px) 1fr 44px;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.72);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 8px 22px rgba(15,23,42,.04);
+    font-size: 14px;
+  }
+  .bar-row .name { width: auto; min-width: 0; overflow-wrap: anywhere; color: var(--ink); font-weight: 800; }
+  .bar-row .bar {
+    flex: initial;
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar-row .bar > div {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+  }
+  .bar-row .num {
+    width: auto;
+    text-align: right;
+    color: var(--muted);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  details {
+    overflow: hidden;
+    margin: 12px 0;
+    padding: 0;
+    background: rgba(255,255,255,.86);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: 0 10px 28px rgba(15,23,42,.05);
+  }
+  details summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--ink);
+    font-weight: 850;
+    padding: 16px 18px;
+    list-style: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before {
+    content: "+";
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(37,99,235,.08);
+    color: var(--blue);
+    font-weight: 900;
+    flex: 0 0 auto;
+  }
+  details[open] summary::before { content: "–"; }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+  .engine-block { border-top: 1px solid var(--line); padding: 18px; }
+  .engine-block:first-of-type { border-top: none; }
+  .engine-block > strong { display: inline-block; margin-right: 6px; color: var(--ink); }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--muted);
+    border: 1px solid rgba(15,23,42,.06);
+    font-size: 12px;
+    font-weight: 850;
+    line-height: 1;
+    margin: 2px 4px 2px 0;
+  }
+  .pill.good { background: #dcfce7; color: #166534; border-color: rgba(22,101,52,.12); }
+  .pill.bad { background: #fee2e2; color: #991b1b; border-color: rgba(153,27,27,.12); }
+  .pill.warn { background: #fef3c7; color: #92400e; border-color: rgba(146,64,14,.14); }
+
+  .response-text {
+    white-space: pre-wrap;
+    max-height: 360px;
+    overflow-y: auto;
+    margin-top: 12px;
+    padding: 16px;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.58;
+  }
+  .citations {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .citations a { color: var(--blue); text-decoration: none; font-weight: 750; }
+  .citations a:hover { text-decoration: underline; }
+  .empty {
+    padding: 20px;
+    color: var(--muted);
+    background: rgba(255,255,255,.70);
+    border: 1px dashed rgba(15,23,42,.16);
+    border-radius: 18px;
+    font-style: italic;
+  }
+
+  .info {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid rgba(37,99,235,.12);
     cursor: help;
-    margin-left: 6px;
+    margin-left: 2px;
     vertical-align: middle;
     position: relative;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0;
+    line-height: 1;
   }
-  .info:hover .tip { display: block; }
+  .info:hover .tip, .info:focus-within .tip { display: block; }
   .tip {
     display: none;
     position: absolute;
-    top: 22px; left: 0;
-    width: 320px;
-    background: #1f2937; color: #f3f4f6;
-    padding: 10px 12px;
-    border-radius: 6px;
-    font-size: 12px; font-weight: normal;
-    line-height: 1.5;
-    z-index: 10;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    top: 26px;
+    left: 0;
+    width: min(340px, calc(100vw - 48px));
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #0f172a;
+    color: #e2e8f0;
+    box-shadow: 0 20px 40px rgba(15,23,42,.28);
+    font-size: 12px;
+    font-weight: 550;
+    line-height: 1.52;
     white-space: normal;
     text-align: left;
+    z-index: 20;
   }
-  .tip strong { color: white; display: block; margin-bottom: 4px; }
+  .tip strong { display: block; margin-bottom: 4px; color: #fff; font-weight: 900; }
   .tip em { color: #93c5fd; font-style: normal; }
 
-  /* "what this means" callout under each section */
-  .callout {
-    background: #f0f7ff;
-    border-left: 3px solid var(--accent);
-    padding: 10px 14px;
-    margin: 8px 0 16px;
-    font-size: 13px;
-    border-radius: 0 4px 4px 0;
+  .tech-score {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    padding: 24px;
+    margin: 16px 0 18px;
+    border-radius: var(--radius);
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
   }
-  .callout p { margin: 0 0 6px; }
-  .callout p:last-child { margin-bottom: 0; }
-  .callout .fix { color: #1d4ed8; font-weight: 500; }
+  .tech-score .ring {
+    width: 108px;
+    height: 108px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    position: relative;
+    border-radius: 50%;
+    background: conic-gradient(var(--success) 0deg, #e2e8f0 0deg);
+  }
+  .tech-score .ring::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: white; }
+  .tech-score .ring strong { position: relative; color: var(--ink); font-size: 30px; font-weight: 950; letter-spacing: -.05em; }
+  .tech-score .summary h3 { margin: 0 0 5px; }
+  .tech-score .summary p { margin: 0; color: var(--muted); font-size: 14px; }
+  .tech-score .pillrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .tech-score .pillrow span { font-size: 12px; padding: 5px 10px; border-radius: 999px; font-weight: 900; }
+  .tech-score .pillrow .p { background: #dcfce7; color: #166534; }
+  .tech-score .pillrow .w { background: #fef3c7; color: #92400e; }
+  .tech-score .pillrow .f { background: #fee2e2; color: #991b1b; }
 
-  /* metric card hover */
-  .card { position: relative; }
-  .card .info { position: absolute; top: 8px; right: 8px; margin: 0; }
-
-  .site-shot { margin: 16px 0 24px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #f3f4f6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 560px; }
-  .site-shot .frame { aspect-ratio: 16 / 10; overflow: hidden; background: #f3f4f6; }
-  .site-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-  .site-shot .caption { padding: 8px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); display: flex; justify-content: space-between; background: white; }
-  .site-shot .caption a { color: var(--accent); text-decoration: none; }
-
-  /* tech audit (AEO/GEO foundations section) */
-  .tech-score { display: flex; gap: 18px; align-items: center; padding: 18px 22px; border-radius: 12px; background: white; border: 1px solid var(--line); margin: 12px 0 16px; }
-  .tech-score .ring { width: 84px; height: 84px; border-radius: 50%; background: conic-gradient(var(--good) 0deg, #eef0f3 0deg); display: grid; place-items: center; position: relative; flex-shrink: 0; }
-  .tech-score .ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: white; }
-  .tech-score .ring strong { position: relative; font-size: 22px; font-weight: 800; }
-  .tech-score .summary h3 { margin: 0 0 4px; font-size: 18px; }
-  .tech-score .summary p { margin: 0; color: var(--muted); font-size: 13px; }
-  .tech-score .pillrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-  .tech-score .pillrow span { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
-  .tech-score .pillrow .p { background: #dcfce7; color: var(--good); }
-  .tech-score .pillrow .w { background: #fef3c7; color: var(--warn); }
-  .tech-score .pillrow .f { background: #fee2e2; color: var(--bad); }
-
-  .tech-check { background: white; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 16px 18px; }
-  .tech-check-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-  .tech-check-head .num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); font-size: 13px; }
-  .tech-check-head h3 { margin: 0; font-size: 16px; flex: 1; }
-  .tech-check-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
-  .tech-check-pill.pass { background: #dcfce7; color: var(--good); }
-  .tech-check-pill.warn { background: #fef3c7; color: var(--warn); }
-  .tech-check-pill.fail { background: #fee2e2; color: var(--bad); }
-  .tech-check-pill.info { background: #eef0f3; color: var(--muted); }
-  .tech-cat { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
-  .tech-check dl { margin: 4px 0 0; display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; }
-  .tech-check dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; padding-top: 2px; }
-  .tech-check dd { margin: 0; font-size: 13px; line-height: 1.55; }
-  .tech-check dd.score { font-weight: 700; }
-  .tech-check dd.score.pass { color: var(--good); }
-  .tech-check dd.score.warn { color: var(--warn); }
-  .tech-check dd.score.fail { color: var(--bad); }
+  .tech-check, .ap-rec {
+    margin: 14px 0;
+    padding: 22px;
+    background: rgba(255,255,255,.86);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: var(--shadow-soft);
+  }
+  .tech-check-head, .ap-rec-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .tech-check-head .num, .ap-rec-head .num {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    color: white;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    font-variant-numeric: tabular-nums;
+    font-weight: 950;
+    font-size: 13px;
+  }
+  .tech-check-head h3, .ap-rec-head h3 { flex: 1; margin: 0; font-size: 19px; }
+  .tech-check-pill, .ap-rec-pill, .tech-cat, .ap-rec-cat {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+  .tech-check-pill.pass { background: #dcfce7; color: #166534; }
+  .tech-check-pill.warn { background: #fef3c7; color: #92400e; }
+  .tech-check-pill.fail { background: #fee2e2; color: #991b1b; }
+  .tech-check-pill.info { background: #f1f5f9; color: var(--muted); }
+  .tech-cat, .ap-rec-cat { background: #dbeafe; color: #1d4ed8; }
+  .ap-rec-pill.high { background: #fee2e2; color: #991b1b; }
+  .ap-rec-pill.medium { background: #fef3c7; color: #92400e; }
+  .ap-rec-pill.low { background: #f1f5f9; color: var(--muted); }
+  .tech-check dl, .ap-rec dl {
+    display: grid;
+    grid-template-columns: 138px 1fr;
+    gap: 8px 16px;
+    margin: 0;
+  }
+  .tech-check dt, .ap-rec dt {
+    padding-top: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .tech-check dd, .ap-rec dd { margin: 0; font-size: 14px; line-height: 1.58; }
+  .tech-check dd.score { font-weight: 900; }
+  .tech-check dd.score.pass { color: #166534; }
+  .tech-check dd.score.warn { color: #92400e; }
+  .tech-check dd.score.fail { color: #991b1b; }
   .tech-check dd.detail { color: var(--muted); }
-  .tech-check dd.fix { background: #f8fafc; border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.45; }
+  .tech-check dd.fix, .ap-rec dd.example {
+    padding: 12px 14px;
+    border-left: 4px solid var(--blue);
+    border-radius: 12px;
+    background: #f8fafc;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+  }
 
-  /* action plan ($349 tier) */
-  .ap-rec { background: white; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 16px 18px; }
-  .ap-rec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-  .ap-rec-head .num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); font-size: 14px; }
-  .ap-rec-head h3 { margin: 0; font-size: 17px; flex: 1; }
-  .ap-rec-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
-  .ap-rec-pill.high { background: #fee2e2; color: var(--bad); }
-  .ap-rec-pill.medium { background: #fef3c7; color: var(--warn); }
-  .ap-rec-pill.low { background: #eef0f3; color: var(--muted); }
-  .ap-rec-cat { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
-  .ap-rec dl { margin: 8px 0 0; display: grid; grid-template-columns: 100px 1fr; gap: 6px 14px; }
-  .ap-rec dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; padding-top: 2px; }
-  .ap-rec dd { margin: 0; font-size: 14px; }
-  .ap-rec dd.example { background: #f8fafc; border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.45; }
+  @media (max-width: 930px) {
+    .report-hero { grid-template-columns: 1fr; }
+    .hero-score-strip, .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .report-nav { border-radius: 22px; }
+    th { position: static; }
+  }
+  @media (max-width: 620px) {
+    .shell { width: min(100% - 28px, 1180px); padding-top: 14px; }
+    .report-hero { padding: 24px; border-radius: 28px; }
+    h1 { font-size: 38px; }
+    h2 { margin-top: 48px; }
+    .hero-score-strip, .cards { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 1fr; gap: 8px; }
+    .bar-row .num { text-align: left; }
+    .tech-score { align-items: flex-start; flex-direction: column; }
+    .tech-check dl, .ap-rec dl { grid-template-columns: 1fr; }
+    table { display: block; overflow-x: auto; }
+    .report-nav { position: static; }
+  }
+
+  @media print {
+    body { background: #fff; }
+    .shell { width: 100%; padding: 0; }
+    .report-hero, .card, .tech-score, .tech-check, .ap-rec, table, details { box-shadow: none; }
+    .report-nav, .info { display: none; }
+    details { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
+<main class="shell">
+  <section class="report-hero" id="top">
+    <div class="hero-content">
+      <span class="eyebrow">AEO / GEO visibility report</span>
+      <h1>How AI engines describe {{ config.brand.name }}</h1>
+      <p class="hero-lede">A client-ready audit of visibility, citations, competitors, hallucination risk and the technical foundations shaping AI-answer performance.</p>
+      <div class="meta">
+        <span class="chip">Domain: <code>{{ config.brand.domain }}</code></span>
+        <span class="chip">{{ agg.total }} query × engine calls</span>
+        <span class="chip">{{ agg.engines | length }} engines</span>
+        <span class="chip">{{ agg.types | length }} query types</span>
+      </div>
+      <div class="hero-score-strip" aria-label="Headline AEO metrics">
+        <div class="hero-mini-stat"><span class="num">{{ agg.visible_pct }}%</span><span class="lab">Visibility</span></div>
+        <div class="hero-mini-stat"><span class="num">{{ agg.cited_pct }}%</span><span class="lab">Citation rate</span></div>
+        <div class="hero-mini-stat"><span class="num">{{ agg.errors | length }}</span><span class="lab">Errors</span></div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      {% if screenshot %}
+      <div class="site-shot">
+        <div class="browserbar"><span></span><span></span><span></span></div>
+        <div class="frame"><img src="{{ screenshot }}" alt="Screenshot of {{ config.brand.domain }}"></div>
+        <div class="caption">
+          <span>The site we audited</span>
+          <a href="https://{{ config.brand.domain }}" target="_blank" rel="noopener">{{ config.brand.domain }} ↗</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="hero-placeholder" aria-label="Report preview illustration">
+        <div class="line short"></div>
+        <div class="line mid"></div>
+        <div class="line"></div>
+        <div class="line mid"></div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
 
-<h1>AEO Audit — {{ config.brand.name }}</h1>
-<div class="meta">
-  Domain: <code>{{ config.brand.domain }}</code> &middot;
-  {{ agg.total }} (query × engine) calls &middot;
-  {{ agg.engines | length }} engines &middot;
-  {{ agg.types | length }} query types
-</div>
+  <nav class="report-nav" aria-label="Report sections">
+    <a href="#headline-metrics">Headline metrics</a>
+    {% if tech %}<a href="#technical-foundations">Technical foundations</a>{% endif %}
+    {% if action_plan %}<a href="#action-plan">Action plan</a>{% endif %}
+    <a href="#engine-heatmap">Engine heatmap</a>
+    <a href="#top-cited-sources">Cited sources</a>
+    <a href="#competitor-sov">Competitors</a>
+    <a href="#hallucinations">Hallucinations</a>
+    <a href="#query-drilldown">Drill-down</a>
+  </nav>
 
-{% if screenshot %}
-<div class="site-shot">
-  <div class="frame"><img src="{{ screenshot }}" alt="Screenshot of {{ config.brand.domain }}"></div>
-  <div class="caption">
-    <span>The site we audited</span>
-    <a href="https://{{ config.brand.domain }}" target="_blank" rel="noopener">{{ config.brand.domain }} ↗</a>
-  </div>
-</div>
-{% endif %}
-
-<h2>Headline metrics<span class="info">?<span class="tip"><strong>The four numbers that matter most.</strong>Visibility = how often AI engines name your brand. Citation rate = how often they link to your domain as a source. Competitor density = how crowded the conversation is. Errors = calls that failed (network, auth, billing).</span></span></h2>
+<h2 id="headline-metrics">Headline metrics<span class="info">?<span class="tip"><strong>The four numbers that matter most.</strong>Visibility = how often AI engines name your brand. Citation rate = how often they link to your domain as a source. Competitor density = how crowded the conversation is. Errors = calls that failed (network, auth, billing).</span></span></h2>
 <div class="cards">
   <div class="card">
     <span class="info">?<span class="tip"><strong>Visibility</strong>% of successful queries where your brand name (or an alias) appeared in the AI's answer text. <em>Good:</em> 60%+. <em>Concerning:</em> &lt;30%. <em>Fix:</em> publish authoritative content on the topics you're missing — see the heatmap below for which categories.</span></span>
@@ -202,7 +771,7 @@
 </div>
 
 {% if tech %}
-<h2>Technical AEO/GEO foundations<span class="info">?<span class="tip"><strong>The technical layer underneath your AI visibility.</strong>15 checks covering crawlability, structured data, metadata, content, performance and entity signals. Fix the failures here before you invest in content — they're the foundation everything else sits on.</span></span></h2>
+<h2 id="technical-foundations">Technical AEO/GEO foundations<span class="info">?<span class="tip"><strong>The technical layer underneath your AI visibility.</strong>15 checks covering crawlability, structured data, metadata, content, performance and entity signals. Fix the failures here before you invest in content — they're the foundation everything else sits on.</span></span></h2>
 <div class="callout">
   <p><strong>What this is:</strong> Direct inspection of your site (not the AI engines). We fetched <code>{{ tech.domain }}</code> and ran 15 checks to see whether your foundations are AI-ready. <em>Failures here cap your visibility ceiling.</em></p>
   <p class="fix">Tier 1 (the first 3 checks) covers crawlability — the most common silent killer. Tier 2 covers structured data, metadata, and content quality. Hand this section to your engineering team as a punch list.</p>
@@ -243,7 +812,7 @@
 {% endif %}
 
 {% if action_plan %}
-<h2>Your action plan<span class="info">?<span class="tip"><strong>10 specific recommendations</strong>Generated by Claude Sonnet from your audit data. Each item names the gap, the action, an actual example to ship, and how you'll know it worked. Prioritised — start at the top.</span></span></h2>
+<h2 id="action-plan">Your action plan<span class="info">?<span class="tip"><strong>10 specific recommendations</strong>Generated by Claude Sonnet from your audit data. Each item names the gap, the action, an actual example to ship, and how you'll know it worked. Prioritised — start at the top.</span></span></h2>
 <div class="callout">
   <p><strong>How to use this:</strong> Hand this section to your content + PR team as-is. Every recommendation includes example copy or markup ready to adapt. Re-audit in 60 days to measure impact.</p>
 </div>
@@ -265,7 +834,7 @@
 {% endfor %}
 {% endif %}
 
-<h2>Engine heatmap (visibility % by query type)<span class="info">?<span class="tip"><strong>Where you show up — and where you don't.</strong>Each cell is the % of queries of that type where your brand appeared in that engine's answer. Greener = better. <em>Use this to:</em> spot which engines (Claude vs ChatGPT vs Gemini) under-rank you, and which query types (brand vs category vs comparison) you're missing from.</span></span></h2>
+<h2 id="engine-heatmap">Engine heatmap (visibility % by query type)<span class="info">?<span class="tip"><strong>Where you show up — and where you don't.</strong>Each cell is the % of queries of that type where your brand appeared in that engine's answer. Greener = better. <em>Use this to:</em> spot which engines (Claude vs ChatGPT vs Gemini) under-rank you, and which query types (brand vs category vs comparison) you're missing from.</span></span></h2>
 <div class="callout">
   <p><strong>How to read this:</strong> Rows = the kind of question being asked. Columns = which AI engine answered. A bright green <code>brand</code> row + pale <code>category</code> row means people who already know your name find you, but discovery searches don't surface you. That's a content/SEO problem, not a brand problem.</p>
   <p class="fix">Empty or low cells point to specific gaps: a low <code>comparison</code> row means you need head-to-head content vs your competitors. A low <code>vertical</code> row means you need industry-specific landing pages.</p>
@@ -297,7 +866,7 @@
   </tbody>
 </table>
 
-<h2>Top cited sources (PR target list)<span class="info">?<span class="tip"><strong>The domains AI engines trust most for your category.</strong>Ranked by how often they appeared as a citation across all queries. Your own domain is excluded. <em>Use this as a PR / link-building target list:</em> if you can get mentioned on, reviewed by, or linked from these domains, you're far more likely to be cited yourself in future AI answers.</span></span></h2>
+<h2 id="top-cited-sources">Top cited sources (PR target list)<span class="info">?<span class="tip"><strong>The domains AI engines trust most for your category.</strong>Ranked by how often they appeared as a citation across all queries. Your own domain is excluded. <em>Use this as a PR / link-building target list:</em> if you can get mentioned on, reviewed by, or linked from these domains, you're far more likely to be cited yourself in future AI answers.</span></span></h2>
 <div class="callout">
   <p><strong>What this is:</strong> The websites AI engines pulled from when answering questions in your category. These are the gatekeepers — review sites, industry publications, comparison sites, government pages.</p>
   <p class="fix">Action: pick the top 5–10. For each: pitch them a guest post, ask to be added to their listicle, get reviewed, or just engage with their content. Earned mentions on these domains compound into AI citations over the next 1–3 months.</p>
@@ -315,7 +884,7 @@
   <div class="empty">No external citations captured.</div>
 {% endif %}
 
-<h2>Competitor share-of-voice<span class="info">?<span class="tip"><strong>Who AI engines mention instead of (or alongside) you.</strong>Two views: how often each competitor is <em>named in the answer text</em>, and how often their <em>domain is cited as a source</em>. Citations are the higher-value signal — they mean the AI is treating that competitor as authoritative.</span></span></h2>
+<h2 id="competitor-sov">Competitor share-of-voice<span class="info">?<span class="tip"><strong>Who AI engines mention instead of (or alongside) you.</strong>Two views: how often each competitor is <em>named in the answer text</em>, and how often their <em>domain is cited as a source</em>. Citations are the higher-value signal — they mean the AI is treating that competitor as authoritative.</span></span></h2>
 <div class="callout">
   <p><strong>What this means:</strong> If a competitor consistently outranks you here, AI engines see them as the default answer in your space. This is your share-of-voice in the AI-answer era.</p>
   <p class="fix">Action: for each top competitor, run their name through the same audit (swap <code>config/site.yaml</code>) to see what's working for them — which sources cite them, what query types they dominate. Reverse-engineer.</p>
@@ -348,13 +917,20 @@
   <div class="empty">No competitor domains in citations.</div>
 {% endif %}
 
-<h2>Hallucination flags<span class="info">?<span class="tip"><strong>Where AI engines may have made things up about your brand.</strong>A second-pass LLM (Claude Haiku) compared each answer against the <em>ground truth</em> facts in your <code>site.yaml</code>. Flagged rows are either: (a) the AI made a specific false claim, or (b) the scorer wasn't confident (&lt;0.7) in its assessment. Always eyeball flagged rows manually.</span></span></h2>
+<h2 id="hallucinations">Hallucination flags<span class="info">?<span class="tip"><strong>Where AI engines may have made things up about your brand.</strong>A second-pass LLM (Claude Haiku) compared each answer against the <em>ground truth</em> facts in your <code>site.yaml</code>. Flagged rows are either: (a) the AI made a specific false claim, or (b) the scorer wasn't confident (&lt;0.7) in its assessment. Always eyeball flagged rows manually.</span></span></h2>
 <div class="callout">
   <p><strong>Why this matters:</strong> AI hallucinations about your brand — wrong pricing, wrong eligibility rules, false claims — get repeated to thousands of people. Even one factually-wrong sentence in a Perplexity answer can cost you customers.</p>
+  <p><strong>How to read this table:</strong></p>
+  <ul style="margin: 6px 0 12px; padding-left: 22px; font-size: 14px; color: var(--ink-2);">
+    <li><strong>Engine</strong> &middot; which AI engine produced the answer (ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews).</li>
+    <li><strong>Query</strong> &middot; the question that was asked.</li>
+    <li><strong>Flags</strong> &middot; specific claims our scorer believes the AI made up or contradicted your ground truth on. <em>"low confidence"</em> means no specific claim was caught but the scorer wasn't sure — worth eyeballing.</li>
+    <li><strong>Confidence</strong> &middot; how sure our second-pass scorer (Claude Haiku) is in its own assessment, on a 0–1 scale. <strong>0.9+</strong> = high confidence the flags are real. <strong>0.7–0.9</strong> = probably right, double-check. <strong>&lt;0.7</strong> = uncertain — the row is here precisely <em>because</em> the scorer flagged its own uncertainty. Always read the original answer before acting.</li>
+  </ul>
   <p class="fix">Action: for each flagged row, contact the engine's feedback channel (Perplexity has one in-product, ChatGPT/Claude do too) and submit corrections. Long-term fix: publish the canonical facts on your own domain in clear, structured language so the AI has a primary source to pull from.</p>
 </div>
 {% if agg.flagged %}
-<table>
+<table class="hallucinations-table">
   <thead>
     <tr><th>Engine</th><th>Query</th><th>Flags</th><th>Confidence</th></tr>
   </thead>
@@ -365,8 +941,8 @@
       <td>{{ row.response.query }}</td>
       <td>
         {% if row.llm.hallucination_flags %}
-          <ul style="margin: 0; padding-left: 18px;">
-            {% for f in row.llm.hallucination_flags %}<li>{{ f }}</li>{% endfor %}
+          <ul style="margin: 4px 0 4px; padding-left: 20px; line-height: 1.55;">
+            {% for f in row.llm.hallucination_flags %}<li style="margin-bottom: 4px;">{{ f }}</li>{% endfor %}
           </ul>
         {% else %}
           <span class="pill warn">low confidence</span>
@@ -381,7 +957,7 @@
 <div class="empty">No responses flagged.</div>
 {% endif %}
 
-<h2>Per-query drill-down<span class="info">?<span class="tip"><strong>The raw evidence.</strong>Every query, with all engine responses side-by-side. Click a row to expand. Pills show: <em>mentioned</em> (your name appeared), <em>cited</em> (your domain was a source — with rank), <em>sentiment</em> (positive/neutral/negative), <em>accuracy</em> (vs your ground truth), and any competitors named.</span></span></h2>
+<h2 id="query-drilldown">Per-query drill-down<span class="info">?<span class="tip"><strong>The raw evidence.</strong>Every query, with all engine responses side-by-side. Click a row to expand. Pills show: <em>mentioned</em> (your name appeared), <em>cited</em> (your domain was a source — with rank), <em>sentiment</em> (positive/neutral/negative), <em>accuracy</em> (vs your ground truth), and any competitors named.</span></span></h2>
 <div class="callout">
   <p><strong>How to use this:</strong> Don't read every row. Filter by what you want to fix:</p>
   <p>• Looking for content gaps? Open queries where <strong>0/{{ agg.engines | length }}</strong> engines mentioned you — those are pages you need to write.<br>
@@ -431,5 +1007,30 @@
 </details>
 {% endfor %}
 
+</main>
+<script>
+  (function() {
+    var nav = document.querySelector('.report-nav');
+    if (!nav) return;
+    var sections = Array.from(nav.querySelectorAll('a[href^="#"]'))
+      .map(function(a) {
+        var el = document.getElementById(a.getAttribute('href').slice(1));
+        return el ? { el: el, link: a } : null;
+      })
+      .filter(Boolean);
+    if (!sections.length) return;
+    function update() {
+      var threshold = nav.getBoundingClientRect().bottom + 8;
+      var current = sections[0];
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i].el.getBoundingClientRect().top <= threshold) current = sections[i];
+      }
+      sections.forEach(function(s) { s.link.classList.toggle('active', s === current); });
+    }
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+  })();
+</script>
 </body>
 </html>

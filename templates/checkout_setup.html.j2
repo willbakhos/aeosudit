@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One last step — tell us your competitors | AEO Audit</title>
+<style>
+  :root { --ink:#0f172a; --muted:#64748b; --line:rgba(15,23,42,.10); --blue:#2563eb; --purple:#7c3aed; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         color: var(--ink); line-height: 1.6;
+         background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%); min-height: 100vh; }
+  .shell { max-width: 620px; margin: 0 auto; padding: 60px 24px; }
+  .card { background: white; border-radius: 24px; padding: 40px;
+          box-shadow: 0 24px 70px rgba(15,23,42,.10); border: 1px solid var(--line); }
+  .eyebrow { display:inline-flex; padding:6px 12px; border-radius:999px; background:#dcfce7;
+             color:#166534; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+  h1 { margin: 14px 0 8px; font-size: 32px; line-height: 1.1; letter-spacing: -.04em; font-weight: 900; }
+  .lede { margin: 0 0 28px; color: var(--muted); font-size: 15px; }
+  .meta { padding: 14px 18px; margin-bottom: 28px; background: #f8fafc;
+          border: 1px solid var(--line); border-radius: 14px; font-size: 14px; color: var(--muted); }
+  .meta strong { color: var(--ink); }
+  label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 800;
+          color: var(--ink); text-transform: uppercase; letter-spacing: .06em; }
+  input[type="text"] { width: 100%; padding: 12px 14px; border: 1px solid var(--line);
+                       border-radius: 12px; font-size: 15px; font-family: inherit;
+                       color: var(--ink); background: white; transition: border-color .15s; }
+  input[type="text"]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+  .field { margin-bottom: 14px; }
+  .help { margin: -4px 0 22px; font-size: 13px; color: var(--muted); }
+  .btn-row { display: flex; gap: 12px; margin-top: 8px; }
+  button { padding: 14px 22px; border-radius: 999px; border: 0; font-family: inherit;
+           font-size: 14px; font-weight: 900; cursor: pointer; }
+  .btn-primary { color: white; background: linear-gradient(135deg, var(--blue), var(--purple));
+                 box-shadow: 0 10px 26px rgba(37,99,235,.28); }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--muted); }
+  .btn-secondary:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+  <main class="shell">
+    <div class="card">
+      <span class="eyebrow">Payment received ✓</span>
+      <h1>Who should we score you against?</h1>
+      <p class="lede">List the competitors you want to see in the report. We'll track which ones AI engines mention or cite instead of {{ brand }}, so you can see your real share-of-voice.</p>
+
+      <div class="meta">
+        Auditing <strong>{{ brand }}</strong>{% if domain %} (<strong>{{ domain }}</strong>){% endif %}{% if tier %} — <strong>{{ tier | replace('_', ' ') | title }}</strong> tier{% endif %}.
+      </div>
+
+      <form method="post" action="/orders/setup">
+        <input type="hidden" name="session_id" value="{{ session_id }}">
+
+        <div class="field">
+          <label for="c1">Top competitor</label>
+          <input id="c1" type="text" name="competitor_1" placeholder="e.g. Salesforce" autofocus>
+        </div>
+        <div class="field">
+          <label for="c2">Competitor 2</label>
+          <input id="c2" type="text" name="competitor_2" placeholder="e.g. HubSpot">
+        </div>
+        <div class="field">
+          <label for="c3">Competitor 3</label>
+          <input id="c3" type="text" name="competitor_3">
+        </div>
+        <div class="field">
+          <label for="c4">Competitor 4 <span style="color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0;">— optional</span></label>
+          <input id="c4" type="text" name="competitor_4">
+        </div>
+        <div class="field">
+          <label for="c5">Competitor 5 <span style="color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0;">— optional</span></label>
+          <input id="c5" type="text" name="competitor_5">
+        </div>
+        <p class="help">Brand names work better than domains. We'll match on the name plus any obvious aliases.</p>
+
+        <div class="btn-row">
+          <button type="submit" class="btn-primary">Start my audit →</button>
+          <button type="submit" class="btn-secondary" formnovalidate>Skip — no competitors to track</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

@@ -80,6 +80,10 @@ _jinja = Environment(
 # swap for Redis when you scale beyond one uvicorn worker.
 PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
 
+# Paid orders waiting for the customer to enter their competitor list before
+# the audit kicks off. Keyed by Stripe session_id. Same MVP storage caveat.
+PENDING_ORDERS: dict[str, dict[str, Any]] = {}
+
 app = FastAPI(title="AEO Audit")
 
 
@@ -463,13 +467,75 @@ def create_checkout(req: CheckoutRequest) -> JSONResponse:
 
 
 @app.get("/checkout/success", response_class=HTMLResponse)
-def checkout_success() -> str:
-    return """
-    <div style="font-family: system-ui; padding: 60px; text-align: center;">
-      <h1>Payment received ✓</h1>
-      <p>Your audit is being generated. We'll email it within a few minutes.</p>
+def checkout_success(session_id: str | None = None) -> HTMLResponse:
+    """After Stripe redirects back, ask the customer for their competitor list
+    before kicking off the audit. The webhook only registers the order; this
+    page (or its form submit) is what actually starts the run."""
+    # If the webhook hasn't landed yet, fall back to fetching from Stripe directly.
+    meta: dict[str, Any] = {}
+    if session_id and session_id in PENDING_ORDERS:
+        meta = PENDING_ORDERS[session_id]
+    elif session_id and stripe.api_key:
+        try:
+            sess = stripe.checkout.Session.retrieve(session_id)
+            meta = sess.get("metadata") or {}
+            PENDING_ORDERS[session_id] = meta
+        except Exception:  # noqa: BLE001
+            meta = {}
+
+    brand = meta.get("brand_name") or "your brand"
+    domain = meta.get("domain") or ""
+    tier = meta.get("tier") or ""
+    sid = session_id or ""
+    return HTMLResponse(_jinja.get_template("checkout_setup.html.j2").render(
+        brand=brand, domain=domain, tier=tier, session_id=sid,
+    ))
+
+
+@app.post("/orders/setup")
+def orders_setup(
+    session_id: str = Form(...),
+    competitor_1: str = Form(""),
+    competitor_2: str = Form(""),
+    competitor_3: str = Form(""),
+    competitor_4: str = Form(""),
+    competitor_5: str = Form(""),
+) -> HTMLResponse:
+    """Receive the post-payment setup form, attach competitors to the order
+    metadata, and fire the audit in the background."""
+    meta = PENDING_ORDERS.get(session_id)
+    if not meta:
+        if not session_id or not stripe.api_key:
+            raise HTTPException(404, "Unknown session")
+        try:
+            sess = stripe.checkout.Session.retrieve(session_id)
+            meta = sess.get("metadata") or {}
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(404, f"Could not load session: {exc}")
+
+    competitors = [
+        c.strip() for c in (competitor_1, competitor_2, competitor_3, competitor_4, competitor_5)
+        if c and c.strip()
+    ]
+    meta = dict(meta)  # don't mutate the registry entry directly
+    meta["competitors"] = competitors
+
+    # Hand off to the existing fulfilment path.
+    threading.Thread(target=_fulfil_order, args=(meta,), daemon=True).start()
+    PENDING_ORDERS.pop(session_id, None)
+
+    brand = meta.get("brand_name") or "your brand"
+    return HTMLResponse(f"""
+    <div style="font-family: system-ui; padding: 60px; text-align: center; max-width: 560px; margin: 0 auto;">
+      <h1>Audit started ✓</h1>
+      <p>We're auditing <strong>{brand}</strong> across the AI engines now. You'll get an email
+      with the full report and PDF in a few minutes.</p>
+      <p style="color: #64748b; font-size: 14px; margin-top: 24px;">
+        Tracking against {len(competitors)} competitor{'s' if len(competitors) != 1 else ''}:
+        {', '.join(competitors) if competitors else 'none specified'}
+      </p>
     </div>
-    """
+    """)
 
 
 @app.get("/checkout/cancel", response_class=HTMLResponse)
@@ -490,13 +556,11 @@ async def stripe_webhook(request: Request) -> JSONResponse:
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
+        sid = session.get("id") or ""
         meta = session.get("metadata") or {}
-        # Run the audit in a background thread so the webhook returns fast.
-        threading.Thread(
-            target=_fulfil_order,
-            args=(meta,),
-            daemon=True,
-        ).start()
+        # Don't fire the audit yet — the customer still needs to enter their
+        # competitor list via /checkout/success → /orders/setup.
+        PENDING_ORDERS[sid] = meta
 
     return JSONResponse({"received": True})
 
@@ -516,13 +580,56 @@ RUN_ANOTHER_BAR = """
 """
 
 
+def _rerender_from_cache(run_id: str, run_dir: Path, tier: str) -> str:
+    """Re-render report HTML from cached raw_responses.json using the current
+    template — no API calls. LLM scores and action plan are not cached, so they
+    come back as None (templates handle missing values)."""
+    import json as _json
+    from src.models import EngineResponse
+    raw_path = run_dir / "raw_responses.json"
+    if not raw_path.exists():
+        raise HTTPException(404, "raw_responses.json not found — cannot re-render")
+    raw = _json.loads(raw_path.read_text())
+    responses = [EngineResponse.model_validate(r) for r in raw]
+
+    # Reconstruct site config: brand name from CLI'd config, but override domain
+    # from any cited own-domain we can find. Falls back to default site.yaml.
+    site = SiteConfig.model_validate(yaml.safe_load(DEFAULT_CONFIG_PATH.open()))
+
+    # Re-run free tech audit (HTTP only, no spend)
+    try:
+        tech = asyncio.run(run_tech_audit_async(site.brand.domain))
+    except Exception:
+        tech = None
+
+    rows = [
+        ScoredRow(response=r, deterministic=score_response(r, site), llm=None)
+        for r in responses
+    ]
+
+    screenshot_file = run_dir / "site_screenshot.png"
+    write_html(
+        rows,
+        site,
+        run_dir,
+        tier=tier,
+        screenshot=screenshot_file.name if screenshot_file.exists() else None,
+        action_plan=None,
+        tech=tech,
+    )
+    return (run_dir / "report.html").read_text()
+
+
 @app.get("/report/{run_id}", response_class=HTMLResponse)
-def serve_report(run_id: str) -> HTMLResponse:
+def serve_report(run_id: str, refresh: int = 0, tier: str = "full") -> HTMLResponse:
     run_dir = OUTPUT_ROOT / run_id
     html_path = run_dir / "report.html"
-    if not html_path.exists():
+    if not html_path.exists() and not refresh:
         raise HTTPException(404, "Report not found")
-    html = html_path.read_text()
+    if refresh:
+        html = _rerender_from_cache(run_id, run_dir, tier=tier)
+    else:
+        html = html_path.read_text()
     # Inject <base> so relative asset paths (site_screenshot.png) resolve to
     # /report/{run_id}/… instead of /report/…
     base_tag = f'<base href="/report/{run_id}/">'
@@ -554,11 +661,18 @@ def serve_pdf(run_id: str) -> RedirectResponse:
 
 
 def _build_site_for_order(meta: dict[str, Any]) -> SiteConfig:
-    """For now, use the on-disk config as a base and override brand name + domain
-    from the Stripe metadata. Production would pull from a per-customer DB row."""
+    """For now, use the on-disk config as a base and override brand name, domain
+    and competitor list from the Stripe metadata + setup form. Production would
+    pull from a per-customer DB row."""
     base = SiteConfig.model_validate(yaml.safe_load(DEFAULT_CONFIG_PATH.open()))
     base.brand.name = meta.get("brand_name") or base.brand.name
     base.brand.domain = meta.get("domain") or base.brand.domain
+    competitors = meta.get("competitors")
+    if isinstance(competitors, list):
+        # Customer-supplied list takes precedence — replace the on-disk default
+        # so we never bleed an unrelated brand's competitors into this report.
+        base.competitors = competitors
+        base.ground_truth = []
     return base
 
 

@@ -34,7 +34,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
             ],
         },
         "hallucination_flags": {"type": "array", "items": {"type": "string"}},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "confidence": {"type": "number"},
     },
     "required": ["sentiment", "accuracy", "hallucination_flags", "confidence"],
     "additionalProperties": False,
