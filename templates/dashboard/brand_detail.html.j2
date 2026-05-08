@@ -1,0 +1,153 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}{{ brand.name }} · monitor-dashboard{% endblock %}
+{% block content %}
+<p style="margin:0 0 8px;"><a href="/dashboard">← All brands</a></p>
+<div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
+  <div style="flex:1;min-width:240px;">
+    <h1 style="margin:0;">{{ brand.name }}</h1>
+    <p class="lede" style="margin:4px 0 0;">
+      <a href="https://{{ brand.domain }}" target="_blank" rel="noopener">{{ brand.domain }}</a>
+      · {{ brand.competitors|length }} competitor{{ '' if brand.competitors|length == 1 else 's' }}
+      · locale {{ brand.locale_country }}/{{ brand.locale_language }}
+    </p>
+  </div>
+  <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0;">
+    <button class="btn" type="submit">Run audit now</button>
+  </form>
+</div>
+
+{# Headline metrics from the latest complete run #}
+<div class="grid cols-3" style="margin-top:24px;">
+  <div class="card metric">
+    <div class="label">Visibility (latest)</div>
+    <div class="value">
+      {% if latest and latest.visibility_rate is not none %}
+        {{ "%.0f"|format(latest.visibility_rate * 100) }}%
+      {% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="card metric">
+    <div class="label">Citation (latest)</div>
+    <div class="value">
+      {% if latest and latest.citation_rate is not none %}
+        {{ "%.0f"|format(latest.citation_rate * 100) }}%
+      {% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="card metric">
+    <div class="label">Queries (latest run)</div>
+    <div class="value">
+      {% if latest %}{{ latest.queries_total }}{% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<h2>Trend</h2>
+<div class="card">
+  {% if runs|length < 2 %}
+    <p style="margin:0;color:var(--muted);">
+      Run at least two audits to see a trend. The chart below populates as runs accumulate.
+    </p>
+  {% endif %}
+  <canvas id="trendChart" height="80"></canvas>
+</div>
+
+<h2>Competitor share-of-voice</h2>
+<div class="card">
+  {% if latest and latest.share_of_voice %}
+    <table>
+      <thead><tr><th>Competitor</th><th>Mentions</th></tr></thead>
+      <tbody>
+      {% for name, count in latest.share_of_voice.items()|sort(attribute=1, reverse=true) %}
+        <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="margin:0;color:var(--muted);">No competitor mentions tracked yet.</p>
+  {% endif %}
+</div>
+
+<h2>Run history</h2>
+<div class="card" style="padding:0;">
+  {% if not runs %}
+    <p style="margin:0;padding:20px;color:var(--muted);">
+      No runs yet. Click <em>Run audit now</em> to capture a baseline.
+    </p>
+  {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Started</th>
+          <th>Status</th>
+          <th>Visibility</th>
+          <th>Citation</th>
+          <th>Queries</th>
+          <th>Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in runs %}
+        <tr>
+          <td>{{ r.started_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td><span class="pill {{ r.status }}">{{ r.status }}</span></td>
+          <td>
+            {% if r.visibility_rate is not none %}
+              {{ "%.0f"|format(r.visibility_rate * 100) }}%
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if r.citation_rate is not none %}
+              {{ "%.0f"|format(r.citation_rate * 100) }}%
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ r.queries_total or "—" }}</td>
+          <td>
+            {% if r.status == "complete" %}
+              <a href="/report/{{ r.run_id }}" target="_blank">Open</a>
+            {% elif r.status == "failed" %}
+              <span style="color:var(--danger);" title="{{ r.error or '' }}">failed</span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const trend = {{ trend_json|safe }};
+  const ctx = document.getElementById("trendChart");
+  if (ctx && trend.labels.length) {
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: trend.labels,
+        datasets: [
+          {
+            label: "Visibility %",
+            data: trend.visibility.map(v => v == null ? null : Math.round(v * 100)),
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37,99,235,.1)",
+            tension: .3,
+          },
+          {
+            label: "Citation %",
+            data: trend.citation.map(v => v == null ? null : Math.round(v * 100)),
+            borderColor: "#7c3aed",
+            backgroundColor: "rgba(124,58,237,.1)",
+            tension: .3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + "%" } } },
+        plugins: { legend: { position: "bottom" } },
+      },
+    });
+  }
+</script>
+{% endblock %}

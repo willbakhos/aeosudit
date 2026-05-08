@@ -42,6 +42,8 @@ from src.models import (
 )
 
 from src.action_plan import generate as generate_action_plan
+from src.dashboard import router as dashboard_router
+from src.db import init_db
 from src.delivery import send_report
 from src.engines.apify import ApifyEngine
 from src.engines.openrouter import OpenRouterEngine
@@ -85,6 +87,19 @@ PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
 PENDING_ORDERS: dict[str, dict[str, Any]] = {}
 
 app = FastAPI(title="monitoraeo")
+app.include_router(dashboard_router)
+
+
+@app.on_event("startup")
+def _init_dashboard_db() -> None:
+    """Best-effort: create monitor-dashboard tables if DATABASE_URL is set.
+    The public marketing + checkout flow does not depend on Postgres, so we
+    swallow errors here — the dashboard surface will surface them at use."""
+    if os.environ.get("DATABASE_URL", "").strip():
+        try:
+            init_db()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[monitor-dashboard] init_db skipped: {exc}")
 
 
 @app.get("/health")
