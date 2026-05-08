@@ -1,0 +1,39 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}Sign in · monitor-dashboard{% endblock %}
+{% block content %}
+<div class="card" style="max-width:440px;margin:48px auto;">
+  <h1>Sign in</h1>
+  <p class="lede">Enter your email — we'll send you a magic link.</p>
+
+  {% if not configured %}
+    <div class="card" style="background:#fef9c3;border-color:#fcd34d;color:#713f12;margin-bottom:16px;">
+      <strong>Supabase isn't configured.</strong>
+      Set <code>SUPABASE_URL</code>, <code>SUPABASE_ANON_KEY</code> and
+      <code>SUPABASE_JWT_SECRET</code> in your environment to enable login.
+    </div>
+  {% endif %}
+
+  {% if sent %}
+    <div class="card" style="background:#dcfce7;border-color:#86efac;color:#14532d;margin-bottom:16px;">
+      Check your inbox — we sent you a link. It may take a minute to arrive.
+    </div>
+  {% endif %}
+
+  {% if error %}
+    <div class="card" style="background:#fee2e2;border-color:#fca5a5;color:#7f1d1d;margin-bottom:16px;">
+      Something went wrong: <code>{{ error }}</code>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/dashboard/login">
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email" required autofocus
+           placeholder="you@company.com">
+    <div style="margin-top:16px;">
+      <button class="btn" type="submit" {% if not configured %}disabled{% endif %}>
+        Email me a magic link
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

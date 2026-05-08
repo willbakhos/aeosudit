@@ -1,0 +1,48 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}Add brand · monitor-dashboard{% endblock %}
+{% block content %}
+<p style="margin:0 0 8px;"><a href="/dashboard">← All brands</a></p>
+<h1>Add a brand to monitor</h1>
+<p class="lede">
+  We'll use this profile every time you run an audit — no need to re-enter
+  competitors or facts. You can edit it later.
+</p>
+
+<form method="post" action="/dashboard/brands" class="card">
+  <label for="name">Brand name</label>
+  <input type="text" name="name" id="name" required
+         placeholder="e.g. JB Hi-Fi (use the exact spelling)">
+
+  <label for="domain">Domain</label>
+  <input type="text" name="domain" id="domain" required
+         placeholder="e.g. jbhifi.com.au">
+
+  <label for="aliases">Aliases (comma-separated, optional)</label>
+  <input type="text" name="aliases" id="aliases"
+         placeholder="JB, JB HiFi">
+
+  <label for="competitors">Competitors (one per line — <code>Name | domain.com</code>)</label>
+  <textarea name="competitors" id="competitors"
+            placeholder="Harvey Norman | harveynorman.com.au&#10;The Good Guys | thegoodguys.com.au"></textarea>
+
+  <label for="ground_truth">Ground-truth facts (one per line, optional)</label>
+  <textarea name="ground_truth" id="ground_truth"
+            placeholder="Headquartered in Melbourne, Australia&#10;Founded in 1974"></textarea>
+
+  <div class="grid cols-2">
+    <div>
+      <label for="locale_country">Locale country</label>
+      <input type="text" name="locale_country" id="locale_country" value="US">
+    </div>
+    <div>
+      <label for="locale_language">Locale language</label>
+      <input type="text" name="locale_language" id="locale_language" value="en">
+    </div>
+  </div>
+
+  <div style="margin-top:20px;display:flex;gap:8px;">
+    <button class="btn" type="submit">Save brand</button>
+    <a class="btn ghost" href="/dashboard">Cancel</a>
+  </div>
+</form>
+{% endblock %}

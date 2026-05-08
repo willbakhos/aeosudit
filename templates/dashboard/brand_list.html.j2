@@ -1,0 +1,67 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}Tracked brands · monitor-dashboard{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+  <h1 style="flex:1;margin:0;">Tracked brands</h1>
+  <a class="btn" href="/dashboard/brands/new">+ Add brand</a>
+</div>
+<p class="lede">
+  Brands you're monitoring across AI answer engines. Each run snapshots
+  visibility, citations and competitor share-of-voice — trends over time
+  appear inside.
+</p>
+
+{% if not summaries %}
+  <div class="empty">
+    <p style="margin:0 0 12px;">No brands yet.</p>
+    <a class="btn" href="/dashboard/brands/new">Add your first brand</a>
+  </div>
+{% else %}
+  <div class="card" style="padding:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Brand</th>
+          <th>Domain</th>
+          <th>Last run</th>
+          <th>Visibility</th>
+          <th>Citation</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in summaries %}
+        <tr>
+          <td><strong>{{ s.brand.name }}</strong></td>
+          <td style="color:var(--muted);">{{ s.brand.domain }}</td>
+          <td>
+            {% if s.latest %}
+              {{ s.latest.started_at.strftime("%Y-%m-%d %H:%M") }}
+            {% else %}
+              <span style="color:var(--muted);">never</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.latest and s.latest.visibility_rate is not none %}
+              {{ "%.0f"|format(s.latest.visibility_rate * 100) }}%
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if s.latest and s.latest.citation_rate is not none %}
+              {{ "%.0f"|format(s.latest.citation_rate * 100) }}%
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if s.latest %}
+              <span class="pill {{ s.latest.status }}">{{ s.latest.status }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td><a href="/dashboard/brands/{{ s.brand.id }}">Open →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

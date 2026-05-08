@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}monitor-dashboard{% endblock %}</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+  :root {
+    --ink: #0f172a;
+    --ink-2: #1e293b;
+    --muted: #64748b;
+    --line: rgba(15,23,42,.10);
+    --bg: #f6f8fc;
+    --panel: #ffffff;
+    --blue: #2563eb;
+    --purple: #7c3aed;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --radius: 14px;
+    --shadow: 0 6px 22px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Inter", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.5;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  nav.topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  nav.topbar .brand {
+    font-weight: 800; letter-spacing: -.01em; color: var(--ink);
+    display: flex; align-items: center; gap: 10px;
+  }
+  nav.topbar .brand .dot {
+    width: 10px; height: 10px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+  }
+  nav.topbar .spacer { flex: 1; }
+  nav.topbar .meta { color: var(--muted); font-size: 13px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+  h1 { font-size: 28px; letter-spacing: -.01em; margin: 0 0 8px; }
+  h2 { font-size: 18px; letter-spacing: -.01em; margin: 24px 0 8px; }
+  p.lede { color: var(--muted); margin: 0 0 24px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px;
+  }
+  .grid { display: grid; gap: 16px; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 720px) {
+    .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-radius: 10px; font-weight: 600;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: #fff; border: 0; cursor: pointer;
+    text-decoration: none; font-size: 14px;
+  }
+  .btn:hover { text-decoration: none; opacity: .94; }
+  .btn.ghost {
+    background: #fff; color: var(--ink); border: 1px solid var(--line);
+  }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+  label { display: block; font-weight: 600; margin: 12px 0 6px; }
+  input[type=text], input[type=email], textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; font: inherit;
+  }
+  textarea { min-height: 84px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+  }
+  .pill.running { background: #fef9c3; color: #854d0e; }
+  .pill.complete { background: #dcfce7; color: #166534; }
+  .pill.failed { background: #fee2e2; color: #991b1b; }
+  .metric { padding: 16px; }
+  .metric .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .metric .value { font-size: 28px; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
+  .empty {
+    border: 1px dashed var(--line); border-radius: var(--radius);
+    padding: 36px; text-align: center; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <a href="/dashboard" class="brand"><span class="dot"></span><span>monitor-dashboard</span></a>
+  <span class="spacer"></span>
+  {% if user %}
+    <span class="meta">{{ user.email }}</span>
+    <form method="post" action="/dashboard/logout" style="margin:0">
+      <button class="btn ghost" type="submit">Sign out</button>
+    </form>
+  {% endif %}
+</nav>
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
