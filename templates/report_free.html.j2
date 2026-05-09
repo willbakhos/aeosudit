@@ -230,7 +230,20 @@
   .tier-cta { display:inline-flex; align-items:center; justify-content:center; margin-top:auto; padding:12px 18px; border-radius:999px; background:white; color:#1d4ed8; text-decoration:none; font-weight:900; font-size:14px; }
   .price-card.featured .tier-cta { background:linear-gradient(135deg,#f59e0b,#f97316); color:white; box-shadow:0 14px 28px rgba(249,115,22,.35); }
   .price-card.outline .tier-cta { background:transparent; color:white; border:1px solid rgba(255,255,255,.4); }
+  .price-card.current { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12); opacity:.78; }
+  .price-card.current .tier-cta { background:rgba(255,255,255,.10); color:rgba(255,255,255,.78); pointer-events:none; }
+  .current-badge { background:linear-gradient(135deg,#10b981,#059669)!important; }
+  .tier-row-heading { margin:20px 0 12px; color:rgba(255,255,255,.78); font-size:13px; font-weight:900; letter-spacing:.10em; text-transform:uppercase; text-align:left; }
+  .pricing-grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:760px; margin-left:auto; margin-right:auto; }
   .footer-note { margin:26px 0 0; text-align:center; color:var(--muted); font-size:12px; }
+
+  /* Expiry banner */
+  .expiry-banner { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:14px 22px; margin:18px 0 0; border-radius:18px; background:linear-gradient(135deg,#fef3c7,#fde68a); border:1px solid rgba(217,119,6,.32); box-shadow:0 6px 18px rgba(217,119,6,.08); }
+  .expiry-banner .copy { display:flex; align-items:center; gap:12px; color:#7c2d12; font-size:14px; font-weight:700; }
+  .expiry-banner .copy svg { flex-shrink:0; }
+  .expiry-banner strong { color:#7c2d12; font-variant-numeric:tabular-nums; }
+  .expiry-banner .save-cta { display:inline-flex; align-items:center; gap:6px; padding:10px 16px; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#dc2626); color:white; text-decoration:none; font-weight:900; font-size:13px; box-shadow:0 8px 18px rgba(220,38,38,.20); white-space:nowrap; }
+  .expiry-banner .save-cta:hover { transform:translateY(-1px); }
 
   @media (max-width:930px) { .hero-grid,.insight-grid,.engine-detail-grid,.engine-locked-grid { grid-template-columns:1fr; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .pricing-grid { grid-template-columns:1fr; } .price-card.featured { transform:none; } .hero,.section { padding:26px; } }
   @media (max-width:620px) { .shell { width:min(100% - 24px,1180px); padding-top:16px; } .topbar,.section-header,.tech-banner { align-items:flex-start; flex-direction:column; } .cards,.mini-score,.engine-stats { grid-template-columns:1fr; } .bar-row { grid-template-columns:1fr; gap:8px; } .bar-row .num { text-align:left; } .takeaway { grid-template-columns:1fr; } .report-nav { border-radius:22px; } h1 { font-size:44px; } .tcheck dl { grid-template-columns:1fr; gap:4px; } .pricing-grid { margin-top:20px; } table { display:block; overflow-x:auto; } }
@@ -280,7 +293,17 @@
     </div>
   </section>
 
-  <nav class="report-nav" aria-label="Report sections"><a href="#visibility">Snapshot</a><a href="#engines">Engines</a><a href="#sources">Sources</a>{% if tech %}<a href="#foundations">Foundations</a>{% endif %}<a href="#unlock">Unlocks</a><a href="#evidence">Evidence</a><a href="#upgrade">Pricing</a></nav>
+  <nav class="report-nav" aria-label="Report sections"><a href="#visibility">Snapshot</a><a href="#engines">Engines</a><a href="#sources">Sources</a>{% if tech %}<a href="#foundations">Foundations</a>{% endif %}<a href="#unlock">Unlocks</a><a href="#evidence">Evidence</a><a href="#upgrade">Purchase report</a></nav>
+
+  {% if generated_at %}
+  <div class="expiry-banner" data-generated-at="{{ generated_at }}" data-ttl-days="7">
+    <div class="copy">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>This free preview expires in <strong data-expiry-countdown>7d 0h 0m</strong> — sign up to keep it permanently and re-run anytime.</span>
+    </div>
+    <a href="/dashboard/login" class="save-cta">Save this report →</a>
+  </div>
+  {% endif %}
 
   <section class="section" id="visibility">
     <div class="takeaway">
@@ -347,19 +370,50 @@
   </section>
 
   <section class="cta-block" id="upgrade">
-    <span class="eyebrow">Unlock the full audit</span>
+    <span class="eyebrow">Purchase the full report</span>
     <h2>Turn the preview into a fix list.</h2>
-    <p>Move from a Google-only snapshot to a full AEO/GEO report covering 5 engines, 40 queries, 200 AI answers, source analysis, hallucination checks and a prioritised action plan.</p>
+    <p>Go beyond the Google-only snapshot — see how the AI engines that actually matter to your buyers describe you, and get the action plan to fix it.</p>
+
+    <h3 class="tier-row-heading">One-off audit</h3>
     <div class="pricing-grid">
-      <div class="price-card"><div class="tier-name">Snapshot</div><div class="tier-price">Free</div><p class="tier-tagline">A fast Google AI Overview visibility check.</p><ul><li>Google AI Overview sample</li><li>Visibility and citation rate</li><li>Light competitor/source view</li></ul><a class="tier-cta" href="#visibility">Included here</a></div>
-      <div class="price-card featured"><span class="badge">Most useful</span><div class="tier-name">Full audit</div><div class="tier-price">$149<small>once</small></div><p class="tier-tagline">The complete one-off AEO/GEO diagnosis.</p><ul><li>5 engines and 40 queries</li><li>Competitor share-of-voice</li><li>Hallucination and citation checks</li><li>Prioritised action plan</li></ul><a class="tier-cta" href="mailto:hello@example.com?subject=Unlock full AEO audit for {{ config.brand.name }}">Unlock full audit →</a></div>
-      <div class="price-card outline"><div class="tier-name">Monitoring</div><div class="tier-price">$349<small>/mo</small></div><p class="tier-tagline">Track whether fixes improve AI visibility over time.</p><ul><li>Monthly AI visibility tracking</li><li>New competitor/source changes</li><li>Progress reporting</li></ul><a class="tier-cta" href="mailto:hello@example.com?subject=AEO monitoring for {{ config.brand.name }}">Ask about monitoring</a></div>
+      <div class="price-card current"><span class="badge current-badge">Current view</span><div class="tier-name">Free preview</div><div class="tier-price">Free</div><p class="tier-tagline">Google AI Overviews snapshot — what you're looking at now.</p><ul><li>Google AI Overviews</li><li>8 buyer-facing queries</li><li>Visibility + citation rate</li></ul><a class="tier-cta" href="#visibility">You're here</a></div>
+      <div class="price-card"><div class="tier-name">Two-engine</div><div class="tier-price">$29<small>once</small></div><p class="tier-tagline">The two engines most buyers actually use.</p><ul><li>Google AI + ChatGPT</li><li>40 buyer-facing queries</li><li>Competitor share-of-voice</li><li>Hallucination flags</li></ul><a class="tier-cta" href="mailto:hello@monitoraeo.com?subject=Two-engine audit for {{ config.brand.name }}">Buy two-engine — $29</a></div>
+      <div class="price-card featured"><span class="badge">Most useful</span><div class="tier-name">Full audit</div><div class="tier-price">$79<small>once</small></div><p class="tier-tagline">Every AI engine your buyers might ask. The complete one-off diagnosis.</p><ul><li>All 5 engines (ChatGPT, Claude, Perplexity, Gemini, Google AI)</li><li>40 queries × 5 engines = 200 answers</li><li>Hallucination + accuracy checks</li><li>Prioritised action plan</li></ul><a class="tier-cta" href="mailto:hello@monitoraeo.com?subject=Full audit for {{ config.brand.name }}">Buy full audit — $79</a></div>
+    </div>
+
+    <h3 class="tier-row-heading" style="margin-top:34px;">Or track it monthly</h3>
+    <div class="pricing-grid pricing-grid-2">
+      <div class="price-card outline"><div class="tier-name">Two-engine monitoring</div><div class="tier-price">$25<small>/mo</small></div><p class="tier-tagline">Watch the two engines most buyers use, every month.</p><ul><li>Google AI + ChatGPT</li><li>Monthly re-runs, automatic</li><li>Trend chart over time</li><li>Cancel anytime</li></ul><a class="tier-cta" href="mailto:hello@monitoraeo.com?subject=Two-engine monitoring for {{ config.brand.name }}">Start monitoring — $25/mo</a></div>
+      <div class="price-card outline"><div class="tier-name">Full monitoring</div><div class="tier-price">$75<small>/mo</small></div><p class="tier-tagline">Track every AI engine continuously.</p><ul><li>All 5 engines monitored monthly</li><li>Trend chart per engine</li><li>Competitor + source change alerts</li><li>Cancel anytime</li></ul><a class="tier-cta" href="mailto:hello@monitoraeo.com?subject=Full monitoring for {{ config.brand.name }}">Start full monitoring — $75/mo</a></div>
     </div>
   </section>
 
   <p class="footer-note">monitoraeo report for {{ config.brand.name }} · Generated for <code>{{ config.brand.domain }}</code></p>
 </main>
 <script>
+  // Expiry countdown — updates the strong[data-expiry-countdown] every minute
+  (function() {
+    var banner = document.querySelector('.expiry-banner');
+    if (!banner) return;
+    var target = banner.querySelector('[data-expiry-countdown]');
+    var generatedAt = new Date(banner.getAttribute('data-generated-at'));
+    var ttlMs = parseInt(banner.getAttribute('data-ttl-days') || '7', 10) * 86400 * 1000;
+    function tick() {
+      var ms = (generatedAt.getTime() + ttlMs) - Date.now();
+      if (ms <= 0) {
+        target.textContent = '0h 0m';
+        banner.querySelector('.copy span').firstChild.textContent = 'This free preview has expired — ';
+        return;
+      }
+      var d = Math.floor(ms / 86400000);
+      var h = Math.floor((ms % 86400000) / 3600000);
+      var m = Math.floor((ms % 3600000) / 60000);
+      target.textContent = (d > 0 ? d + 'd ' : '') + h + 'h ' + m + 'm';
+    }
+    tick();
+    setInterval(tick, 60000);
+  })();
+
   document.querySelectorAll('[data-engine-tab]').forEach(function(tab){
     tab.addEventListener('click', function(){
       var key = tab.getAttribute('data-engine-tab');

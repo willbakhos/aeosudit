@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -128,6 +129,7 @@ def write_html(
     screenshot: str | None = None,
     action_plan: list[dict] | None = None,
     tech=None,  # TechAudit | None
+    generated_at: datetime | None = None,
 ) -> Path:
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
@@ -137,6 +139,7 @@ def write_html(
         "report_free.html.j2" if tier in PREVIEW_TIERS else "report.html.j2"
     )
     template = env.get_template(template_name)
+    when = generated_at or datetime.now(timezone.utc)
     ctx = {
         "config": config,
         "agg": _aggregate(rows, config),
@@ -144,6 +147,8 @@ def write_html(
         "screenshot": screenshot,
         "action_plan": action_plan,
         "tech": tech,
+        # ISO 8601 with Z so the JS countdown can `new Date(...)` it directly
+        "generated_at": when.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     html = template.render(**ctx)
     path = output_dir / "report.html"
