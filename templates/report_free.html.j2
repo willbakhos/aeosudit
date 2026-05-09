@@ -249,7 +249,7 @@
 {% set competitor_names_strong %}{% for c in competitors_seen %}<strong>{{ c }}</strong>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endset %}
 <main class="shell">
   <header class="topbar">
-    <a class="brand" href="#"><span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>AEO Snapshot</span></a>
+    <a class="brand" href="/"><span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>monitoraeo</span></a>
     <div class="top-actions"><span class="chip warning">Free preview</span><span class="chip dark">{{ config.brand.name }}</span></div>
   </header>
 
@@ -280,7 +280,7 @@
     </div>
   </section>
 
-  <nav class="report-nav" aria-label="Report sections"><a href="#visibility">Snapshot</a><a href="#engines">Engines</a>{% if tech %}<a href="#foundations">Foundations</a>{% endif %}<a href="#sources">Sources</a><a href="#unlock">Unlocks</a><a href="#evidence">Evidence</a><a href="#upgrade">Pricing</a></nav>
+  <nav class="report-nav" aria-label="Report sections"><a href="#visibility">Snapshot</a><a href="#engines">Engines</a><a href="#sources">Sources</a>{% if tech %}<a href="#foundations">Foundations</a>{% endif %}<a href="#unlock">Unlocks</a><a href="#evidence">Evidence</a><a href="#upgrade">Pricing</a></nav>
 
   <section class="section" id="visibility">
     <div class="takeaway">
@@ -320,6 +320,11 @@
     </div>
   </section>
 
+  <section class="section" id="sources">
+    <div class="section-header"><div><h2>Competitor and source intelligence</h2><p class="section-subtitle">The preview shows early source patterns. The full audit reveals the recurring competitors, domains and page types shaping AI answers.</p></div></div>
+    <div class="insight-grid"><div><h3 style="margin:0 0 12px;font-size:18px;">Competitors Google cited or named</h3>{% if agg.competitor_citation_counts or agg.competitor_text_counts %}{% set comp_data = agg.competitor_citation_counts if agg.competitor_citation_counts else agg.competitor_text_counts %}{% set max_cmp = comp_data[0][1] %}<div class="bar-list">{% for name,count in comp_data %}<div class="bar-row"><div class="name">{{ name }}</div><div class="bar"><div style="width:{{ (count / max_cmp * 100) | round(0) }}%;"></div></div><div class="num">{{ count }}×</div></div>{% endfor %}</div>{% else %}<div class="empty">No competitors were detected in this {{ total_queries }}-query sample.</div>{% endif %}</div><div><h3 style="margin:0 0 12px;font-size:18px;">Where Google's AI gets its answers</h3>{% if agg.top_domains %}{% set max_count = agg.top_domains[0][1] %}<div class="bar-list">{% for domain,count in agg.top_domains[:8] %}<div class="bar-row"><div class="name">{{ domain }}</div><div class="bar"><div style="width:{{ (count / max_count * 100) | round(0) }}%;"></div></div><div class="num">{{ count }}×</div></div>{% endfor %}</div>{% else %}<div class="empty">No external citations captured in this sample.</div>{% endif %}</div></div>
+  </section>
+
   {% if tech %}
   <section class="section" id="foundations">
     <div class="section-header"><div><h2>Technical AEO/GEO foundations</h2><p class="section-subtitle">The first 3 checks are visible in the preview. The remaining checks are blurred and unlock in the full audit.</p></div><span class="chip dark">{{ tech.checks | length }} checks</span></div>
@@ -327,11 +332,6 @@
     {% for c in tech.checks %}{% set is_locked = (c.tier > 1) %}<div class="tcheck {% if is_locked %}is-locked{% endif %}"><div class="tcheck-head"><span class="num">{{ '%02d' | format(loop.index) }}</span><h4>{{ c.title }}</h4>{% if is_locked %}<span class="pill pill-locked">Locked in preview</span>{% else %}<span class="pill {{ c.status }}">{{ c.status }}</span>{% endif %}</div><dl><dt>Check</dt><dd>{{ c.title }}</dd><dt>Expected</dt><dd>{{ c.expected }}</dd><dt>Why it matters</dt><dd>{{ c.why }}</dd><dt>How you scored</dt>{% if is_locked %}<dd class="score-row"><span class="score-blur">{{ c.score_label }} — {{ c.detail or 'Detailed finding hidden in preview.' }}</span><a href="#upgrade" class="unlock-link">Unlock score →</a></dd>{% else %}<dd class="score-{{ c.status }}">{{ c.score_label }}{% if c.detail %} <span style="color:var(--muted);font-weight:normal;">— {{ c.detail }}</span>{% endif %}</dd>{% if c.fix %}<dt>How to fix</dt><dd class="fixbox">{{ c.fix }}</dd>{% endif %}{% endif %}</dl></div>{% endfor %}
   </section>
   {% endif %}
-
-  <section class="section" id="sources">
-    <div class="section-header"><div><h2>Competitor and source intelligence</h2><p class="section-subtitle">The preview shows early source patterns. The full audit reveals the recurring competitors, domains and page types shaping AI answers.</p></div></div>
-    <div class="insight-grid"><div><h3 style="margin:0 0 12px;font-size:18px;">Competitors Google cited or named</h3>{% if agg.competitor_citation_counts or agg.competitor_text_counts %}{% set comp_data = agg.competitor_citation_counts if agg.competitor_citation_counts else agg.competitor_text_counts %}{% set max_cmp = comp_data[0][1] %}<div class="bar-list">{% for name,count in comp_data %}<div class="bar-row"><div class="name">{{ name }}</div><div class="bar"><div style="width:{{ (count / max_cmp * 100) | round(0) }}%;"></div></div><div class="num">{{ count }}×</div></div>{% endfor %}</div>{% else %}<div class="empty">No competitors were detected in this {{ total_queries }}-query sample.</div>{% endif %}</div><div><h3 style="margin:0 0 12px;font-size:18px;">Where Google's AI gets its answers</h3>{% if agg.top_domains %}{% set max_count = agg.top_domains[0][1] %}<div class="bar-list">{% for domain,count in agg.top_domains[:8] %}<div class="bar-row"><div class="name">{{ domain }}</div><div class="bar"><div style="width:{{ (count / max_count * 100) | round(0) }}%;"></div></div><div class="num">{{ count }}×</div></div>{% endfor %}</div>{% else %}<div class="empty">No external citations captured in this sample.</div>{% endif %}</div></div>
-  </section>
 
   <section class="section" id="unlock">
     <div class="section-header"><div><h2>What unlocks in the full audit</h2><p class="section-subtitle">The paid report turns the free snapshot into a full evidence base and action plan.</p></div></div>
@@ -357,7 +357,7 @@
     </div>
   </section>
 
-  <p class="footer-note">AEO Snapshot for {{ config.brand.name }} · Generated for <code>{{ config.brand.domain }}</code></p>
+  <p class="footer-note">monitoraeo report for {{ config.brand.name }} · Generated for <code>{{ config.brand.domain }}</code></p>
 </main>
 <script>
   document.querySelectorAll('[data-engine-tab]').forEach(function(tab){

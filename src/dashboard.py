@@ -278,10 +278,11 @@ def brand_run(request: Request, brand_id: str):
         brand = s.get(TrackedBrand, bid)
         if not brand or str(brand.user_id) != user["id"]:
             raise HTTPException(404, "Brand not found")
+        from src.server import _make_run_id
         run_rec = AuditRunRecord(
             brand_id=brand.id,
             user_id=brand.user_id,
-            run_id=uuid.uuid4().hex[:12],
+            run_id=_make_run_id(brand.name),
             status="running",
         )
         s.add(run_rec)

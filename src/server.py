@@ -12,6 +12,8 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import secrets
+import string
 import threading
 import uuid
 from datetime import datetime
@@ -85,6 +87,23 @@ PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
 # Paid orders waiting for the customer to enter their competitor list before
 # the audit kicks off. Keyed by Stripe session_id. Same MVP storage caveat.
 PENDING_ORDERS: dict[str, dict[str, Any]] = {}
+
+_SLUG_ALPHABET = string.ascii_lowercase + string.digits
+
+
+def _slugify(name: str, max_len: int = 40) -> str:
+    """Lowercase, replace runs of non-alphanumerics with single hyphens, trim
+    to max_len. Falls back to 'audit' for unusable inputs (empty / all symbols)."""
+    s = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    return s[:max_len].strip("-") or "audit"
+
+
+def _make_run_id(brand_name: str) -> str:
+    """5-char random prefix + slugified brand name, e.g. `xr2pk-jb-hi-fi`.
+    The prefix collides only 1 in ~60M, enough to differentiate same-brand
+    audits without a database lookup."""
+    prefix = "".join(secrets.choice(_SLUG_ALPHABET) for _ in range(5))
+    return f"{prefix}-{_slugify(brand_name)}"
 
 app = FastAPI(title="monitoraeo")
 app.include_router(dashboard_router)
@@ -436,7 +455,7 @@ def submit_preview(
             "(e.g. 'JB Hi-Fi', not 'jbhifi'). We use this to match your name "
             "in AI answers.",
         )
-    run_id = uuid.uuid4().hex[:12]
+    run_id = _make_run_id(brand)
     threading.Thread(
         target=_run_preview_job,
         args=(run_id, norm, brand, category.strip() or None),
@@ -734,7 +753,7 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
             )
         )
 
-    run_id = uuid.uuid4().hex[:12]
+    run_id = _make_run_id(site.brand.name)
     run_dir = OUTPUT_ROOT / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
