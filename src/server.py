@@ -49,7 +49,7 @@ from src.db import init_db
 from src.delivery import send_report
 from src.engines.apify import ApifyEngine
 from src.engines.openrouter import OpenRouterEngine
-from src.llm_scorer import score_all
+from src.llm_scorer import extract_competitors, score_all
 from src.main import FREE_TIER_ENGINE, _load_queries, VALID_TIERS
 from src.models import LLMScore, ScoredRow, SiteConfig
 from src.report import write_csv, write_html
@@ -413,6 +413,17 @@ def _run_preview_job(
             )
 
         responses, tech = asyncio.run(_gather())
+
+        # Auto-extract competitors from the responses via Haiku, then inject
+        # into the SiteConfig so the deterministic scorer can flag them in the
+        # text + citations. ~$0.001 per preview, non-fatal on failure.
+        try:
+            site.competitors = asyncio.run(
+                extract_competitors(responses, brand_name)
+            )
+        except Exception:  # noqa: BLE001
+            site.competitors = []
+
         rows = [
             ScoredRow(
                 response=r,

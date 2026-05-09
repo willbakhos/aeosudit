@@ -138,3 +138,115 @@ async def score_all(
     sem = asyncio.Semaphore(MAX_CONCURRENCY)
     tasks = [_score_one(r, config, api_key, sem) for r in responses]
     return await tqdm_asyncio.gather(*tasks, desc="LLM scoring")
+
+
+# ---------- competitor extraction ----------
+
+_COMPETITORS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "competitors": {
+            "type": "array",
+            "items": {"type": "string"},
+        }
+    },
+    "required": ["competitors"],
+    "additionalProperties": False,
+}
+
+
+async def extract_competitors(
+    responses: list[EngineResponse], brand_name: str
+) -> list[str]:
+    """Ask Haiku to extract competitor brand names from a batch of AI answers.
+
+    Used by the free preview so customers see "Google pointed them to X, Y, Z"
+    without having to supply a competitor list up front. One Haiku call per
+    preview run (~$0.001), regardless of how many responses are passed in.
+
+    Returns deduped, ordered competitor names (most-mentioned first based on
+    Haiku's own ranking). Returns [] on any failure — non-fatal.
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        return []
+
+    # Concatenate non-empty response texts. Cap each one so a single huge
+    # answer doesn't blow up the prompt budget.
+    snippets: list[str] = []
+    for r in responses:
+        text = (r.response_text or "").strip()
+        if text:
+            snippets.append(text[:1500])
+    if not snippets:
+        return []
+    combined = "\n\n---\n\n".join(snippets)[:18000]
+
+    prompt = (
+        f"The user asked AI engines about \"{brand_name}\". Below are the "
+        f"answers concatenated.\n\n"
+        f"Extract the brand / company names of OTHER businesses mentioned "
+        f"that compete with or substitute for \"{brand_name}\". Rules:\n"
+        f"- Exclude \"{brand_name}\" itself and any obvious aliases.\n"
+        f"- Exclude generic terms (\"various providers\", \"alternatives\", "
+        f"\"banks\", \"lenders\", etc.).\n"
+        f"- Exclude regulators, journalists, review sites, government bodies "
+        f"(ASIC, ACCC, ATO, news outlets, etc.).\n"
+        f"- Prefer the brand's commonly-used name, not its legal entity name.\n"
+        f"- Order by how prominently they appear (most mentioned first).\n"
+        f"- Cap at 8 competitors.\n\n"
+        f"ANSWERS:\n{combined}\n\n"
+        f"Return JSON: {{\"competitors\": [\"Name1\", \"Name2\", ...]}}"
+    )
+    payload = {
+        "model": SCORER_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 400,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "competitors",
+                "strict": True,
+                "schema": _COMPETITORS_SCHEMA,
+            },
+        },
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/aeo-audit",
+        "X-Title": "monitoraeo",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+            resp = await client.post(OPENROUTER_URL, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+
+    try:
+        content = data["choices"][0]["message"]["content"]
+        if isinstance(content, list):
+            content = "".join(
+                b.get("text", "") for b in content if isinstance(b, dict)
+            )
+        parsed = json.loads(content)
+        names = parsed.get("competitors", [])
+    except (KeyError, IndexError, json.JSONDecodeError, ValueError, TypeError):
+        return []
+
+    # Dedupe case-insensitively but preserve first-seen casing + order.
+    seen: set[str] = set()
+    out: list[str] = []
+    brand_norm = brand_name.lower().strip()
+    for n in names:
+        if not isinstance(n, str):
+            continue
+        clean = n.strip()
+        if not clean or clean.lower() == brand_norm or clean.lower() in seen:
+            continue
+        seen.add(clean.lower())
+        out.append(clean)
+    return out[:8]
