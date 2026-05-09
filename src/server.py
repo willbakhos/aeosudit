@@ -387,11 +387,21 @@ def _build_preview_site(domain: str, brand_name: str) -> SiteConfig:
     )
 
 
+def _set_step(run_id: str, step: str, pct: int | None = None) -> None:
+    """Publish a human-readable progress step + optional pct to the loading page."""
+    job = PREVIEW_JOBS.get(run_id, {})
+    job["status"] = "running"
+    job["step"] = step
+    if pct is not None:
+        job["pct"] = pct
+    PREVIEW_JOBS[run_id] = job
+
+
 def _run_preview_job(
     run_id: str, domain: str, brand_name: str, category: str | None
 ) -> None:
     """Background worker for a free preview. Updates PREVIEW_JOBS as it progresses."""
-    PREVIEW_JOBS[run_id] = {"status": "running", "started_at": run_id}
+    _set_step(run_id, "Capturing site screenshot…", 8)
     try:
         site = _build_preview_site(domain, brand_name)
         queries = _generic_free_queries(brand_name, category)
@@ -406,6 +416,8 @@ def _run_preview_job(
         run_dir.mkdir(parents=True, exist_ok=True)
         screenshot_path = capture_screenshot(domain, run_dir)
 
+        _set_step(run_id, f"Asking Google AI {len(queries)} buyer-facing questions…", 25)
+
         async def _gather():
             return await asyncio.gather(
                 run_audit(engine_objs, queries, run_dir),
@@ -413,6 +425,7 @@ def _run_preview_job(
             )
 
         responses, tech = asyncio.run(_gather())
+        _set_step(run_id, "Extracting competitors from the answers…", 70)
 
         # Auto-extract competitors from the responses via Haiku, then inject
         # into the SiteConfig so the deterministic scorer can flag them in the
@@ -424,6 +437,7 @@ def _run_preview_job(
         except Exception:  # noqa: BLE001
             site.competitors = []
 
+        _set_step(run_id, "Scoring visibility and citations…", 85)
         rows = [
             ScoredRow(
                 response=r,
@@ -433,6 +447,7 @@ def _run_preview_job(
             for r in responses
         ]
         write_csv(rows, run_dir)
+        _set_step(run_id, "Rendering your report…", 95)
         write_html(
             rows,
             site,
@@ -449,16 +464,13 @@ def _run_preview_job(
         }
 
 
-@app.post("/preview", response_class=HTMLResponse)
-def submit_preview(
-    domain: str = Form(...),
-    brand_name: str = Form(...),
-    category: str = Form(""),
-) -> HTMLResponse:
+def _start_preview(domain: str, brand: str, category: str | None) -> tuple[str, str, str]:
+    """Validate inputs, kick off a background preview run, return (run_id, normalised_domain, brand).
+    Raises HTTPException(400) on bad input."""
     norm = _normalise_domain(domain)
     if not norm or "." not in norm:
         raise HTTPException(400, "Please enter a valid domain (e.g. capify.com.au)")
-    brand = brand_name.strip()
+    brand = (brand or "").strip()
     if not brand:
         raise HTTPException(
             400,
@@ -467,14 +479,42 @@ def submit_preview(
             "in AI answers.",
         )
     run_id = _make_run_id(brand)
+    PREVIEW_JOBS[run_id] = {"status": "queued", "step": "Starting up…"}
     threading.Thread(
         target=_run_preview_job,
-        args=(run_id, norm, brand, category.strip() or None),
+        args=(run_id, norm, brand, (category or "").strip() or None),
         daemon=True,
     ).start()
-    PREVIEW_JOBS[run_id] = {"status": "queued"}
+    return run_id, norm, brand
+
+
+@app.post("/preview", response_class=HTMLResponse)
+def submit_preview(
+    domain: str = Form(...),
+    brand_name: str = Form(...),
+    category: str = Form(""),
+) -> HTMLResponse:
+    run_id, norm, brand = _start_preview(domain, brand_name, category)
     html = _jinja.get_template("loading.html.j2").render(
-        run_id=run_id, brand_name=brand
+        run_id=run_id, brand_name=brand, domain=norm,
+    )
+    return HTMLResponse(html)
+
+
+@app.get("/preview", response_class=HTMLResponse)
+def submit_preview_get(
+    d: str = "",
+    b: str = "",
+    c: str = "",
+    domain: str = "",
+    brand: str = "",
+    category: str = "",
+) -> HTMLResponse:
+    """Cold-email entry point. Either short (`d`/`b`/`c`) or long (`domain`/`brand`/`category`)
+    query params work — short keeps email URLs compact."""
+    run_id, norm, real_brand = _start_preview(d or domain, b or brand, c or category)
+    html = _jinja.get_template("loading.html.j2").render(
+        run_id=run_id, brand_name=real_brand, domain=norm,
     )
     return HTMLResponse(html)
 
@@ -485,6 +525,126 @@ def preview_status(run_id: str) -> JSONResponse:
     if not job:
         return JSONResponse({"status": "unknown"}, status_code=404)
     return JSONResponse(job)
+
+
+# ---------------------------------------------------------------------------
+# Cold-email teaser API
+# ---------------------------------------------------------------------------
+
+class TeaserRequest(BaseModel):
+    domain: str
+    brand: str
+    category: str | None = None
+
+
+@app.get("/teasers/{filename}")
+def serve_teaser(filename: str):
+    """Serve a generated teaser image. Filename is a content hash so callers
+    can cache aggressively in their own systems."""
+    from fastapi.responses import FileResponse
+    safe = re.sub(r"[^a-zA-Z0-9_.-]", "", filename)
+    if not safe.endswith(".png"):
+        raise HTTPException(404, "Not found")
+    path = OUTPUT_ROOT / "teasers" / safe
+    if not path.exists():
+        raise HTTPException(404, "Teaser not found")
+    return FileResponse(path, media_type="image/png", headers={
+        "Cache-Control": "public, max-age=2592000, immutable",  # 30 days
+    })
+
+
+@app.post("/api/teaser")
+def api_teaser(req: TeaserRequest) -> JSONResponse:
+    """Cold-email integration point. Runs ONE Apify query, extracts competitors
+    via Haiku, generates a hero image, and returns the asset URLs your email
+    sender can drop straight into the message body.
+
+    Cost: ~$0.0085 per call (1 Apify SERP + 1 Haiku extraction).
+    Returns: {teaser_image_url, click_url, brand_name, domain, visibility_pct, competitors}
+    """
+    import hashlib
+    from urllib.parse import urlencode
+
+    norm = _normalise_domain(req.domain)
+    if not norm or "." not in norm:
+        raise HTTPException(400, "Invalid domain")
+    brand = (req.brand or "").strip()
+    if not brand:
+        raise HTTPException(400, "brand is required")
+    category = (req.category or "").strip()
+
+    # Single Apify query — "best {category}" surfaces competitors most directly.
+    # Falls back to "What is {brand}?" when no category is supplied.
+    teaser_query = f"best {category}" if category else f"What is {brand}?"
+    query_type = "category" if category else "brand"
+
+    apify = ApifyEngine(
+        label=FREE_TIER_ENGINE,
+        country_code="US",
+        language_code="en",
+    )
+    response = asyncio.run(apify.query(teaser_query, query_type))
+
+    # Did the brand appear in the response?
+    text_lower = (response.response_text or "").lower()
+    brand_lower = brand.lower()
+    brand_in_text = brand_lower in text_lower
+    brand_in_citations = any(
+        norm.lower() in (c.domain or "").lower() for c in response.citations
+    )
+    visibility_pct = 100.0 if (brand_in_text or brand_in_citations) else 0.0
+
+    # Extract competitors from the single response
+    try:
+        competitors = asyncio.run(extract_competitors([response], brand))
+    except Exception:  # noqa: BLE001
+        competitors = []
+
+    # Site screenshot — best effort, non-fatal
+    teasers_dir = OUTPUT_ROOT / "teasers"
+    teasers_dir.mkdir(parents=True, exist_ok=True)
+    shot_dir = teasers_dir / "_screenshots"
+    shot_dir.mkdir(parents=True, exist_ok=True)
+    shot_filename = f"{hashlib.md5(norm.encode()).hexdigest()[:12]}.png"
+    site_screenshot = shot_dir / shot_filename
+    if not site_screenshot.exists():
+        try:
+            captured = capture_screenshot(norm, shot_dir, filename=shot_filename)
+            if not (captured and captured.exists()):
+                site_screenshot = None
+        except Exception:  # noqa: BLE001
+            site_screenshot = None
+
+    # Compose the teaser image
+    from src.teaser_image import generate as generate_teaser
+    img_hash = hashlib.md5(
+        f"{norm}|{brand}|{visibility_pct}|{','.join(competitors[:3])}".encode()
+    ).hexdigest()[:16]
+    img_filename = f"{img_hash}.png"
+    img_path = teasers_dir / img_filename
+    try:
+        generate_teaser(
+            brand_name=brand,
+            domain=norm,
+            visibility_pct=visibility_pct,
+            competitors=competitors,
+            site_screenshot=site_screenshot if (site_screenshot and site_screenshot.exists()) else None,
+            output_path=img_path,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"Teaser image generation failed: {exc}")
+
+    click_qs = urlencode({"d": norm, "b": brand, "c": category} if category else {"d": norm, "b": brand})
+    return JSONResponse({
+        "brand_name": brand,
+        "domain": norm,
+        "visibility_pct": visibility_pct,
+        "competitors": competitors,
+        "teaser_image_url": f"{SITE_BASE_URL}/teasers/{img_filename}",
+        "click_url": f"{SITE_BASE_URL}/preview?{click_qs}",
+        "teaser_query": teaser_query,
+        "answered_in": ["text" if brand_in_text else None, "citations" if brand_in_citations else None],
+    })
 
 
 @app.post("/checkout")
@@ -813,6 +973,28 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
     except Exception:  # noqa: BLE001
         pdf_path = None
 
+    # Hero image embedded inline at the top of the delivery email.
+    # Reuses the same composer the cold-email teaser uses; non-fatal on failure.
+    hero_path: Path | None = run_dir / "email_hero.png"
+    try:
+        from src.teaser_image import generate as generate_teaser
+        visibility_pct = sum(1 for r in rows if r.deterministic.mentioned) / max(1, len(rows)) * 100
+        competitor_names: list[str] = []
+        for r in rows:
+            for c in r.deterministic.competitors_mentioned:
+                if c not in competitor_names:
+                    competitor_names.append(c)
+        generate_teaser(
+            brand_name=site.brand.name,
+            domain=site.brand.domain,
+            visibility_pct=visibility_pct,
+            competitors=competitor_names,
+            site_screenshot=screenshot_path if screenshot_path else None,
+            output_path=hero_path,
+        )
+    except Exception:  # noqa: BLE001
+        hero_path = None
+
     report_url = f"{PUBLIC_BASE_URL}/report/{run_id}"
     try:
         send_report(
@@ -821,6 +1003,7 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
             tier=tier,
             report_url=report_url,
             pdf_path=pdf_path,
+            hero_image_path=hero_path,
         )
     except Exception as exc:  # noqa: BLE001
         # Persist a tombstone so we can retry/inspect manually.

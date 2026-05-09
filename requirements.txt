@@ -18,3 +18,4 @@ sqlmodel>=0.0.22
 psycopg2-binary>=2.9
 supabase>=2.9
 pyjwt[crypto]>=2.9
+Pillow>=10.0

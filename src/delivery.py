@@ -15,10 +15,18 @@ TIER_LABELS = {
 }
 
 
-def _build_html(brand_name: str, tier: str, report_url: str) -> str:
+def _build_html(brand_name: str, tier: str, report_url: str, has_hero: bool) -> str:
+    """Email body. If has_hero is True, embed a CID-attached hero image at the top."""
     tier_label = TIER_LABELS.get(tier, tier)
+    hero_block = (
+        '<img src="cid:report_hero" alt="" '
+        'style="display:block; width:100%; max-width:560px; height:auto; '
+        'border-radius:14px; margin:0 0 20px;">'
+        if has_hero else ""
+    )
     return f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
+      {hero_block}
       <h2 style="font-size: 22px; margin: 0 0 12px;">Your {brand_name} AEO audit is ready</h2>
       <p style="color: #475569; line-height: 1.55;">
         Tier: <strong>{tier_label}</strong>
@@ -49,9 +57,13 @@ def send_report(
     tier: str,
     report_url: str,
     pdf_path: Path | None = None,
+    hero_image_path: Path | None = None,
 ) -> dict[str, Any]:
     """Send the audit report email. Returns the Resend response dict.
-    Raises if RESEND_API_KEY is missing."""
+    Raises if RESEND_API_KEY is missing.
+
+    hero_image_path: optional 1200x630 PNG (from src.teaser_image.generate)
+    that gets embedded at the top of the email body via CID attachment."""
     api_key = os.environ.get("RESEND_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("RESEND_API_KEY is not set")
@@ -59,7 +71,22 @@ def send_report(
 
     from_addr = os.environ.get("REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>")
     subject = f"Your {brand_name} AEO audit is ready"
-    html = _build_html(brand_name, tier, report_url)
+    has_hero = bool(hero_image_path and hero_image_path.exists())
+    html = _build_html(brand_name, tier, report_url, has_hero=has_hero)
+
+    attachments: list[dict[str, Any]] = []
+    if has_hero:
+        attachments.append({
+            "filename": "hero.png",
+            "content": base64.b64encode(hero_image_path.read_bytes()).decode("ascii"),
+            "content_id": "report_hero",
+            "disposition": "inline",
+        })
+    if pdf_path and pdf_path.exists():
+        attachments.append({
+            "filename": pdf_path.name,
+            "content": base64.b64encode(pdf_path.read_bytes()).decode("ascii"),
+        })
 
     params: dict[str, Any] = {
         "from": from_addr,
@@ -67,12 +94,7 @@ def send_report(
         "subject": subject,
         "html": html,
     }
-    if pdf_path and pdf_path.exists():
-        params["attachments"] = [
-            {
-                "filename": pdf_path.name,
-                "content": base64.b64encode(pdf_path.read_bytes()).decode("ascii"),
-            }
-        ]
+    if attachments:
+        params["attachments"] = attachments
 
     return resend.Emails.send(params)
