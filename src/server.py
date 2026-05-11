@@ -588,6 +588,10 @@ class TeaserRequest(BaseModel):
     domain: str
     brand: str
     category: str | None = None
+    # When true, delete the cached site screenshot + teaser image before
+    # regenerating. Use this after deploying a teaser-design change or
+    # after rotating SCREENSHOTAPI_TOKEN. Idempotent + safe.
+    force: bool = False
 
 
 @app.get("/teasers/{filename}")
@@ -660,6 +664,13 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
     shot_dir.mkdir(parents=True, exist_ok=True)
     shot_filename = f"{hashlib.md5(norm.encode()).hexdigest()[:12]}.png"
     site_screenshot = shot_dir / shot_filename
+    # When force=True, bust the screenshot cache too so we re-capture with
+    # whatever credentials are currently configured.
+    if req.force and site_screenshot.exists():
+        try:
+            site_screenshot.unlink()
+        except OSError:
+            pass
     if not site_screenshot.exists():
         try:
             captured = capture_screenshot(norm, shot_dir, filename=shot_filename)
@@ -675,6 +686,10 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
     ).hexdigest()[:16]
     img_filename = f"{img_hash}.png"
     img_path = teasers_dir / img_filename
+    # generate_teaser always overwrites, so disk content is always fresh.
+    # We only need to delete the file under force=True if we wanted to ensure
+    # next-tick consistency — but the overwrite is atomic on the same FS so
+    # we just regenerate unconditionally.
     try:
         generate_teaser(
             brand_name=brand,
@@ -683,17 +698,24 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
             competitors=competitors,
             site_screenshot=site_screenshot if (site_screenshot and site_screenshot.exists()) else None,
             output_path=img_path,
+            category=category or None,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, f"Teaser image generation failed: {exc}")
 
+    # mtime-based cache-buster so email clients + browsers fetch the new
+    # image after each regen, even though the path is content-hashed.
+    try:
+        ver = int(img_path.stat().st_mtime)
+    except OSError:
+        ver = 0
     click_qs = urlencode({"d": norm, "b": brand, "c": category} if category else {"d": norm, "b": brand})
     return JSONResponse({
         "brand_name": brand,
         "domain": norm,
         "visibility_pct": visibility_pct,
         "competitors": competitors,
-        "teaser_image_url": f"{SITE_BASE_URL}/teasers/{img_filename}",
+        "teaser_image_url": f"{SITE_BASE_URL}/teasers/{img_filename}?v={ver}",
         "click_url": f"{SITE_BASE_URL}/preview?{click_qs}",
         "teaser_query": teaser_query,
         "answered_in": ["text" if brand_in_text else None, "citations" if brand_in_citations else None],
