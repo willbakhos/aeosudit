@@ -68,11 +68,49 @@ DEFAULT_CONFIG_PATH = Path(os.environ.get("DEFAULT_SITE_CONFIG", "config/site.ya
 DEFAULT_QUERIES_PATH = Path(os.environ.get("DEFAULT_QUERIES_CSV", "config/queries.csv"))
 OUTPUT_ROOT = Path(os.environ.get("OUTPUT_ROOT", "output"))
 
-# Stripe price IDs are read from env so the same code works in test + prod.
-TIER_PRICES = {
-    "spotlight": os.environ.get("STRIPE_PRICE_SPOTLIGHT", ""),
-    "full": os.environ.get("STRIPE_PRICE_FULL", ""),
-    "action_plan": os.environ.get("STRIPE_PRICE_ACTION_PLAN", ""),
+# Single source of truth for paid tier behaviour. Adding/removing a tier
+# means editing this dict + creating the matching Stripe product. Engine
+# names match the labels in config/site.yaml (Google AI Overviews + ChatGPT
+# / Claude / Perplexity / Gemini). "all" means no filter.
+CHATGPT_LABEL = "ChatGPT"
+
+TIER_PLANS: dict[str, dict[str, Any]] = {
+    "two_engine": {
+        "label": "Two-engine ($29)",
+        "price_usd": 29,
+        "stripe_mode": "payment",
+        "stripe_env": "STRIPE_PRICE_TWO_ENGINE",
+        "engines": ["Google AI Overviews", CHATGPT_LABEL],
+        "llm_scoring": True,
+        "action_plan": False,
+    },
+    "full_audit": {
+        "label": "Full audit ($79)",
+        "price_usd": 79,
+        "stripe_mode": "payment",
+        "stripe_env": "STRIPE_PRICE_FULL_AUDIT",
+        "engines": "all",
+        "llm_scoring": True,
+        "action_plan": False,
+    },
+    "two_engine_monthly": {
+        "label": "Two-engine monitoring ($25/mo)",
+        "price_usd": 25,
+        "stripe_mode": "subscription",
+        "stripe_env": "STRIPE_PRICE_TWO_ENGINE_MONTHLY",
+        "engines": ["Google AI Overviews", CHATGPT_LABEL],
+        "llm_scoring": True,
+        "action_plan": False,
+    },
+    "full_monthly": {
+        "label": "Full monitoring ($75/mo)",
+        "price_usd": 75,
+        "stripe_mode": "subscription",
+        "stripe_env": "STRIPE_PRICE_FULL_MONTHLY",
+        "engines": "all",
+        "llm_scoring": True,
+        "action_plan": False,
+    },
 }
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -136,11 +174,12 @@ def health() -> dict[str, bool]:
 
 
 class CheckoutRequest(BaseModel):
-    tier: str = Field(..., description="spotlight | full | action_plan")
+    tier: str = Field(
+        ..., description="two_engine | full_audit | two_engine_monthly | full_monthly"
+    )
     brand_name: str
     domain: str
     email: EmailStr
-    spotlight_engine: str | None = None  # required when tier=spotlight
 
 
 SITE_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://monitoraeo.com").rstrip("/")
@@ -657,19 +696,23 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
 
 @app.post("/checkout")
 def create_checkout(req: CheckoutRequest) -> JSONResponse:
-    """Creates a Stripe Checkout Session for the chosen tier."""
-    if req.tier not in {"spotlight", "full", "action_plan"}:
-        raise HTTPException(400, f"Unknown tier {req.tier!r}")
-    price_id = TIER_PRICES.get(req.tier)
+    """Creates a Stripe Checkout Session for the chosen tier. Picks payment
+    vs subscription mode based on the tier plan."""
+    if req.tier not in TIER_PLANS:
+        raise HTTPException(
+            400, f"Unknown tier {req.tier!r}. Valid: {sorted(TIER_PLANS)}"
+        )
+    plan = TIER_PLANS[req.tier]
+    price_id = os.environ.get(plan["stripe_env"], "").strip()
     if not price_id:
-        raise HTTPException(500, f"No STRIPE_PRICE_* env var configured for {req.tier}")
-    if req.tier == "spotlight" and not req.spotlight_engine:
-        raise HTTPException(400, "Spotlight tier requires spotlight_engine")
+        raise HTTPException(
+            500, f"No {plan['stripe_env']} env var configured"
+        )
     if not stripe.api_key:
         raise HTTPException(500, "STRIPE_SECRET_KEY is not set")
 
     session = stripe.checkout.Session.create(
-        mode="payment",
+        mode=plan["stripe_mode"],  # "payment" (one-off) or "subscription" (monthly)
         line_items=[{"price": price_id, "quantity": 1}],
         customer_email=req.email,
         success_url=f"{PUBLIC_BASE_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
@@ -679,7 +722,6 @@ def create_checkout(req: CheckoutRequest) -> JSONResponse:
             "brand_name": req.brand_name,
             "domain": req.domain,
             "email": req.email,
-            "spotlight_engine": req.spotlight_engine or "",
         },
     )
     return JSONResponse({"id": session.id, "url": session.url})
@@ -897,10 +939,15 @@ def _build_site_for_order(meta: dict[str, Any]) -> SiteConfig:
 
 def _fulfil_order(meta: dict[str, Any]) -> None:
     """Run the audit, generate PDF, email the customer.
-    All errors are swallowed and logged — the customer record gets retried via Stripe."""
+    All errors are swallowed and logged — the customer record gets retried via Stripe.
+
+    Monthly tiers run the same first audit as their one-off counterpart so the
+    customer gets data on day one. Future scheduled re-runs come from a
+    separate cron path, not from this fulfilment hook."""
     tier = (meta.get("tier") or "").strip()
-    if tier not in VALID_TIERS - {"free"}:
+    if tier not in TIER_PLANS:
         return
+    plan = TIER_PLANS[tier]
     email = meta.get("email")
     if not email:
         return
@@ -908,13 +955,9 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
     site = _build_site_for_order(meta)
     queries = _load_queries(DEFAULT_QUERIES_PATH)
 
-    # Filter queries + engines per tier
-    spotlight_engine = meta.get("spotlight_engine") or None
-    if tier == "spotlight":
-        queries = [q for q in queries if q.spotlight or q.free]
-        only_labels = {FREE_TIER_ENGINE, spotlight_engine} if spotlight_engine else None
-    else:
-        only_labels = None
+    # Filter engines per the tier's plan
+    plan_engines = plan["engines"]
+    only_labels = None if plan_engines == "all" else set(plan_engines)
 
     engine_objs = []
     for cfg in site.engines.openrouter:
@@ -946,10 +989,10 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
 
     responses, tech = asyncio.run(_gather())
 
-    if tier in {"spotlight"}:
-        llm_scores: list[LLMScore | None] = [None] * len(responses)
+    if plan["llm_scoring"]:
+        llm_scores: list[LLMScore | None] = list(asyncio.run(score_all(responses, site)))
     else:
-        llm_scores = list(asyncio.run(score_all(responses, site)))
+        llm_scores = [None] * len(responses)
 
     rows = [
         ScoredRow(
@@ -960,9 +1003,7 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
         for r, llm in zip(responses, llm_scores)
     ]
 
-    action_plan = (
-        generate_action_plan(rows, site) if tier == "action_plan" else None
-    )
+    action_plan = generate_action_plan(rows, site) if plan["action_plan"] else None
 
     write_csv(rows, run_dir)
     write_html(

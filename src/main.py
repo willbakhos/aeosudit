@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import csv
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -11,7 +10,6 @@ import typer
 import yaml
 from dotenv import load_dotenv
 
-from src.action_plan import generate as generate_action_plan
 from src.engines.apify import ApifyEngine
 from src.engines.base import Engine
 from src.engines.openrouter import OpenRouterEngine
@@ -76,7 +74,11 @@ def _build_engines(
 
 
 FREE_TIER_ENGINE = "Google AI Overviews"
-VALID_TIERS = {"free", "spotlight", "full", "action_plan"}
+CHATGPT_LABEL = "ChatGPT"
+# CLI tiers — mirror the paid tier shape so a `--tier two_engine` run produces
+# the same data the customer would get. Monthly tiers behave the same as
+# their one-off counterpart for a single CLI invocation.
+VALID_TIERS = {"free", "two_engine", "full_audit", "two_engine_monthly", "full_monthly"}
 
 
 @app.command()
@@ -95,19 +97,15 @@ def audit(
         None, "--engines", help="Comma-separated engine labels (overrides tier defaults)"
     ),
     tier: str = typer.Option(
-        "full",
+        "full_audit",
         "--tier",
         help=(
             "free = Google only, ~8 queries (lead magnet). "
-            "spotlight = Google + 1 chosen engine, ~20 queries ($49). "
-            "full = all engines × 40 queries + LLM scoring ($149). "
-            "action_plan = full + Sonnet recommendations ($349)."
+            "two_engine = Google + ChatGPT, 40 queries + LLM scoring ($29). "
+            "full_audit = all 5 engines × 40 queries + LLM scoring ($79). "
+            "two_engine_monthly = same as two_engine, monthly billing ($25/mo). "
+            "full_monthly = same as full_audit, monthly billing ($75/mo)."
         ),
-    ),
-    spotlight_engine: str | None = typer.Option(
-        None,
-        "--spotlight-engine",
-        help="Engine label to pair with Google for the Spotlight tier (Claude / ChatGPT / Perplexity / Gemini).",
     ),
 ) -> None:
     """Run an AEO audit and emit CSV + HTML report."""
@@ -124,6 +122,12 @@ def audit(
     site = _load_config(config)
     query_list = _load_queries(queries)
 
+    # Engines + LLM scoring per tier. Two-engine tiers run on Google + ChatGPT
+    # only; full tiers run all 5. The --engines flag (advanced) overrides the
+    # tier default when set.
+    explicit_engines = (
+        {s.strip() for s in engines.split(",") if s.strip()} if engines else None
+    )
     if tier == "free":
         query_list = [q for q in query_list if q.free]
         only_labels = {FREE_TIER_ENGINE}
@@ -134,36 +138,10 @@ def audit(
                 err=True,
             )
             raise typer.Exit(code=1)
-    elif tier == "spotlight":
-        query_list = [q for q in query_list if q.spotlight or q.free]
-        if not spotlight_engine:
-            typer.echo(
-                "Spotlight tier requires --spotlight-engine "
-                "(e.g. --spotlight-engine ChatGPT).",
-                err=True,
-            )
-            raise typer.Exit(code=1)
-        valid_openrouter = {e.label for e in site.engines.openrouter}
-        if spotlight_engine not in valid_openrouter:
-            typer.echo(
-                f"Unknown spotlight engine {spotlight_engine!r}. "
-                f"Configured: {sorted(valid_openrouter)}",
-                err=True,
-            )
-            raise typer.Exit(code=1)
-        only_labels = {FREE_TIER_ENGINE, spotlight_engine}
-        skip_llm_scoring = True
-        if not query_list:
-            typer.echo(
-                "No queries flagged spotlight=true (or free=true) in queries.csv.",
-                err=True,
-            )
-            raise typer.Exit(code=1)
-    else:
-        # full / action_plan: use all engines unless --engines overrides
-        only_labels = (
-            {s.strip() for s in engines.split(",") if s.strip()} if engines else None
-        )
+    elif tier in {"two_engine", "two_engine_monthly"}:
+        only_labels = explicit_engines or {FREE_TIER_ENGINE, CHATGPT_LABEL}
+    else:  # full_audit, full_monthly
+        only_labels = explicit_engines
 
     engine_list = _build_engines(site, only_labels)
 
@@ -213,16 +191,6 @@ def audit(
     ]
 
     action_plan: list[dict] | None = None
-    if tier == "action_plan":
-        typer.echo("Generating action plan via Sonnet…")
-        action_plan = generate_action_plan(rows, site)
-        if action_plan:
-            (run_dir / "action_plan.json").write_text(
-                json.dumps(action_plan, indent=2)
-            )
-            typer.echo(f"  Action plan: {len(action_plan)} recommendations")
-        else:
-            typer.echo("  Action plan: generation failed (continuing without)")
 
     csv_path = write_csv(rows, run_dir)
     html_path = write_html(

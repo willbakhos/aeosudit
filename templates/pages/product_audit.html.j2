@@ -1,7 +1,7 @@
 {% extends "_layout.html.j2" %}
 {% set active = 'audit' %}
 {% set canonical_path = "/product/audit" %}
-{% set page_description = "A complete diagnostic of your AI visibility in minutes. 5 AI engines × 40 buyer-facing queries = 200 individual answers, scored for visibility, citations, competitors and hallucinations. From $49." %}
+{% set page_description = "A complete diagnostic of your AI visibility in minutes. 5 AI engines × 40 buyer-facing queries = 200 individual answers, scored for visibility, citations, competitors and hallucinations. From $29." %}
 {% block title %}Audit — AI visibility diagnostic | monitoraeo{% endblock %}
 
 {% block schema %}
@@ -17,22 +17,29 @@
   "offers": [
     {
       "@type": "Offer",
-      "name": "Spotlight",
-      "price": "49",
+      "name": "Two-engine",
+      "price": "29",
       "priceCurrency": "USD",
       "url": "{{ _base_url }}/pricing"
     },
     {
       "@type": "Offer",
-      "name": "Full Audit",
-      "price": "149",
+      "name": "Full audit",
+      "price": "79",
       "priceCurrency": "USD",
       "url": "{{ _base_url }}/pricing"
     },
     {
       "@type": "Offer",
-      "name": "Audit + Action Plan",
-      "price": "349",
+      "name": "Two-engine monitoring",
+      "price": "25",
+      "priceCurrency": "USD",
+      "url": "{{ _base_url }}/pricing"
+    },
+    {
+      "@type": "Offer",
+      "name": "Full monitoring",
+      "price": "75",
       "priceCurrency": "USD",
       "url": "{{ _base_url }}/pricing"
     }

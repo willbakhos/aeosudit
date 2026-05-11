@@ -1,8 +1,8 @@
 {% extends "_layout.html.j2" %}
 {% set active = 'pricing' %}
 {% set canonical_path = "/pricing" %}
-{% set page_description = "Three audit tiers — Spotlight $49, Full Audit $149, Audit + Action Plan $349. One-off pricing, no subscriptions. Tested across 5 AI engines and 40 buyer-facing queries." %}
-{% block title %}Pricing — monitoraeo (from $49){% endblock %}
+{% set page_description = "Four audit tiers from $29. Two-engine $29 or full 5-engine $79 one-off. Monitoring from $25/mo. Free preview, no account required." %}
+{% block title %}Pricing — monitoraeo (from $29){% endblock %}
 
 {% block schema %}
 <script type="application/ld+json">
@@ -11,13 +11,13 @@
   "@graph": [
     {
       "@type": "Product",
-      "@id": "{{ _base_url }}/pricing#spotlight",
-      "name": "monitoraeo — Spotlight",
-      "description": "Google AI Overviews + one chosen AI engine. 20 buyer-facing queries with competitor and source-domain analysis. PDF export.",
+      "@id": "{{ _base_url }}/pricing#two-engine",
+      "name": "monitoraeo — Two-engine audit",
+      "description": "Google AI Overviews + ChatGPT. 40 buyer-facing queries with visibility, citation and competitor analysis. PDF export.",
       "brand": { "@id": "{{ _base_url }}/#org" },
       "offers": {
         "@type": "Offer",
-        "price": "49",
+        "price": "29",
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock",
         "url": "{{ _base_url }}/pricing"
@@ -26,12 +26,12 @@
     {
       "@type": "Product",
       "@id": "{{ _base_url }}/pricing#full-audit",
-      "name": "monitoraeo — Full Audit",
+      "name": "monitoraeo — Full audit",
       "description": "All 5 AI engines (Claude, ChatGPT, Perplexity, Gemini, Google) across 40 buyer-facing queries. Hallucination scoring, engine heatmap, citation map, competitor share-of-voice. CSV + PDF export.",
       "brand": { "@id": "{{ _base_url }}/#org" },
       "offers": {
         "@type": "Offer",
-        "price": "149",
+        "price": "79",
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock",
         "url": "{{ _base_url }}/pricing"
@@ -39,13 +39,27 @@
     },
     {
       "@type": "Product",
-      "@id": "{{ _base_url }}/pricing#action-plan",
-      "name": "monitoraeo — Audit + Action Plan",
-      "description": "Everything in Full Audit, plus 10 done-for-you written recommendations with example schema, FAQ copy and PR target list. Includes a re-audit credit valid for 60 days.",
+      "@id": "{{ _base_url }}/pricing#two-engine-monthly",
+      "name": "monitoraeo — Two-engine monitoring",
+      "description": "Recurring monthly audit against Google AI Overviews + ChatGPT, with trend chart over time and competitor change alerts.",
       "brand": { "@id": "{{ _base_url }}/#org" },
       "offers": {
         "@type": "Offer",
-        "price": "349",
+        "price": "25",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "{{ _base_url }}/pricing"
+      }
+    },
+    {
+      "@type": "Product",
+      "@id": "{{ _base_url }}/pricing#full-monthly",
+      "name": "monitoraeo — Full monitoring",
+      "description": "Recurring monthly audit across all 5 AI engines, with per-engine trend charts and source change alerts.",
+      "brand": { "@id": "{{ _base_url }}/#org" },
+      "offers": {
+        "@type": "Offer",
+        "price": "75",
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock",
         "url": "{{ _base_url }}/pricing"
@@ -57,18 +71,18 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What if I need more than 40 queries?",
+          "name": "What's the difference between two-engine and full audit?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "We run custom audits for agencies and large brands at $5 per additional query. There is no upper limit — email us via the support page to set up a custom run."
+            "text": "Two-engine ($29) tests Google AI Overviews and ChatGPT — the two engines most buyers actually use today. Full audit ($79) adds Claude, Perplexity and Gemini for complete coverage. Start with two-engine if you're cost-sensitive; pick full if you want to be sure you're not missing visibility in a less-mainstream engine."
           }
         },
         {
           "@type": "Question",
-          "name": "Can I switch which engine the Spotlight tier covers?",
+          "name": "Why monthly monitoring instead of one-off?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. You pick at checkout — ChatGPT, Claude, Perplexity or Gemini. You can also upgrade to Full Audit later and we credit your $49 toward the upgrade."
+            "text": "AI engines drift weekly. An audit is a snapshot in time. Monitoring re-runs the same audit every month so you can see trends — is your visibility improving or declining, which competitors are gaining ground, which sources keep getting cited. You also get instant access to the dashboard to add more brands or run on-demand audits."
           }
         },
         {
@@ -84,7 +98,7 @@
           "name": "Do AI answer results drift between audit runs?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. AI answers vary day-to-day even with identical questions. The signal you should trust is the pattern — which engines mention you, which competitors keep showing up, which sources keep getting cited. Single-answer noise is normal."
+            "text": "Yes. AI answers vary day-to-day even with identical questions. The signal you should trust is the pattern — which engines mention you, which competitors keep showing up, which sources keep getting cited. That's why monitoring is more reliable than a single audit."
           }
         },
         {
@@ -92,7 +106,7 @@
           "name": "What is your refund policy?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "If the audit doesn't run successfully, you get a full automatic refund. If it runs and you don't find it useful, contact support within 14 days and we will work something out."
+            "text": "If the audit doesn't run successfully, you get a full automatic refund. If it runs and you don't find it useful, contact support within 14 days for a refund. Monthly monitoring can be cancelled anytime — you keep access through the end of the current billing period."
           }
         }
       ]
@@ -103,15 +117,20 @@
 {% endblock %}
 
 {% block extra_css %}
-  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 28px 0; }
+  .price-section { margin: 28px 0; }
+  .price-section-label { display:inline-flex; align-items:center; gap:8px; padding:6px 12px; margin-bottom:16px; border-radius:999px; background:rgba(37,99,235,.08); color:#1d4ed8; font-size:12px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+  .pricing-grid { display: grid; gap: 18px; }
+  .pricing-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .pricing-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
   .price-card { position: relative; padding: 30px 26px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 14px; }
   .price-card.featured { background: linear-gradient(160deg, #1d4ed8 0%, #4338ca 50%, #6d28d9 100%); color: white; transform: translateY(-4px); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 30px 60px rgba(67,56,202,.32); }
   .price-card.featured .tagline, .price-card.featured li { color: rgba(255,255,255,.84); }
   .price-card.featured ul li::before { background: rgba(52,211,153,.2); color: #34d399; }
+  .price-card.free { background: linear-gradient(160deg, #f8fafc 0%, #f1f5f9 100%); border-style: dashed; }
   .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #f97316); color: white; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 8px 18px rgba(249,115,22,.32); }
   .tier-name { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .price-card.featured .tier-name { color: rgba(255,255,255,.72); }
-  .tier-price { font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -.05em; }
+  .tier-price { font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -.05em; }
   .tier-price small { font-size: 14px; font-weight: 700; color: var(--muted); margin-left: 4px; }
   .price-card.featured .tier-price small { color: rgba(255,255,255,.6); }
   .tagline { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; min-height: 60px; }
@@ -121,6 +140,7 @@
   .feature-list li::before { content: "✓"; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #ecfdf5; color: var(--success); display: grid; place-items: center; font-weight: 900; font-size: 12px; }
   .tier-cta { display: inline-flex; align-items: center; justify-content: center; margin-top: auto; padding: 14px 22px; border-radius: 999px; background: var(--ink); color: white; text-decoration: none; font-weight: 800; font-size: 15px; }
   .price-card.featured .tier-cta { background: white; color: #1d4ed8; box-shadow: 0 14px 28px rgba(0,0,0,.22); }
+  .price-card.free .tier-cta { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 
   .compare { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 16px; background: white; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
   .compare th, .compare td { padding: 14px 18px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
@@ -134,98 +154,136 @@
   .faq-item h4 { margin: 0 0 6px; font-size: 16px; }
   .faq-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 
-  @media (max-width: 930px) { .pricing-grid { grid-template-columns: 1fr; } .price-card.featured { transform: none; } }
+  @media (max-width: 930px) { .pricing-grid.cols-2, .pricing-grid.cols-3 { grid-template-columns: 1fr; } .price-card.featured { transform: none; } }
 {% endblock %}
 
 {% block content %}
 <span class="eyebrow">Pricing</span>
-<h1 class="page-title">Three audit tiers. No subscriptions.</h1>
-<p class="page-lede">Every tier includes both the <strong>AEO measurement</strong> (does the AI mention &amp; cite you?) and the <strong>GEO foundations check</strong> (can the AI even read your site?). Pick the depth that matches the decision you're trying to make. <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">Why both matter →</a></p>
+<h1 class="page-title">Buy once or track monthly. From $29.</h1>
+<p class="page-lede">Every tier includes both the <strong>AEO measurement</strong> (does the AI mention &amp; cite you?) and the <strong>GEO foundations check</strong> (can the AI even read your site?). One-off audits give you a snapshot; monitoring tracks how it changes. <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">Why both matter →</a></p>
 
-<div class="pricing-grid">
-  <div class="price-card">
-    <div class="tier-name">Spotlight</div>
-    <div class="tier-price">$49<small>once</small></div>
-    <p class="tagline">Google AI Overviews + one engine of your choice. The smallest audit that still reveals patterns.</p>
-    <ul class="feature-list">
-      <li>Google AI Overviews + 1 chosen engine</li>
-      <li>20 queries across brand, category &amp; comparison</li>
-      <li>GEO foundations check — first 3 of 15 unlocked</li>
-      <li>Competitor &amp; source-domain analysis</li>
-      <li>Online report + PDF export</li>
-      <li>Delivered in minutes</li>
-    </ul>
-    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
-  </div>
+<section class="price-section">
+  <span class="price-section-label">One-off audit</span>
+  <div class="pricing-grid cols-3">
+    <div class="price-card free">
+      <div class="tier-name">Free preview</div>
+      <div class="tier-price">$0</div>
+      <p class="tagline">A fast Google AI Overviews snapshot — see if your brand is even on the radar.</p>
+      <ul class="feature-list">
+        <li>Google AI Overviews only</li>
+        <li>8 buyer-facing queries</li>
+        <li>Visibility + citation rate</li>
+        <li>Auto-extracted competitor list</li>
+        <li>First 3 of 15 GEO checks</li>
+      </ul>
+      <a href="/#preview" class="tier-cta">Run free preview →</a>
+    </div>
 
-  <div class="price-card featured">
-    <span class="badge">Most popular</span>
-    <div class="tier-name">Full Audit</div>
-    <div class="tier-price">$149<small>once</small></div>
-    <p class="tagline">Every major AI engine, the full 40-query matrix and hallucination scoring. The complete diagnostic.</p>
-    <ul class="feature-list">
-      <li>All 5 engines: Claude, ChatGPT, Perplexity, Gemini &amp; Google</li>
-      <li>40 queries × 5 engines = 200 AI answers</li>
-      <li>GEO foundations check — all 15 unlocked with fix instructions</li>
-      <li>Hallucination &amp; sentiment scoring</li>
-      <li>Engine heatmap, citation map, share-of-voice</li>
-      <li>CSV + PDF export</li>
-    </ul>
-    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
-  </div>
+    <div class="price-card">
+      <div class="tier-name">Two-engine</div>
+      <div class="tier-price">$29<small>once</small></div>
+      <p class="tagline">Google AI + ChatGPT — the two engines most buyers actually use. The smallest paid audit.</p>
+      <ul class="feature-list">
+        <li>Google AI + ChatGPT</li>
+        <li>40 buyer-facing queries</li>
+        <li>Competitor share-of-voice</li>
+        <li>Hallucination &amp; sentiment scoring</li>
+        <li>All 15 GEO foundations checks</li>
+        <li>CSV + PDF export</li>
+      </ul>
+      <a href="/#preview" class="tier-cta">Start with free preview →</a>
+    </div>
 
-  <div class="price-card">
-    <div class="tier-name">Audit + Action Plan</div>
-    <div class="tier-price">$349<small>once</small></div>
-    <p class="tagline">Everything in Full Audit, plus 10 done-for-you recommendations with example copy your content team can publish.</p>
-    <ul class="feature-list">
-      <li>Everything in Full Audit</li>
-      <li>10 specific written recommendations</li>
-      <li>Example schema, FAQ &amp; About-page copy</li>
-      <li>PR &amp; link-building target list</li>
-      <li>Re-audit credit (run again in 60 days)</li>
-    </ul>
-    <a href="/#preview" class="tier-cta">Start with a free preview →</a>
+    <div class="price-card featured">
+      <span class="badge">Most useful</span>
+      <div class="tier-name">Full audit</div>
+      <div class="tier-price">$79<small>once</small></div>
+      <p class="tagline">Every major AI engine, the full 40-query matrix and hallucination scoring. The complete one-off diagnostic.</p>
+      <ul class="feature-list">
+        <li>All 5 engines: ChatGPT, Claude, Perplexity, Gemini &amp; Google AI</li>
+        <li>40 queries × 5 engines = 200 AI answers</li>
+        <li>Engine heatmap, citation map</li>
+        <li>Hallucination + accuracy checks</li>
+        <li>Per-query drill-down evidence</li>
+        <li>All 15 GEO foundations checks</li>
+      </ul>
+      <a href="/#preview" class="tier-cta">Start with free preview →</a>
+    </div>
   </div>
-</div>
+</section>
+
+<section class="price-section">
+  <span class="price-section-label">Or track monthly</span>
+  <div class="pricing-grid cols-2" style="max-width: 760px;">
+    <div class="price-card">
+      <div class="tier-name">Two-engine monitoring</div>
+      <div class="tier-price">$25<small>/mo</small></div>
+      <p class="tagline">Watch the two engines most buyers use, every month. Cancel anytime.</p>
+      <ul class="feature-list">
+        <li>Google AI + ChatGPT</li>
+        <li>Monthly re-runs, automatic</li>
+        <li>Trend chart over time</li>
+        <li>Logged-in dashboard access</li>
+        <li>Add unlimited brands</li>
+      </ul>
+      <a href="/#preview" class="tier-cta">Start with free preview →</a>
+    </div>
+
+    <div class="price-card featured">
+      <span class="badge">Best value</span>
+      <div class="tier-name">Full monitoring</div>
+      <div class="tier-price">$75<small>/mo</small></div>
+      <p class="tagline">Track every AI engine continuously. The complete view of how AI sees you.</p>
+      <ul class="feature-list">
+        <li>All 5 engines monitored monthly</li>
+        <li>Per-engine trend charts</li>
+        <li>Competitor + source change alerts</li>
+        <li>Hallucination flagging</li>
+        <li>Logged-in dashboard access</li>
+        <li>Add unlimited brands</li>
+      </ul>
+      <a href="/#preview" class="tier-cta">Start with free preview →</a>
+    </div>
+  </div>
+</section>
 
 <h2>Compare in detail</h2>
 <table class="compare">
   <thead>
     <tr>
       <th>Feature</th>
-      <th>Spotlight</th>
-      <th>Full Audit</th>
-      <th>Action Plan</th>
+      <th>Free</th>
+      <th>Two-engine</th>
+      <th>Full</th>
+      <th>2-engine /mo</th>
+      <th>Full /mo</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>Google AI Overviews</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-    <tr><td>ChatGPT, Claude, Perplexity, Gemini</td><td>1 of 4</td><td class="yes">All 4</td><td class="yes">All 4</td></tr>
-    <tr><td>Buyer-facing queries tested</td><td>20</td><td>40</td><td>40</td></tr>
-    <tr><td>AI answers analysed</td><td>~40</td><td>200</td><td>200</td></tr>
-    <tr><td>Visibility, citation &amp; competitor scoring</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-    <tr><td>GEO foundations check (15 technical checks)</td><td>3 of 15</td><td class="yes">All 15</td><td class="yes">All 15</td></tr>
-    <tr><td>Hallucination &amp; sentiment scoring</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-    <tr><td>Engine heatmap &amp; per-query drill-down</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-    <tr><td>10 written recommendations + example copy</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
-    <tr><td>Re-audit credit (60 days)</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
-    <tr><td>CSV + PDF export</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-    <tr><td>Delivery</td><td>~1 min</td><td>~10 min</td><td>~15 min</td></tr>
+    <tr><td>Google AI Overviews</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>ChatGPT</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Claude, Perplexity, Gemini</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td></tr>
+    <tr><td>Buyer-facing queries tested</td><td>8</td><td>40</td><td>40</td><td>40</td><td>40</td></tr>
+    <tr><td>AI answers analysed</td><td>8</td><td>80</td><td>200</td><td>80/mo</td><td>200/mo</td></tr>
+    <tr><td>Auto-extracted competitor list</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>GEO foundations check (15)</td><td>3</td><td class="yes">All 15</td><td class="yes">All 15</td><td class="yes">All 15</td><td class="yes">All 15</td></tr>
+    <tr><td>Hallucination &amp; sentiment scoring</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Engine heatmap &amp; drill-down</td><td class="no">—</td><td>2 eng</td><td class="yes">5 eng</td><td>2 eng</td><td class="yes">5 eng</td></tr>
+    <tr><td>Trend chart (over time)</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Logged-in dashboard</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>CSV + PDF export</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Delivery</td><td>~1 min</td><td>~5 min</td><td>~10 min</td><td>monthly</td><td>monthly</td></tr>
   </tbody>
 </table>
 
-<h2>Coming soon: Monitoring</h2>
-<p>An audit is a snapshot. AI engines drift weekly. The next product tier is recurring monthly audits with diff alerts when your visibility moves up or down. <a href="/product/monitoring" style="color:var(--blue); font-weight:700;">Learn more →</a></p>
-
 <h2>Frequently asked</h2>
 <div class="faq-item">
-  <h4>What if I need more than 40 queries?</h4>
-  <p>Email us — we run custom audits for agencies and large brands at $5 per additional query. There's no upper limit.</p>
+  <h4>What's the difference between two-engine and full audit?</h4>
+  <p>Two-engine ($29) tests Google AI Overviews and ChatGPT — the two engines most buyers actually use today. Full audit ($79) adds Claude, Perplexity and Gemini for complete coverage. Start with two-engine if you're cost-sensitive; pick full if you want to be sure you're not missing visibility in a less-mainstream engine.</p>
 </div>
 <div class="faq-item">
-  <h4>Can I switch which engine the Spotlight tier covers?</h4>
-  <p>Yes. You pick at checkout — ChatGPT, Claude, Perplexity or Gemini. You can also upgrade to Full Audit later and we'll credit your $49.</p>
+  <h4>Why monthly monitoring instead of just running another audit?</h4>
+  <p>AI engines drift weekly. An audit is a snapshot in time. Monitoring re-runs the same audit every month so you can see trends — is your visibility improving or declining, which competitors are gaining ground, which sources keep getting cited. You also get a logged-in dashboard to add more brands or run on-demand audits.</p>
 </div>
 <div class="faq-item">
   <h4>How is this different from a normal SEO audit?</h4>
@@ -233,10 +291,10 @@
 </div>
 <div class="faq-item">
   <h4>Do results drift between runs?</h4>
-  <p>Yes. AI answers vary day-to-day even with identical questions. The signal you should trust is the <em>pattern</em> — which engines mention you, which competitors keep showing up, which sources keep getting cited. Single-answer noise is normal.</p>
+  <p>Yes. AI answers vary day-to-day even with identical questions. The signal you should trust is the <em>pattern</em> — which engines mention you, which competitors keep showing up, which sources keep getting cited. That's why monitoring is more reliable than a single audit.</p>
 </div>
 <div class="faq-item">
   <h4>What's your refund policy?</h4>
-  <p>If the audit doesn't run successfully, you get a full refund. If it runs and you don't find it useful, contact <a href="/support">support</a> and we'll work something out.</p>
+  <p>If the audit doesn't run successfully, you get a full automatic refund. If it runs and you don't find it useful, contact <a href="/support">support</a> within 14 days and we'll work something out. Monthly monitoring can be cancelled anytime — you keep access through the end of the current billing period.</p>
 </div>
 {% endblock %}

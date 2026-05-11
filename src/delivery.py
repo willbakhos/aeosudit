@@ -9,9 +9,10 @@ from typing import Any
 import resend
 
 TIER_LABELS = {
-    "spotlight": "Spotlight ($49)",
-    "full": "Full Audit ($149)",
-    "action_plan": "Audit + Action Plan ($349)",
+    "two_engine": "Two-engine ($29)",
+    "full_audit": "Full audit ($79)",
+    "two_engine_monthly": "Two-engine monitoring ($25/mo)",
+    "full_monthly": "Full monitoring ($75/mo)",
 }
 
 
