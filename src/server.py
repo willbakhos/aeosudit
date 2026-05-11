@@ -31,6 +31,7 @@ from fastapi.responses import (
     PlainTextResponse,
     RedirectResponse,
 )
+from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pydantic import BaseModel, EmailStr, Field
 
@@ -107,6 +108,13 @@ def _make_run_id(brand_name: str) -> str:
 
 app = FastAPI(title="monitoraeo")
 app.include_router(dashboard_router)
+
+# Public assets (logos, team photos, OG images, anything you want hosted at a
+# stable URL). Drop files into the repo's `static/` dir and reference them at
+# https://www.monitoraeo.com/static/<filename>.
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+_STATIC_DIR.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 
 @app.on_event("startup")
