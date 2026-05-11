@@ -1,0 +1,91 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}Monitoring · monitoraeo{% endblock %}
+{% block content %}
+<h1>Monitoring</h1>
+<p class="lede">Each tracked brand is re-audited automatically on the 1st of every month. Subscribers can also trigger one extra manual run per calendar month.</p>
+
+{% if not rows %}
+  <div class="empty">
+    <p style="margin:0 0 12px;">No brands tracked yet.</p>
+    <a class="btn" href="/dashboard/brands/new">Add your first brand →</a>
+  </div>
+{% else %}
+  {% for row in rows %}
+    {% set b = row.brand %}
+    <div class="card" style="margin-bottom: 16px;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0 0 4px;"><a href="/dashboard/brands/{{ b.id }}" style="color:var(--ink);">{{ b.name }}</a></h2>
+          <p style="margin:0; color:var(--muted); font-size:13px;">
+            <code>{{ b.domain }}</code>
+            {% if b.tier == 'two_engine_monthly' %}
+              <span class="pill scheduled" style="margin-left:8px;">Two Engine Monitoring</span>
+            {% elif b.tier == 'full_monthly' %}
+              <span class="pill scheduled" style="margin-left:8px;">Full Monitoring</span>
+            {% else %}
+              <span class="pill muted" style="margin-left:8px;">Free dashboard</span>
+            {% endif %}
+          </p>
+        </div>
+        <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0;">
+          <button class="btn ghost" type="submit" {% if b.tier and row.runs_left == 0 %}disabled title="Monthly quota reached"{% endif %}>
+            Run audit now
+          </button>
+        </form>
+      </div>
+
+      <div class="grid cols-3" style="margin-top:18px;">
+        <div class="metric" style="background:#f8fafc; border:1px solid var(--line); border-radius:12px;">
+          <div class="label">Last run</div>
+          <div class="value" style="font-size:18px;">
+            {% if b.last_run_at %}
+              {{ b.last_run_at.strftime('%Y-%m-%d %H:%M') }} UTC
+            {% else %}
+              <span style="color:var(--muted);">Never</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="metric" style="background:#f8fafc; border:1px solid var(--line); border-radius:12px;">
+          <div class="label">Next scheduled</div>
+          <div class="value" style="font-size:18px;">
+            {% if b.tier %}
+              {{ row.next_scheduled.strftime('%Y-%m-%d %H:%M') }} UTC
+            {% else %}
+              <span style="color:var(--muted);">—</span>
+            {% endif %}
+          </div>
+          <div class="sub">{% if b.tier %}1st of next month{% else %}Subscribe to enable auto-runs{% endif %}</div>
+        </div>
+        <div class="metric" style="background:#f8fafc; border:1px solid var(--line); border-radius:12px;">
+          <div class="label">Runs this month</div>
+          <div class="value" style="font-size:18px;">{{ b.runs_this_month or 0 }} / {{ row.monthly_quota }}</div>
+          <div class="sub">{{ row.runs_left }} left</div>
+        </div>
+      </div>
+
+      {% if row.trend_runs %}
+        <h3 style="margin-top:24px;">Recent trend</h3>
+        <div style="display:grid; grid-template-columns:repeat({{ row.trend_runs|length }}, 1fr); gap:8px;">
+          {% for run in row.trend_runs %}
+            <div style="text-align:center; padding:14px 8px; background:white; border:1px solid var(--line); border-radius:10px;">
+              <div style="color:var(--muted); font-size:11px; font-weight:800;">{{ run.started_at.strftime('%b %d') }}</div>
+              <div style="font-size:24px; font-weight:900; letter-spacing:-.02em; margin-top:4px; color:{% if (run.visibility_rate or 0) > 0.5 %}var(--success){% elif (run.visibility_rate or 0) > 0.2 %}var(--warning){% else %}var(--danger){% endif %};">
+                {{ '%.0f'|format((run.visibility_rate or 0) * 100) }}%
+              </div>
+              <div style="color:var(--muted); font-size:11px; margin-top:2px;">vis</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="margin-top:18px; color:var(--muted); font-size:13px;">No runs yet — first scheduled audit fires on {{ row.next_scheduled.strftime('%b %d') }}.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="card" style="margin-top:32px; background:#f0f9ff; border-color:rgba(37,99,235,.18);">
+  <h3 style="margin-top:0;">How the cron works</h3>
+  <p style="color:var(--ink-2); font-size:14px; margin:8px 0;">Scheduled runs fire at 06:00 UTC on the 1st of each month. Brands are queued and processed in batches so spikes don't overload Apify or OpenRouter — your run will start within a window after the scheduled time.</p>
+  <p style="color:var(--muted); font-size:13px; margin:8px 0 0;">Subscribers get <strong>2 runs per calendar month</strong>: 1 from cron + 1 manual. The counter resets on the 1st when the new cron run fires.</p>
+</div>
+{% endblock %}

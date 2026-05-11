@@ -44,8 +44,27 @@ def get_session() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    """Create tables if they don't exist. Safe to call on every server start."""
-    SQLModel.metadata.create_all(engine())
+    """Create tables if they don't exist + apply additive column migrations.
+    Safe to call on every server start (idempotent via IF NOT EXISTS)."""
+    from sqlalchemy import text
+    eng = engine()
+    SQLModel.metadata.create_all(eng)
+
+    # Additive migrations — Postgres ALTER TABLE IF NOT EXISTS keeps this idempotent.
+    # Whenever you add a column to a SQLModel above, add the matching ALTER here.
+    migrations = [
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS tier VARCHAR DEFAULT ''",
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMP",
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS next_scheduled_run TIMESTAMP",
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_this_month INTEGER DEFAULT 0",
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_month_anchor TIMESTAMP",
+    ]
+    with eng.begin() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+            except Exception as exc:  # noqa: BLE001
+                print(f"[init_db] migration skipped: {sql} -> {type(exc).__name__}: {exc}")
 
 
 class TrackedBrand(SQLModel, table=True):
@@ -66,6 +85,23 @@ class TrackedBrand(SQLModel, table=True):
     engines: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
     locale_country: str = "US"
     locale_language: str = "en"
+
+    # Subscription tier — drives which engines run on the scheduled cron.
+    # "two_engine_monthly" -> Google AI + ChatGPT
+    # "full_monthly"       -> all 5 engines
+    # ""                   -> no monitoring subscription, brand is dashboard-only
+    tier: str = ""
+
+    # Scheduling state — updated by the cron worker on each run.
+    # last_run_at: when the most recent successful run completed.
+    # next_scheduled_run: when the next automatic run will fire (1st of month).
+    # runs_this_month: count of runs in the current calendar month (auto + manual).
+    # Subscribers are capped at 2 runs per month (cron + 1 manual re-run).
+    last_run_at: datetime | None = None
+    next_scheduled_run: datetime | None = None
+    runs_this_month: int = 0
+    runs_month_anchor: datetime | None = None
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

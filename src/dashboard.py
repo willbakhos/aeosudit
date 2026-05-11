@@ -1,8 +1,8 @@
 """monitor-dashboard: logged-in product surface.
 
 Users sign in with a Supabase magic link, register the brands + competitors
-they want to track, kick off audits manually, and see headline metrics
-trending over time.
+they want to track, see monthly cron-scheduled audits trended over time,
+and browse past reports.
 
 Routes are mounted under /dashboard/ so they live alongside the existing
 public marketing site (monitoraeo.com) without colliding."""
@@ -13,7 +13,7 @@ import json
 import os
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -41,9 +41,48 @@ _jinja = Environment(
     autoescape=select_autoescape(("html", "htm", "xml", "j2")),
 )
 
-# Default engines for a monitoring run. Cheapest single engine first; users
-# can add more by editing the brand row.
+# Default engines for a brand with no monitoring tier (free dashboard usage).
+# Subscribers' tier (two_engine_monthly / full_monthly) overrides this — see
+# _engines_for_brand below.
 DEFAULT_ENGINES = ["Google AI Overviews"]
+CHATGPT_LABEL = "ChatGPT"
+
+# Subscribers get N runs per calendar month (cron + manual combined).
+MONTHLY_RUN_QUOTA = 2
+
+
+def _engines_for_brand(brand: TrackedBrand) -> set[str] | None:
+    """Resolve which engines should run for a brand based on its tier.
+    Returns None to mean "no filter / all configured engines".
+
+    two_engine_monthly -> {Google AI Overviews, ChatGPT}
+    full_monthly       -> all engines
+    no tier            -> Google AI Overviews only (free dashboard view)
+    """
+    if brand.tier == "full_monthly":
+        return None  # no filter — all configured engines
+    if brand.tier == "two_engine_monthly":
+        return {"Google AI Overviews", CHATGPT_LABEL}
+    # Free dashboard usage: just Google AI Overviews
+    return {"Google AI Overviews"}
+
+
+def _compute_next_scheduled_run(now: datetime | None = None) -> datetime:
+    """Return the 1st of next month at 06:00 UTC. The cron worker will pick
+    these up in batches when their next_scheduled_run <= now()."""
+    now = now or datetime.utcnow()
+    year, month = (now.year + 1, 1) if now.month == 12 else (now.year, now.month + 1)
+    return datetime(year, month, 1, 6, 0, 0)
+
+
+def _reset_monthly_counter_if_needed(brand: TrackedBrand) -> None:
+    """Reset runs_this_month at the start of each calendar month so the quota
+    refreshes. Mutates the brand in place; caller is responsible for committing."""
+    now = datetime.utcnow()
+    anchor = brand.runs_month_anchor
+    if anchor is None or (anchor.year, anchor.month) != (now.year, now.month):
+        brand.runs_this_month = 0
+        brand.runs_month_anchor = now
 
 
 def _render(name: str, **ctx: Any) -> HTMLResponse:
@@ -163,7 +202,7 @@ def index(request: Request):
                 .order_by(AuditRunRecord.started_at.desc())
             ).first()
             summaries.append({"brand": b, "latest": latest})
-    return _render("brand_list.html.j2", user=user, summaries=summaries)
+    return _render("brand_list.html.j2", user=user, summaries=summaries, active_tab="brands")
 
 
 @router.get("/brands/new", response_class=HTMLResponse)
@@ -171,7 +210,7 @@ def brand_new(request: Request):
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
-    return _render("brand_form.html.j2", user=user, brand=None)
+    return _render("brand_form.html.j2", user=user, brand=None, active_tab="brands")
 
 
 def _parse_competitors(raw: str) -> list[dict[str, str]]:
@@ -199,10 +238,13 @@ def brand_create(
     ground_truth: str = Form(""),
     locale_country: str = Form("US"),
     locale_language: str = Form("en"),
+    tier: str = Form(""),
 ):
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
+    valid_tiers = {"", "two_engine_monthly", "full_monthly"}
+    tier_clean = tier.strip() if tier.strip() in valid_tiers else ""
     brand = TrackedBrand(
         user_id=UUID(user["id"]),
         name=name.strip(),
@@ -213,6 +255,8 @@ def brand_create(
         engines=list(DEFAULT_ENGINES),
         locale_country=locale_country.strip() or "US",
         locale_language=locale_language.strip() or "en",
+        tier=tier_clean,
+        next_scheduled_run=_compute_next_scheduled_run() if tier_clean else None,
     )
     with get_session() as s:
         s.add(brand)
@@ -262,6 +306,7 @@ def brand_detail(request: Request, brand_id: str):
         runs=list(reversed(runs)),  # newest first in the table
         trend_json=json.dumps(trend),
         latest=latest_complete,
+        active_tab="brands",
     )
 
 
@@ -296,6 +341,118 @@ def brand_run(request: Request, brand_id: str):
         daemon=True,
     ).start()
     return RedirectResponse(f"/dashboard/brands/{brand_id}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Reports tab — every audit run across all brands, newest first
+# ---------------------------------------------------------------------------
+
+@router.get("/reports", response_class=HTMLResponse)
+def reports(request: Request):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    with get_session() as s:
+        brands = list(
+            s.exec(
+                select(TrackedBrand).where(TrackedBrand.user_id == UUID(user["id"]))
+            )
+        )
+        brand_by_id = {b.id: b for b in brands}
+        runs = list(
+            s.exec(
+                select(AuditRunRecord)
+                .where(AuditRunRecord.user_id == UUID(user["id"]))
+                .order_by(AuditRunRecord.started_at.desc())
+            )
+        )
+    return _render(
+        "reports.html.j2",
+        user=user,
+        runs=runs,
+        brand_by_id=brand_by_id,
+        active_tab="reports",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Monitoring tab — cron status, schedule, recent metric progression
+# ---------------------------------------------------------------------------
+
+@router.get("/monitoring", response_class=HTMLResponse)
+def monitoring(request: Request):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    with get_session() as s:
+        brands = list(
+            s.exec(
+                select(TrackedBrand)
+                .where(TrackedBrand.user_id == UUID(user["id"]))
+                .order_by(TrackedBrand.created_at.desc())
+            )
+        )
+        # Last 6 complete runs per brand for the trend strip
+        rows = []
+        for b in brands:
+            runs = list(
+                s.exec(
+                    select(AuditRunRecord)
+                    .where(AuditRunRecord.brand_id == b.id)
+                    .where(AuditRunRecord.status == "complete")
+                    .order_by(AuditRunRecord.started_at.desc())
+                )
+            )[:6]
+            runs.reverse()  # oldest -> newest left to right
+            rows.append({
+                "brand": b,
+                "trend_runs": runs,
+                "next_scheduled": b.next_scheduled_run or _compute_next_scheduled_run(),
+                "monthly_quota": MONTHLY_RUN_QUOTA,
+                "runs_left": max(0, MONTHLY_RUN_QUOTA - (b.runs_this_month or 0)),
+            })
+    return _render("monitoring.html.j2", user=user, rows=rows, active_tab="monitoring")
+
+
+# ---------------------------------------------------------------------------
+# Settings — profile / billing / team
+# ---------------------------------------------------------------------------
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_root(request: Request):
+    return _settings_page(request, "profile")
+
+
+@router.get("/settings/profile", response_class=HTMLResponse)
+def settings_profile(request: Request):
+    return _settings_page(request, "profile")
+
+
+@router.get("/settings/billing", response_class=HTMLResponse)
+def settings_billing(request: Request):
+    return _settings_page(request, "billing")
+
+
+@router.get("/settings/team", response_class=HTMLResponse)
+def settings_team(request: Request):
+    return _settings_page(request, "team")
+
+
+def _settings_page(request: Request, sub: str) -> HTMLResponse | RedirectResponse:
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    with get_session() as s:
+        brand_count = len(list(
+            s.exec(select(TrackedBrand).where(TrackedBrand.user_id == UUID(user["id"])))
+        ))
+    return _render(
+        "settings.html.j2",
+        user=user,
+        sub=sub,
+        brand_count=brand_count,
+        active_tab="settings",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +505,7 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
         if not brand or not run_rec:
             return
         run_id = run_rec.run_id
+        engine_labels = _engines_for_brand(brand)
         brand_snapshot = {
             "name": brand.name,
             "domain": brand.domain,
@@ -358,14 +516,33 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
                 if c.get("name")
             ],
             "ground_truth": list(brand.ground_truth or []),
-            "engine_labels": list(brand.engines or DEFAULT_ENGINES),
+            "engine_labels": engine_labels,
             "country": brand.locale_country,
             "language": brand.locale_language,
         }
 
     try:
-        # The existing pipeline expects a SiteConfig + a list of engine
-        # adapters. Build both from the brand snapshot.
+        # OpenRouter engine configs — only the labels the tier covers.
+        # ChatGPT = gpt-5-mini, Claude = claude-haiku-4.5, Perplexity = sonar,
+        # Gemini = google/gemini-2.5-flash. Match config/site.yaml.
+        openrouter_models = {
+            "ChatGPT": "openai/gpt-5-mini",
+            "Claude": "anthropic/claude-haiku-4.5",
+            "Perplexity": "perplexity/sonar",
+            "Gemini": "google/gemini-2.5-flash",
+        }
+        labels = brand_snapshot["engine_labels"]  # set or None (means "all")
+        openrouter_configs = [
+            OpenRouterEngineConfig(label=lbl, model=mdl)
+            for lbl, mdl in openrouter_models.items()
+            if labels is None or lbl in labels
+        ]
+        apify_configs = (
+            [ApifyEngineConfig(label="Google AI Overviews")]
+            if labels is None or "Google AI Overviews" in labels
+            else []
+        )
+
         site = SiteConfig(
             brand=BrandConfig(
                 name=brand_snapshot["name"],
@@ -378,21 +555,22 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
                 country=brand_snapshot["country"],
                 language=brand_snapshot["language"],
             ),
-            # OpenRouter engines need explicit model IDs which we don't store
-            # per-brand yet. v1 monitoring uses Google AI Overviews only;
-            # extend by reading model IDs from a brand-level config later.
             engines=EnginesConfig(
-                openrouter=[],
-                apify=[ApifyEngineConfig(label="Google AI Overviews")],
+                openrouter=openrouter_configs,
+                apify=apify_configs,
             ),
         )
-        engine_objs = [
-            ApifyEngine(
-                label="Google AI Overviews",
-                country_code=brand_snapshot["country"],
-                language_code=brand_snapshot["language"],
+        engine_objs: list = []
+        for cfg in openrouter_configs:
+            engine_objs.append(OpenRouterEngine(model=cfg.model, label=cfg.label))
+        for cfg in apify_configs:
+            engine_objs.append(
+                ApifyEngine(
+                    label=cfg.label,
+                    country_code=brand_snapshot["country"],
+                    language_code=brand_snapshot["language"],
+                )
             )
-        ]
         queries = _generic_brand_queries(brand_snapshot["name"])
 
         run_dir = output_root / run_id
@@ -427,7 +605,18 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
                 run_rec.citation_rate = citation
                 run_rec.share_of_voice = sov
                 s.add(run_rec)
-                s.commit()
+            # Update brand scheduling state on successful runs.
+            brand_row = s.get(TrackedBrand, UUID(brand_id))
+            if brand_row:
+                _reset_monthly_counter_if_needed(brand_row)
+                brand_row.last_run_at = datetime.utcnow()
+                brand_row.runs_this_month += 1
+                # Recompute next scheduled run (1st of next month) if subscriber.
+                if brand_row.tier:
+                    brand_row.next_scheduled_run = _compute_next_scheduled_run()
+                brand_row.updated_at = datetime.utcnow()
+                s.add(brand_row)
+            s.commit()
     except Exception as exc:  # noqa: BLE001
         with get_session() as s:
             run_rec = s.get(AuditRunRecord, UUID(run_record_id))

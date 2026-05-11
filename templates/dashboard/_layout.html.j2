@@ -3,113 +3,225 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}monitor-dashboard{% endblock %}</title>
+<title>{% block title %}monitoraeo{% endblock %}</title>
 <meta name="robots" content="noindex,nofollow">
 <style>
   :root {
     --ink: #0f172a;
     --ink-2: #1e293b;
     --muted: #64748b;
+    --soft-muted: #94a3b8;
     --line: rgba(15,23,42,.10);
     --bg: #f6f8fc;
     --panel: #ffffff;
     --blue: #2563eb;
     --purple: #7c3aed;
+    --cyan: #06b6d4;
     --success: #16a34a;
     --warning: #d97706;
     --danger: #dc2626;
     --radius: 14px;
     --shadow: 0 6px 22px rgba(15,23,42,.06);
+    --shadow-soft: 0 14px 35px rgba(15,23,42,.08);
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: -apple-system, "Inter", system-ui, sans-serif;
-    font-size: 15px; line-height: 1.5;
+    margin: 0;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(37,99,235,.10), transparent 32rem),
+      radial-gradient(circle at 92% 6%, rgba(124,58,237,.08), transparent 30rem),
+      var(--bg);
+    color: var(--ink);
+    font-family: Inter, -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
   a { color: var(--blue); text-decoration: none; }
   a:hover { text-decoration: underline; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; padding: 2px 6px; border-radius: 6px; background: rgba(37,99,235,.08); color: #1d4ed8; }
+
+  /* ---------- Topbar ---------- */
   nav.topbar {
-    position: sticky; top: 0; z-index: 10;
-    background: rgba(255,255,255,.92);
-    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--line);
-    padding: 12px 24px;
-    display: flex; align-items: center; gap: 16px;
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 18px;
   }
   nav.topbar .brand {
-    font-weight: 800; letter-spacing: -.01em; color: var(--ink);
-    display: flex; align-items: center; gap: 10px;
+    display: inline-flex; align-items: center; gap: 12px;
+    font-weight: 900; letter-spacing: -.025em;
+    color: var(--ink); text-decoration: none;
+    font-size: 17px;
   }
-  nav.topbar .brand .dot {
-    width: 10px; height: 10px; border-radius: 999px;
+  nav.topbar .brand:hover { text-decoration: none; }
+  nav.topbar .logo {
+    width: 36px; height: 36px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    color: white;
     background: linear-gradient(135deg, var(--blue), var(--purple));
+    box-shadow: 0 12px 24px rgba(37,99,235,.26);
   }
   nav.topbar .spacer { flex: 1; }
-  nav.topbar .meta { color: var(--muted); font-size: 13px; }
-  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-  h1 { font-size: 28px; letter-spacing: -.01em; margin: 0 0 8px; }
-  h2 { font-size: 18px; letter-spacing: -.01em; margin: 24px 0 8px; }
-  p.lede { color: var(--muted); margin: 0 0 24px; }
+  nav.topbar .user-meta {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 6px 14px 6px 12px;
+    border-radius: 999px;
+    background: rgba(241,245,249,.7);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: 13px; font-weight: 700;
+  }
+  nav.topbar .user-meta .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    color: white; background: linear-gradient(135deg, var(--blue), var(--purple));
+    font-size: 11px; font-weight: 900;
+  }
+
+  /* ---------- Tab bar ---------- */
+  .tabbar {
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.6);
+    padding: 0 28px;
+  }
+  .tabbar-inner {
+    max-width: 1180px; margin: 0 auto;
+    display: flex; gap: 4px; overflow-x: auto;
+  }
+  .tab {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 18px;
+    color: var(--muted);
+    font-size: 14px; font-weight: 800;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+  }
+  .tab:hover { color: var(--ink); text-decoration: none; }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab svg { flex-shrink: 0; }
+
+  /* ---------- Main content ---------- */
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 28px 60px; }
+  h1 { font-size: 30px; letter-spacing: -.035em; margin: 0 0 8px; font-weight: 900; }
+  h2 { font-size: 20px; letter-spacing: -.02em; margin: 28px 0 12px; font-weight: 850; }
+  h3 { font-size: 16px; letter-spacing: -.01em; margin: 20px 0 8px; font-weight: 800; }
+  p.lede { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+
+  /* ---------- Cards & layout primitives ---------- */
   .card {
     background: var(--panel); border: 1px solid var(--line);
     border-radius: var(--radius); box-shadow: var(--shadow);
-    padding: 20px;
+    padding: 22px;
   }
+  .card + .card { margin-top: 16px; }
   .grid { display: grid; gap: 16px; }
+  .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
   .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
   .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 720px) {
+  @media (max-width: 900px) {
+    .grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
     .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
   }
+
+  /* ---------- Buttons / form ---------- */
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 10px 16px; border-radius: 10px; font-weight: 600;
+    padding: 10px 16px; border-radius: 10px; font-weight: 700;
     background: linear-gradient(135deg, var(--blue), var(--purple));
     color: #fff; border: 0; cursor: pointer;
     text-decoration: none; font-size: 14px;
   }
-  .btn:hover { text-decoration: none; opacity: .94; }
-  .btn.ghost {
-    background: #fff; color: var(--ink); border: 1px solid var(--line);
-  }
+  .btn:hover { text-decoration: none; opacity: .94; transform: translateY(-1px); }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
   .btn[disabled] { opacity: .5; cursor: not-allowed; }
-  label { display: block; font-weight: 600; margin: 12px 0 6px; }
-  input[type=text], input[type=email], textarea {
+  label { display: block; font-weight: 700; margin: 12px 0 6px; font-size: 13px; color: var(--ink-2); }
+  input[type=text], input[type=email], textarea, select {
     width: 100%; padding: 10px 12px; border-radius: 10px;
     border: 1px solid var(--line); background: #fff; font: inherit;
   }
-  textarea { min-height: 84px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
+  textarea { min-height: 84px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+
+  /* ---------- Table ---------- */
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-  .pill {
-    display: inline-block; padding: 2px 8px; border-radius: 999px;
-    font-size: 12px; font-weight: 600;
-  }
+  th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: #f8fafc; }
+  td:first-child, th:first-child { padding-left: 18px; }
+  td:last-child, th:last-child { padding-right: 18px; }
+  tr:last-child td { border-bottom: 0; }
+
+  /* ---------- Pills ---------- */
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
   .pill.running { background: #fef9c3; color: #854d0e; }
-  .pill.complete { background: #dcfce7; color: #166534; }
+  .pill.complete, .pill.ok { background: #dcfce7; color: #166534; }
   .pill.failed { background: #fee2e2; color: #991b1b; }
-  .metric { padding: 16px; }
-  .metric .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-  .metric .value { font-size: 28px; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
-  .empty {
-    border: 1px dashed var(--line); border-radius: var(--radius);
-    padding: 36px; text-align: center; color: var(--muted);
-  }
+  .pill.scheduled { background: #dbeafe; color: #1e40af; }
+  .pill.muted { background: #f1f5f9; color: var(--muted); }
+
+  /* ---------- Metric tile ---------- */
+  .metric { padding: 18px; }
+  .metric .label { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+  .metric .value { font-size: 30px; font-weight: 950; letter-spacing: -.03em; margin-top: 6px; line-height: 1.05; }
+  .metric .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 36px; text-align: center; color: var(--muted); }
+
+  /* ---------- Sub-tabs (used inside Settings) ---------- */
+  .subtabs { display: flex; gap: 8px; margin: 0 0 22px; padding: 4px; background: rgba(241,245,249,.7); border-radius: 12px; width: fit-content; }
+  .subtab { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-decoration: none; }
+  .subtab:hover { color: var(--ink); text-decoration: none; background: white; }
+  .subtab.active { color: var(--ink); background: white; box-shadow: var(--shadow); }
 </style>
 </head>
 <body>
+{% set active_tab = active_tab|default('') %}
 <nav class="topbar">
-  <a href="/dashboard" class="brand"><span class="dot"></span><span>monitor-dashboard</span></a>
+  <a href="/dashboard" class="brand">
+    <span class="logo" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <span>monitoraeo</span>
+  </a>
   <span class="spacer"></span>
   {% if user %}
-    <span class="meta">{{ user.email }}</span>
+    <span class="user-meta">
+      <span class="avatar">{{ (user.email or '?')[0]|upper }}</span>
+      <span>{{ user.email }}</span>
+    </span>
     <form method="post" action="/dashboard/logout" style="margin:0">
       <button class="btn ghost" type="submit">Sign out</button>
     </form>
   {% endif %}
 </nav>
+{% if user %}
+<div class="tabbar">
+  <div class="tabbar-inner">
+    <a href="/dashboard" class="tab {% if active_tab == 'brands' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      Brands
+    </a>
+    <a href="/dashboard/reports" class="tab {% if active_tab == 'reports' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      Reports
+    </a>
+    <a href="/dashboard/monitoring" class="tab {% if active_tab == 'monitoring' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Monitoring
+    </a>
+    <a href="/dashboard/settings" class="tab {% if active_tab == 'settings' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </a>
+  </div>
+</div>
+{% endif %}
 <main>
   {% block content %}{% endblock %}
 </main>

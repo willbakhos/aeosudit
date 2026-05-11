@@ -40,6 +40,16 @@
     </div>
   </div>
 
+  <label for="tier" style="margin-top:18px;">Monitoring tier</label>
+  <select name="tier" id="tier">
+    <option value="">Free dashboard (no scheduled runs)</option>
+    <option value="two_engine_monthly">Two Engine Monitoring — $35/mo (Google AI + ChatGPT, monthly cron)</option>
+    <option value="full_monthly">Full Monitoring — $95/mo (all 5 engines, monthly cron)</option>
+  </select>
+  <p style="color:var(--muted); font-size:12px; margin:6px 0 0;">
+    You can change this later. Subscription tiers will trigger Stripe checkout once payments are wired up.
+  </p>
+
   <div style="margin-top:20px;display:flex;gap:8px;">
     <button class="btn" type="submit">Save brand</button>
     <a class="btn ghost" href="/dashboard">Cancel</a>

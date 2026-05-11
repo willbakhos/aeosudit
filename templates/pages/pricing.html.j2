@@ -1,7 +1,7 @@
 {% extends "_layout.html.j2" %}
 {% set active = 'pricing' %}
 {% set canonical_path = "/pricing" %}
-{% set page_description = "Four audit tiers from $29. Two-engine $29 or full 5-engine $79 one-off. Monitoring from $25/mo. Free preview, no account required." %}
+{% set page_description = "Four audit tiers from $29. Two Engine Audit $29 or full 5-engine $79 one-off. Monitoring from $35/mo. Free preview, no account required." %}
 {% block title %}Pricing — monitoraeo (from $29){% endblock %}
 
 {% block schema %}
@@ -12,7 +12,7 @@
     {
       "@type": "Product",
       "@id": "{{ _base_url }}/pricing#two-engine",
-      "name": "monitoraeo — Two-engine audit",
+      "name": "monitoraeo — Two Engine Audit",
       "description": "Google AI Overviews + ChatGPT. 40 buyer-facing queries with visibility, citation and competitor analysis. PDF export.",
       "brand": { "@id": "{{ _base_url }}/#org" },
       "offers": {
@@ -40,12 +40,12 @@
     {
       "@type": "Product",
       "@id": "{{ _base_url }}/pricing#two-engine-monthly",
-      "name": "monitoraeo — Two-engine monitoring",
+      "name": "monitoraeo — Two Engine Monitoring",
       "description": "Recurring monthly audit against Google AI Overviews + ChatGPT, with trend chart over time and competitor change alerts.",
       "brand": { "@id": "{{ _base_url }}/#org" },
       "offers": {
         "@type": "Offer",
-        "price": "25",
+        "price": "35",
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock",
         "url": "{{ _base_url }}/pricing"
@@ -59,7 +59,7 @@
       "brand": { "@id": "{{ _base_url }}/#org" },
       "offers": {
         "@type": "Offer",
-        "price": "75",
+        "price": "95",
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock",
         "url": "{{ _base_url }}/pricing"
@@ -74,7 +74,7 @@
           "name": "What's the difference between two-engine and full audit?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Two-engine ($29) tests Google AI Overviews and ChatGPT — the two engines most buyers actually use today. Full audit ($79) adds Claude, Perplexity and Gemini for complete coverage. Start with two-engine if you're cost-sensitive; pick full if you want to be sure you're not missing visibility in a less-mainstream engine."
+            "text": "Two Engine Audit ($29) tests Google AI Overviews and ChatGPT — the two engines most buyers actually use today. Full audit ($79) adds Claude, Perplexity and Gemini for complete coverage. Start with two-engine if you're cost-sensitive; pick full if you want to be sure you're not missing visibility in a less-mainstream engine."
           }
         },
         {
@@ -180,7 +180,7 @@
     </div>
 
     <div class="price-card">
-      <div class="tier-name">Two-engine</div>
+      <div class="tier-name">Two Engine Audit</div>
       <div class="tier-price">$29<small>once</small></div>
       <p class="tagline">Google AI + ChatGPT — the two engines most buyers actually use. The smallest paid audit.</p>
       <ul class="feature-list">
@@ -216,8 +216,8 @@
   <span class="price-section-label">Or track monthly</span>
   <div class="pricing-grid cols-2" style="max-width: 760px;">
     <div class="price-card">
-      <div class="tier-name">Two-engine monitoring</div>
-      <div class="tier-price">$25<small>/mo</small></div>
+      <div class="tier-name">Two Engine Monitoring</div>
+      <div class="tier-price">$35<small>/mo</small></div>
       <p class="tagline">Watch the two engines most buyers use, every month. Cancel anytime.</p>
       <ul class="feature-list">
         <li>Google AI + ChatGPT</li>
@@ -232,7 +232,7 @@
     <div class="price-card featured">
       <span class="badge">Best value</span>
       <div class="tier-name">Full monitoring</div>
-      <div class="tier-price">$75<small>/mo</small></div>
+      <div class="tier-price">$95<small>/mo</small></div>
       <p class="tagline">Track every AI engine continuously. The complete view of how AI sees you.</p>
       <ul class="feature-list">
         <li>All 5 engines monitored monthly</li>
@@ -253,7 +253,7 @@
     <tr>
       <th>Feature</th>
       <th>Free</th>
-      <th>Two-engine</th>
+      <th>Two Engine Audit</th>
       <th>Full</th>
       <th>2-engine /mo</th>
       <th>Full /mo</th>
@@ -279,7 +279,7 @@
 <h2>Frequently asked</h2>
 <div class="faq-item">
   <h4>What's the difference between two-engine and full audit?</h4>
-  <p>Two-engine ($29) tests Google AI Overviews and ChatGPT — the two engines most buyers actually use today. Full audit ($79) adds Claude, Perplexity and Gemini for complete coverage. Start with two-engine if you're cost-sensitive; pick full if you want to be sure you're not missing visibility in a less-mainstream engine.</p>
+  <p>Two Engine Audit ($29) tests Google AI Overviews and ChatGPT — the two engines most buyers actually use today. Full audit ($79) adds Claude, Perplexity and Gemini for complete coverage. Start with two-engine if you're cost-sensitive; pick full if you want to be sure you're not missing visibility in a less-mainstream engine.</p>
 </div>
 <div class="faq-item">
   <h4>Why monthly monitoring instead of just running another audit?</h4>

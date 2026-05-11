@@ -1,0 +1,50 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}Reports · monitoraeo{% endblock %}
+{% block content %}
+<h1>Reports</h1>
+<p class="lede">Every audit run across all your tracked brands. Click into a row to open the full report.</p>
+
+{% if not runs %}
+  <div class="empty">
+    <p style="margin:0 0 12px;">No audits run yet.</p>
+    <a class="btn" href="/dashboard">Go to Brands → Run audit</a>
+  </div>
+{% else %}
+  <div class="card" style="padding:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Brand</th>
+          <th>Started</th>
+          <th>Status</th>
+          <th>Visibility</th>
+          <th>Citation</th>
+          <th>Queries</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in runs %}
+          {% set b = brand_by_id[r.brand_id] %}
+          <tr>
+            <td>
+              <a href="/dashboard/brands/{{ b.id }}" style="font-weight:800;">{{ b.name }}</a>
+              <div style="color:var(--muted); font-size:12px;">{{ b.domain }}</div>
+            </td>
+            <td>{{ r.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td><span class="pill {{ r.status }}">{{ r.status }}</span></td>
+            <td>{% if r.visibility_rate is not none %}{{ '%.0f'|format(r.visibility_rate * 100) }}%{% else %}—{% endif %}</td>
+            <td>{% if r.citation_rate is not none %}{{ '%.0f'|format(r.citation_rate * 100) }}%{% else %}—{% endif %}</td>
+            <td>{{ r.queries_total or '—' }}</td>
+            <td>
+              {% if r.status == 'complete' %}
+                <a href="/report/{{ r.run_id }}" target="_blank" class="btn ghost" style="padding:6px 12px; font-size:12px;">Open report ↗</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

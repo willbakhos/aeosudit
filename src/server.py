@@ -76,7 +76,7 @@ CHATGPT_LABEL = "ChatGPT"
 
 TIER_PLANS: dict[str, dict[str, Any]] = {
     "two_engine": {
-        "label": "Two-engine ($29)",
+        "label": "Two Engine Audit ($29)",
         "price_usd": 29,
         "stripe_mode": "payment",
         "stripe_env": "STRIPE_PRICE_TWO_ENGINE",
@@ -85,7 +85,7 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "action_plan": False,
     },
     "full_audit": {
-        "label": "Full audit ($79)",
+        "label": "Full Audit ($79)",
         "price_usd": 79,
         "stripe_mode": "payment",
         "stripe_env": "STRIPE_PRICE_FULL_AUDIT",
@@ -94,8 +94,8 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "action_plan": False,
     },
     "two_engine_monthly": {
-        "label": "Two-engine monitoring ($25/mo)",
-        "price_usd": 25,
+        "label": "Two Engine Monitoring ($35/mo)",
+        "price_usd": 35,
         "stripe_mode": "subscription",
         "stripe_env": "STRIPE_PRICE_TWO_ENGINE_MONTHLY",
         "engines": ["Google AI Overviews", CHATGPT_LABEL],
@@ -103,8 +103,8 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "action_plan": False,
     },
     "full_monthly": {
-        "label": "Full monitoring ($75/mo)",
-        "price_usd": 75,
+        "label": "Full Monitoring ($95/mo)",
+        "price_usd": 95,
         "stripe_mode": "subscription",
         "stripe_env": "STRIPE_PRICE_FULL_MONTHLY",
         "engines": "all",
@@ -157,7 +157,7 @@ app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 @app.on_event("startup")
 def _init_dashboard_db() -> None:
-    """Best-effort: create monitor-dashboard tables if DATABASE_URL is set.
+    """Best-effort: create monitor-dashboard tables + start the cron worker.
     The public marketing + checkout flow does not depend on Postgres, so we
     swallow errors here — the dashboard surface will surface them at use."""
     if os.environ.get("DATABASE_URL", "").strip():
@@ -165,6 +165,12 @@ def _init_dashboard_db() -> None:
             init_db()
         except Exception as exc:  # noqa: BLE001
             print(f"[monitor-dashboard] init_db skipped: {exc}")
+        # Start the monitoring cron worker. Idempotent + safe if disabled.
+        try:
+            from src.cron_worker import start as start_cron
+            start_cron()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[monitor-dashboard] cron worker not started: {exc}")
 
 
 @app.get("/health")

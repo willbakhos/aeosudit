@@ -103,8 +103,8 @@ def audit(
             "free = Google only, ~8 queries (lead magnet). "
             "two_engine = Google + ChatGPT, 40 queries + LLM scoring ($29). "
             "full_audit = all 5 engines × 40 queries + LLM scoring ($79). "
-            "two_engine_monthly = same as two_engine, monthly billing ($25/mo). "
-            "full_monthly = same as full_audit, monthly billing ($75/mo)."
+            "two_engine_monthly = same as two_engine, monthly billing ($35/mo). "
+            "full_monthly = same as full_audit, monthly billing ($95/mo)."
         ),
     ),
 ) -> None:
@@ -122,7 +122,7 @@ def audit(
     site = _load_config(config)
     query_list = _load_queries(queries)
 
-    # Engines + LLM scoring per tier. Two-engine tiers run on Google + ChatGPT
+    # Engines + LLM scoring per tier. Two Engine Audit tiers run on Google + ChatGPT
     # only; full tiers run all 5. The --engines flag (advanced) overrides the
     # tier default when set.
     explicit_engines = (
