@@ -12,9 +12,7 @@
     </p>
   </div>
   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-    {% if brand.tier %}
-      <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/queries">Edit monitored questions</a>
-    {% endif %}
+    <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/queries">Edit monitored questions</a>
     <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0;">
       <button class="btn" type="submit">Run audit now</button>
     </form>
