@@ -180,9 +180,8 @@ def _draw_pill(
     bg: tuple[int, int, int] = WHITE,
     fg: tuple[int, int, int] = BLUE_700,
     font_size: int = 13,
-    pad_x: int = 14,
-    pad_y: int = 8,
-    height: int = 34,
+    pad_x: int = 18,
+    height: int = 40,
 ) -> int:
     """Solid pill chip. Returns the x-coordinate right after the pill (for chaining)."""
     font = _font(font_size, "bold")
@@ -193,11 +192,54 @@ def _draw_pill(
         radius=height // 2,
         fill=bg,
     )
-    # Vertically center the text — Inter sits a bit high optically
     bbox = font.getbbox(label)
     text_h = bbox[3] - bbox[1]
     ty = y + (height - text_h) // 2 - bbox[1] - 1
     draw.text((x + pad_x, ty), label, font=font, fill=fg)
+    return x + pill_w
+
+
+def _draw_dual_pill(
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    label: str,
+    value: str,
+    *,
+    height: int = 40,
+) -> int:
+    """Pill with an uppercase label and an inset 'code' chip on the right.
+    Mirrors the report hero pattern: DOMAIN [decidr.ai]."""
+    label_font = _font(12, "bold")
+    value_font = _font(13, "bold")
+
+    pad_outer = 16
+    gap = 9
+    inner_pad_x = 11
+    inner_h = height - 14
+
+    label_w = int(draw.textlength(label, font=label_font))
+    value_w = int(draw.textlength(value, font=value_font))
+    inner_w = value_w + inner_pad_x * 2
+    pill_w = pad_outer + label_w + gap + inner_w + pad_outer - 4
+
+    # Outer pill (white)
+    draw.rounded_rectangle((x, y, x + pill_w, y + height), radius=height // 2, fill=WHITE)
+    # Label
+    lbbox = label_font.getbbox(label)
+    ly = y + (height - (lbbox[3] - lbbox[1])) // 2 - lbbox[1] - 1
+    draw.text((x + pad_outer, ly), label, font=label_font, fill=BLUE_700)
+    # Inner code-style chip
+    inner_x = x + pad_outer + label_w + gap
+    inner_y = y + (height - inner_h) // 2
+    draw.rounded_rectangle(
+        (inner_x, inner_y, inner_x + inner_w, inner_y + inner_h),
+        radius=inner_h // 2,
+        fill=(219, 234, 254),  # blue-100
+    )
+    vbbox = value_font.getbbox(value)
+    vy = inner_y + (inner_h - (vbbox[3] - vbbox[1])) // 2 - vbbox[1] - 1
+    draw.text((inner_x + inner_pad_x, vy), value, font=value_font, fill=BLUE_700)
     return x + pill_w
 
 
@@ -281,17 +323,23 @@ def _draw_browser_screenshot(
         fill=(180, 195, 230),
     )
 
-    # Screenshot area
+    # Screenshot area — fit to frame width (no horizontal clipping), crop
+    # any overflow off the bottom. Shows the full website width (header,
+    # nav, hero CTA) which is what users actually want to recognize.
     shot_w, shot_h = w, h - bar_h
     if site_screenshot and site_screenshot.exists():
         try:
             shot = Image.open(site_screenshot).convert("RGB")
-            ratio = max(shot_w / shot.width, shot_h / shot.height)
-            new_size = (int(shot.width * ratio), int(shot.height * ratio))
+            ratio = shot_w / shot.width
+            new_size = (shot_w, max(1, int(shot.height * ratio)))
             shot = shot.resize(new_size, Image.Resampling.LANCZOS)
-            crop_x = (shot.width - shot_w) // 2
-            shot = shot.crop((crop_x, 0, crop_x + shot_w, shot_h))
-            card.paste(shot, (0, bar_h))
+            if shot.height >= shot_h:
+                shot = shot.crop((0, 0, shot_w, shot_h))
+                card.paste(shot, (0, bar_h))
+            else:
+                # Shorter than frame — letterbox vertically against frame bg
+                pad_top = (shot_h - shot.height) // 2
+                card.paste(shot, (0, bar_h + pad_top))
         except (OSError, ValueError):
             pass
     else:
@@ -454,28 +502,27 @@ def generate(
     )
     cur_y += tile_h + 22
 
-    # Pill chips row — domain · engine · queries
+    # Pill chips row — DOMAIN [decidr.ai], ENGINE [Google AI Overviews]
     chips_y = cur_y
-    chip_gap = 8
+    chip_gap = 10
     chip_x = left_x
-    chip_x = _draw_pill(draw, chip_x, chips_y, domain, bg=WHITE, fg=BLUE_700) + chip_gap
-    chip_x = _draw_pill(draw, chip_x, chips_y, "GOOGLE AI OVERVIEWS", bg=WHITE, fg=BLUE_700) + chip_gap
+    chip_x = _draw_dual_pill(draw, chip_x, chips_y, "DOMAIN", domain) + chip_gap
+    chip_x = _draw_dual_pill(draw, chip_x, chips_y, "ENGINE", "Google AI Overviews") + chip_gap
 
-    # Footer brand line — bottom-left
+    # Footer — single clean brand line, bottom-left
     footer_font = _font(13, "bold")
-    foot_y = H - pad_y - 8
+    foot_y = H - pad_y - 6
     draw.text((left_x, foot_y), "MONITORAEO.COM", font=footer_font, fill=BLUE_200)
-    cta_font = _font(13, "semibold")
-    cta_x = left_x + int(draw.textlength("MONITORAEO.COM", font=footer_font)) + 12
-    draw.text((cta_x, foot_y), "·  See the full audit  →", font=cta_font, fill=SLATE_400)
 
     # ============================================================
-    # RIGHT COLUMN — browser-frame screenshot
+    # RIGHT COLUMN — browser-frame screenshot (landscape, fit-width)
     # ============================================================
-    shot_x0 = W - pad_x - 470
+    shot_w_target = 520
+    shot_h_target = 330
     shot_x1 = W - pad_x
-    shot_y0 = pad_y + 26
-    shot_y1 = H - pad_y - 60
+    shot_x0 = shot_x1 - shot_w_target
+    shot_y0 = pad_y + 36
+    shot_y1 = shot_y0 + shot_h_target
     _draw_browser_screenshot(img, site_screenshot, domain, (shot_x0, shot_y0, shot_x1, shot_y1))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
