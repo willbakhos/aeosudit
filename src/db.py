@@ -58,6 +58,7 @@ def init_db() -> None:
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS next_scheduled_run TIMESTAMP",
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_this_month INTEGER DEFAULT 0",
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_month_anchor TIMESTAMP",
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS monitored_queries JSONB DEFAULT '[]'::jsonb",
     ]
     with eng.begin() as conn:
         for sql in migrations:
@@ -101,6 +102,14 @@ class TrackedBrand(SQLModel, table=True):
     next_scheduled_run: datetime | None = None
     runs_this_month: int = 0
     runs_month_anchor: datetime | None = None
+
+    # The list of buyer-question strings to run each monitoring cycle. Empty
+    # means "use the generic 8 templated brand questions" (lazy fallback) —
+    # which is how free / unconfigured brands work. Subscribers edit this on
+    # /dashboard/brands/{id}/queries up to their tier's monitored_query_limit.
+    monitored_queries: list[str] = Field(
+        default_factory=list, sa_column=Column(JSONB)
+    )
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

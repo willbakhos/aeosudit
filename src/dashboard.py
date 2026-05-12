@@ -344,6 +344,117 @@ def brand_run(request: Request, brand_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Monitored queries — edit the buyer questions the cron audits each cycle
+# ---------------------------------------------------------------------------
+
+def _tier_query_limit(tier: str) -> int:
+    """Look up the monitored_query_limit for a brand's tier. Imports lazily
+    to avoid a circular import with src.server at module load."""
+    from src.server import TIER_PLANS
+    return int(TIER_PLANS.get(tier, {}).get("monitored_query_limit", 0))
+
+
+def _load_owned_brand(request: Request, brand_id: str) -> tuple[dict, TrackedBrand]:
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        raise HTTPException(401, "Sign in required")
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or str(brand.user_id) != user["id"]:
+            raise HTTPException(404, "Brand not found")
+        # Detach by expunging — caller works from in-memory state.
+        s.expunge(brand)
+    return user, brand
+
+
+@router.get("/brands/{brand_id}/queries", response_class=HTMLResponse)
+def brand_queries_edit(request: Request, brand_id: str, saved: int = 0, error: str = ""):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or str(brand.user_id) != user["id"]:
+            raise HTTPException(404, "Brand not found")
+        # Effective list = stored if any, else the templated seed
+        if brand.monitored_queries:
+            current = [q for q in brand.monitored_queries if q and q.strip()]
+        else:
+            current = [q.query for q in _generic_brand_queries(brand.name)]
+        limit = _tier_query_limit(brand.tier)
+        s.expunge(brand)
+    return _render(
+        "brand_queries.html.j2",
+        user=user,
+        brand=brand,
+        queries_text="\n".join(current),
+        query_count=len(current),
+        limit=limit,
+        saved=bool(saved),
+        error=error or None,
+        active_tab="monitoring",
+    )
+
+
+@router.post("/brands/{brand_id}/queries")
+def brand_queries_save(
+    request: Request,
+    brand_id: str,
+    queries: str = Form(""),
+):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    # Parse + de-duplicate while preserving order
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for raw in (queries or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        key = line.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(line)
+
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or str(brand.user_id) != user["id"]:
+            raise HTTPException(404, "Brand not found")
+        limit = _tier_query_limit(brand.tier)
+        if limit <= 0:
+            return RedirectResponse(
+                f"/dashboard/brands/{brand_id}/queries?error=needs_monitoring_tier",
+                status_code=303,
+            )
+        if len(cleaned) > limit:
+            return RedirectResponse(
+                f"/dashboard/brands/{brand_id}/queries?error=over_limit",
+                status_code=303,
+            )
+        brand.monitored_queries = cleaned
+        brand.updated_at = datetime.utcnow()
+        s.add(brand)
+        s.commit()
+    return RedirectResponse(
+        f"/dashboard/brands/{brand_id}/queries?saved=1", status_code=303
+    )
+
+
+# ---------------------------------------------------------------------------
 # Reports tab — every audit run across all brands, newest first
 # ---------------------------------------------------------------------------
 
@@ -460,9 +571,10 @@ def _settings_page(request: Request, sub: str) -> HTMLResponse | RedirectRespons
 # ---------------------------------------------------------------------------
 
 def _generic_brand_queries(brand_name: str) -> list:
-    """Eight buyer-facing questions templated from the brand name. Mirrors the
-    free-preview generator so monitoring uses the same shape of queries the
-    public audit does, without a customer-supplied query CSV."""
+    """Eight buyer-facing questions templated from the brand name. Used as the
+    lazy seed when a brand has no `monitored_queries` set yet — both for the
+    edit-page pre-fill and for the audit-time fallback so a free brand can
+    still run a one-shot audit without anyone ever curating a query list."""
     from src.models import Query
     return [
         Query(query=f"What is {brand_name}?", type="brand"),
@@ -474,6 +586,28 @@ def _generic_brand_queries(brand_name: str) -> list:
         Query(query=f"How does {brand_name} work?", type="brand"),
         Query(query=f"{brand_name} pricing", type="brand"),
     ]
+
+
+def _classify_query(text: str) -> str:
+    """Best-effort type tag for a user-entered query. We use 'comparison' for
+    anything that smells like a vs / alternative / best-of question, otherwise
+    'brand'. The Query.type field is informational (drives heatmap grouping),
+    so getting it loosely right is enough."""
+    t = text.lower()
+    if any(kw in t for kw in (" vs ", "alternatives", "alternative", "best ", "compare", "comparison", "instead of")):
+        return "comparison"
+    return "brand"
+
+
+def _resolve_brand_queries(brand: TrackedBrand) -> list:
+    """Return the list of Query objects to run for this brand. Honours the
+    user's curated `monitored_queries` when present; otherwise falls back to
+    the templated 8 so first-run / free-tier brands still get an audit."""
+    from src.models import Query
+    texts = [q.strip() for q in (brand.monitored_queries or []) if q and q.strip()]
+    if not texts:
+        return _generic_brand_queries(brand.name)
+    return [Query(query=t, type=_classify_query(t)) for t in texts]
 
 
 def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
@@ -506,6 +640,9 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
             return
         run_id = run_rec.run_id
         engine_labels = _engines_for_brand(brand)
+        # Resolve the query list while the brand row is still attached to the
+        # session, then detach by stashing plain strings in the snapshot.
+        resolved_queries = _resolve_brand_queries(brand)
         brand_snapshot = {
             "name": brand.name,
             "domain": brand.domain,
@@ -519,6 +656,7 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
             "engine_labels": engine_labels,
             "country": brand.locale_country,
             "language": brand.locale_language,
+            "tier": brand.tier or "",
         }
 
     try:
@@ -571,7 +709,7 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
                     language_code=brand_snapshot["language"],
                 )
             )
-        queries = _generic_brand_queries(brand_snapshot["name"])
+        queries = resolved_queries
 
         run_dir = output_root / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -585,7 +723,20 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
             for r in responses
         ]
         write_csv(rows, run_dir)
-        write_html(rows, site, run_dir, tier="full")
+        # Monitoring runs always render the "full" report template so the
+        # subscriber sees every metric the paid one-shot audit produces. If
+        # their tier enables the action plan (full_monthly / two_engine_monthly),
+        # generate it with Claude before rendering so the report includes it.
+        from src.server import TIER_PLANS
+        plan_cfg = TIER_PLANS.get(brand_snapshot["tier"], {})
+        action_plan = None
+        if plan_cfg.get("action_plan"):
+            try:
+                from src.action_plan import generate as generate_action_plan
+                action_plan = generate_action_plan(rows, site)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[audit] action_plan generation failed: {type(exc).__name__}: {exc}")
+        write_html(rows, site, run_dir, tier="full", action_plan=action_plan)
 
         n = len(rows) or 1
         visibility = sum(1 for r in rows if r.deterministic.mentioned) / n
