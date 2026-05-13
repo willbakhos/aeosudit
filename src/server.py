@@ -961,7 +961,7 @@ async def stripe_webhook(request: Request) -> JSONResponse:
 
 
 RUN_ANOTHER_BAR = """
-<div style="position: fixed; bottom: 22px; right: 22px; z-index: 9999;
+<div class="report-floating-cta" style="position: fixed; bottom: 22px; right: 22px; z-index: 9999;
             font-family: Inter, system-ui, sans-serif;">
   <a href="/" style="display: inline-flex; align-items: center; gap: 8px;
                      padding: 12px 18px; border-radius: 999px;
@@ -972,6 +972,30 @@ RUN_ANOTHER_BAR = """
     + Run another preview
   </a>
 </div>
+"""
+
+# Injected into every served report. Detects whether the page is inside an
+# iframe (i.e. wrapped by /dashboard/reports/{id}) and hides the in-report
+# horizontal nav + floating "Run another preview" CTA — both are redundant
+# when the dashboard chrome and side-nav are already present. Standalone
+# (full-screen) views keep them.
+EMBED_AWARE_HEAD = """
+<style>
+  html.embedded .report-nav,
+  html.embedded nav.report-nav,
+  html.embedded .report-floating-cta { display: none !important; }
+</style>
+<script>
+  (function () {
+    try {
+      if (window.self !== window.top) {
+        document.documentElement.classList.add('embedded');
+      }
+    } catch (e) {
+      document.documentElement.classList.add('embedded');
+    }
+  })();
+</script>
 """
 
 
@@ -1026,10 +1050,11 @@ def serve_report(run_id: str, refresh: int = 0, tier: str = "full") -> HTMLRespo
     else:
         html = html_path.read_text()
     # Inject <base> so relative asset paths (site_screenshot.png) resolve to
-    # /report/{run_id}/… instead of /report/…
-    base_tag = f'<base href="/report/{run_id}/">'
+    # /report/{run_id}/… instead of /report/…, plus the embed-aware CSS that
+    # hides the in-report nav when this page is loaded inside an iframe.
+    head_inject = f'<base href="/report/{run_id}/">{EMBED_AWARE_HEAD}'
     if "<head>" in html:
-        html = html.replace("<head>", f"<head>{base_tag}", 1)
+        html = html.replace("<head>", f"<head>{head_inject}", 1)
     # Inject a floating "Run another preview" CTA when served over HTTP, so
     # visitors can audit a new domain without backing out manually.
     if "<body>" in html:
