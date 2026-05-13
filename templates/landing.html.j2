@@ -20,6 +20,20 @@
   .field label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .field input { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); font: inherit; font-size: 15px; background: white; }
   .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .field select {
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    padding: 12px 40px 12px 14px;
+    border-radius: 12px; border: 1px solid var(--line);
+    font: inherit; font-size: 15px; color: var(--ink);
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .field select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .field select::-ms-expand { display: none; }
   .form-card button { width: 100%; padding: 14px; border-radius: 999px; border: 0; background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 14px 28px rgba(37,99,235,.28); }
   .form-card .smallprint { margin: 12px 0 0; font-size: 12px; color: var(--soft-muted); text-align: center; }
 
