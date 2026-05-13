@@ -211,6 +211,11 @@
       </div>
       <a href="/how-it-works" class="desktop-only{% if active=='how' %} active{% endif %}">How it works</a>
       <a href="/pricing"{% if active=='pricing' %} class="active"{% endif %}>Pricing</a>
+      {% if user %}
+        <a href="/dashboard">Dashboard</a>
+      {% else %}
+        <a href="/dashboard/login" class="desktop-only">Log in</a>
+      {% endif %}
       <a href="/#preview" class="cta">Free preview →</a>
     </nav>
   </header>

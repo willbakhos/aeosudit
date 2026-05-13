@@ -195,19 +195,31 @@ class CheckoutRequest(BaseModel):
 SITE_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://monitoraeo.com").rstrip("/")
 
 
-def _render(name: str, **ctx: Any) -> HTMLResponse:
+def _render(name: str, request: Request | None = None, **ctx: Any) -> HTMLResponse:
     """Render a template (auto-prefixes 'pages/' for static pages).
-    Always injects base_url so the layout can build canonical/og URLs."""
+    Always injects base_url so the layout can build canonical/og URLs.
+    When `request` is provided we also resolve the Supabase session and
+    inject `user` so the public nav can show Login vs Dashboard."""
     if "/" not in name:
         name = f"pages/{name}"
     ctx.setdefault("base_url", SITE_BASE_URL)
+    if "user" not in ctx:
+        try:
+            from src.auth import current_user
+            ctx["user"] = current_user(request) if request is not None else None
+        except Exception:  # noqa: BLE001
+            ctx["user"] = None
     return HTMLResponse(_jinja.get_template(name).render(**ctx))
 
 
 @app.get("/", response_class=HTMLResponse)
-def index() -> HTMLResponse:
+def index(request: Request) -> HTMLResponse:
+    from src.auth import current_user
     return HTMLResponse(
-        _jinja.get_template("landing.html.j2").render(base_url=SITE_BASE_URL)
+        _jinja.get_template("landing.html.j2").render(
+            base_url=SITE_BASE_URL,
+            user=current_user(request),
+        )
     )
 
 
@@ -272,53 +284,53 @@ def sitemap_xml() -> Response:
 
 
 @app.get("/pricing", response_class=HTMLResponse)
-def page_pricing() -> HTMLResponse:
-    return _render("pricing.html.j2")
+def page_pricing(request: Request) -> HTMLResponse:
+    return _render("pricing.html.j2", request=request)
 
 
 @app.get("/what-is-aeo", response_class=HTMLResponse)
-def page_what_is_aeo() -> HTMLResponse:
-    return _render("what_is_aeo.html.j2")
+def page_what_is_aeo(request: Request) -> HTMLResponse:
+    return _render("what_is_aeo.html.j2", request=request)
 
 
 @app.get("/aeo-vs-seo", response_class=HTMLResponse)
-def page_aeo_vs_seo() -> HTMLResponse:
-    return _render("aeo_vs_seo.html.j2")
+def page_aeo_vs_seo(request: Request) -> HTMLResponse:
+    return _render("aeo_vs_seo.html.j2", request=request)
 
 
 @app.get("/what-is-geo", response_class=HTMLResponse)
-def page_what_is_geo() -> HTMLResponse:
-    return _render("what_is_geo.html.j2")
+def page_what_is_geo(request: Request) -> HTMLResponse:
+    return _render("what_is_geo.html.j2", request=request)
 
 
 @app.get("/product/audit", response_class=HTMLResponse)
-def page_product_audit() -> HTMLResponse:
-    return _render("product_audit.html.j2")
+def page_product_audit(request: Request) -> HTMLResponse:
+    return _render("product_audit.html.j2", request=request)
 
 
 @app.get("/product/monitoring", response_class=HTMLResponse)
-def page_product_monitoring() -> HTMLResponse:
-    return _render("product_monitoring.html.j2")
+def page_product_monitoring(request: Request) -> HTMLResponse:
+    return _render("product_monitoring.html.j2", request=request)
 
 
 @app.get("/how-it-works", response_class=HTMLResponse)
-def page_how_it_works() -> HTMLResponse:
-    return _render("how_it_works.html.j2")
+def page_how_it_works(request: Request) -> HTMLResponse:
+    return _render("how_it_works.html.j2", request=request)
 
 
 @app.get("/privacy", response_class=HTMLResponse)
-def page_privacy() -> HTMLResponse:
-    return _render("privacy.html.j2")
+def page_privacy(request: Request) -> HTMLResponse:
+    return _render("privacy.html.j2", request=request)
 
 
 @app.get("/terms", response_class=HTMLResponse)
-def page_terms() -> HTMLResponse:
-    return _render("terms.html.j2")
+def page_terms(request: Request) -> HTMLResponse:
+    return _render("terms.html.j2", request=request)
 
 
 @app.get("/support", response_class=HTMLResponse)
-def page_support(status: str = "") -> HTMLResponse:
-    return _render("support.html.j2", status=status or None)
+def page_support(request: Request, status: str = "") -> HTMLResponse:
+    return _render("support.html.j2", request=request, status=status or None)
 
 
 SUPPORT_TO_EMAIL = os.environ.get("SUPPORT_TO_EMAIL", "hello@example.com")
