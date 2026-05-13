@@ -431,12 +431,82 @@ def _generic_free_queries(brand: str, category: str | None) -> list[Query]:
     ]
 
 
-def _build_preview_site(domain: str, brand_name: str) -> SiteConfig:
+# Country code → display name for the loading-page + report header. The codes
+# match Apify's `countryCode` param (ISO 3166-1 alpha-2, uppercase).
+SUPPORTED_COUNTRIES: dict[str, str] = {
+    "US": "United States",
+    "AU": "Australia",
+    "GB": "United Kingdom",
+    "CA": "Canada",
+    "NZ": "New Zealand",
+    "IE": "Ireland",
+    "SG": "Singapore",
+    "IN": "India",
+    "DE": "Germany",
+    "FR": "France",
+    "ES": "Spain",
+    "IT": "Italy",
+    "NL": "Netherlands",
+    "BR": "Brazil",
+    "JP": "Japan",
+}
+
+# TLD → country guess for when the user doesn't pick one. Generic TLDs
+# (.com / .net / .org / .io / .ai) all fall through to US, which matches
+# Google's behaviour when the user isn't geolocated.
+_TLD_COUNTRY: dict[str, str] = {
+    "com.au": "AU", "net.au": "AU", "org.au": "AU", "au": "AU",
+    "co.uk": "GB", "org.uk": "GB", "uk": "GB",
+    "ca": "CA",
+    "co.nz": "NZ", "nz": "NZ",
+    "ie": "IE",
+    "com.sg": "SG", "sg": "SG",
+    "co.in": "IN", "in": "IN",
+    "de": "DE",
+    "fr": "FR",
+    "es": "ES",
+    "it": "IT",
+    "nl": "NL",
+    "com.br": "BR", "br": "BR",
+    "co.jp": "JP", "jp": "JP",
+}
+
+
+def _country_from_tld(domain: str) -> str:
+    """Best-effort country guess from a domain's TLD. Returns an ISO 3166-1
+    alpha-2 code (uppercase). Falls back to 'US' for generic TLDs."""
+    d = (domain or "").lower().strip().rstrip("/")
+    if "://" in d:
+        d = d.split("://", 1)[1]
+    d = d.split("/", 1)[0]
+    parts = d.split(".")
+    # Try 2-segment TLDs first (e.g., com.au, co.uk) then 1-segment.
+    if len(parts) >= 2:
+        two = ".".join(parts[-2:])
+        if two in _TLD_COUNTRY:
+            return _TLD_COUNTRY[two]
+    if parts:
+        one = parts[-1]
+        if one in _TLD_COUNTRY:
+            return _TLD_COUNTRY[one]
+    return "US"
+
+
+def _resolve_country(domain: str, user_country: str | None) -> str:
+    """Honour an explicit pick when it's a supported code; otherwise guess
+    from the TLD."""
+    code = (user_country or "").strip().upper()
+    if code and code in SUPPORTED_COUNTRIES:
+        return code
+    return _country_from_tld(domain)
+
+
+def _build_preview_site(domain: str, brand_name: str, country: str = "US") -> SiteConfig:
     return SiteConfig(
         brand=BrandConfig(name=brand_name, domain=domain, aliases=[domain]),
         competitors=[],
         ground_truth=[],
-        locale=LocaleConfig(country="US", language="en"),
+        locale=LocaleConfig(country=country, language="en"),
         engines=EnginesConfig(
             openrouter=[],
             apify=[ApifyEngineConfig(label=FREE_TIER_ENGINE)],
@@ -455,12 +525,12 @@ def _set_step(run_id: str, step: str, pct: int | None = None) -> None:
 
 
 def _run_preview_job(
-    run_id: str, domain: str, brand_name: str, category: str | None
+    run_id: str, domain: str, brand_name: str, category: str | None, country: str = "US"
 ) -> None:
     """Background worker for a free preview. Updates PREVIEW_JOBS as it progresses."""
     _set_step(run_id, "Capturing site screenshot…", 8)
     try:
-        site = _build_preview_site(domain, brand_name)
+        site = _build_preview_site(domain, brand_name, country=country)
         queries = _generic_free_queries(brand_name, category)
         engine_objs = [
             ApifyEngine(
@@ -521,8 +591,11 @@ def _run_preview_job(
         }
 
 
-def _start_preview(domain: str, brand: str, category: str | None) -> tuple[str, str, str]:
-    """Validate inputs, kick off a background preview run, return (run_id, normalised_domain, brand).
+def _start_preview(
+    domain: str, brand: str, category: str | None, country: str | None = None
+) -> tuple[str, str, str, str]:
+    """Validate inputs, kick off a background preview run.
+    Returns (run_id, normalised_domain, brand, resolved_country).
     Raises HTTPException(400) on bad input."""
     norm = _normalise_domain(domain)
     if not norm or "." not in norm:
@@ -535,14 +608,15 @@ def _start_preview(domain: str, brand: str, category: str | None) -> tuple[str, 
             "(e.g. 'JB Hi-Fi', not 'jbhifi'). We use this to match your name "
             "in AI answers.",
         )
+    resolved_country = _resolve_country(norm, country)
     run_id = _make_run_id(brand)
     PREVIEW_JOBS[run_id] = {"status": "queued", "step": "Starting up…"}
     threading.Thread(
         target=_run_preview_job,
-        args=(run_id, norm, brand, (category or "").strip() or None),
+        args=(run_id, norm, brand, (category or "").strip() or None, resolved_country),
         daemon=True,
     ).start()
-    return run_id, norm, brand
+    return run_id, norm, brand, resolved_country
 
 
 @app.post("/preview", response_class=HTMLResponse)
@@ -550,10 +624,17 @@ def submit_preview(
     domain: str = Form(...),
     brand_name: str = Form(...),
     category: str = Form(""),
+    country: str = Form(""),
 ) -> HTMLResponse:
-    run_id, norm, brand = _start_preview(domain, brand_name, category)
+    run_id, norm, brand, resolved_country = _start_preview(
+        domain, brand_name, category, country
+    )
     html = _jinja.get_template("loading.html.j2").render(
-        run_id=run_id, brand_name=brand, domain=norm,
+        run_id=run_id,
+        brand_name=brand,
+        domain=norm,
+        country_code=resolved_country,
+        country_name=SUPPORTED_COUNTRIES.get(resolved_country, resolved_country),
     )
     return HTMLResponse(html)
 
@@ -563,15 +644,24 @@ def submit_preview_get(
     d: str = "",
     b: str = "",
     c: str = "",
+    co: str = "",
     domain: str = "",
     brand: str = "",
     category: str = "",
+    country: str = "",
 ) -> HTMLResponse:
-    """Cold-email entry point. Either short (`d`/`b`/`c`) or long (`domain`/`brand`/`category`)
-    query params work — short keeps email URLs compact."""
-    run_id, norm, real_brand = _start_preview(d or domain, b or brand, c or category)
+    """Cold-email entry point. Either short (`d`/`b`/`c`/`co`) or long
+    (`domain`/`brand`/`category`/`country`) query params work — short keeps
+    email URLs compact."""
+    run_id, norm, real_brand, resolved_country = _start_preview(
+        d or domain, b or brand, c or category, co or country,
+    )
     html = _jinja.get_template("loading.html.j2").render(
-        run_id=run_id, brand_name=real_brand, domain=norm,
+        run_id=run_id,
+        brand_name=real_brand,
+        domain=norm,
+        country_code=resolved_country,
+        country_name=SUPPORTED_COUNTRIES.get(resolved_country, resolved_country),
     )
     return HTMLResponse(html)
 
