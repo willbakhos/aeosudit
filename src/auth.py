@@ -120,4 +120,22 @@ def current_user(request: Request) -> dict | None:
     sub = payload.get("sub")
     if not sub:
         return None
-    return {"id": sub, "email": payload.get("email")}
+    email = (payload.get("email") or "").strip().lower()
+    return {"id": sub, "email": email, "is_master": is_master(email)}
+
+
+# Comma-separated env var with email addresses that get full access to every
+# paid feature without going through Stripe — for the founders + ops team.
+# Defaults to a single seed address; override in prod with MASTER_ACCOUNTS.
+_DEFAULT_MASTERS = "william.bakhos@gmail.com"
+
+
+def master_emails() -> set[str]:
+    raw = os.environ.get("MASTER_ACCOUNTS", _DEFAULT_MASTERS)
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
+def is_master(email: str | None) -> bool:
+    if not email:
+        return False
+    return email.strip().lower() in master_emails()

@@ -38,7 +38,7 @@
             <td>{{ r.queries_total or '—' }}</td>
             <td>
               {% if r.status == 'complete' %}
-                <a href="/report/{{ r.run_id }}" target="_blank" class="btn ghost" style="padding:6px 12px; font-size:12px;">Open report ↗</a>
+                <a href="/dashboard/reports/{{ r.run_id }}" class="btn ghost" style="padding:6px 12px; font-size:12px;">Open report</a>
               {% endif %}
             </td>
           </tr>

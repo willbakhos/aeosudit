@@ -29,11 +29,18 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
           <a class="btn ghost" href="/dashboard/brands/{{ b.id }}/queries">Edit monitored questions</a>
-          <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0;">
-            <button class="btn ghost" type="submit" {% if b.tier and row.runs_left == 0 %}disabled title="Monthly quota reached"{% endif %}>
-              Run audit now
-            </button>
-          </form>
+          {% if user and user.is_master %}
+            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0; display:flex; gap:6px; align-items:center;">
+              <button class="btn ghost" type="submit" name="engine_set" value="two_engine" style="padding:8px 12px;">Run 2-engine</button>
+              <button class="btn ghost" type="submit" name="engine_set" value="full" style="padding:8px 12px;">Run all 5</button>
+            </form>
+          {% else %}
+            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0;">
+              <button class="btn ghost" type="submit" {% if b.tier and row.runs_left == 0 %}disabled title="Monthly quota reached"{% endif %}>
+                Run audit now
+              </button>
+            </form>
+          {% endif %}
         </div>
       </div>
 
@@ -67,17 +74,12 @@
       </div>
 
       {% if row.trend_runs %}
-        <h3 style="margin-top:24px;">Recent trend</h3>
-        <div style="display:grid; grid-template-columns:repeat({{ row.trend_runs|length }}, 1fr); gap:8px;">
-          {% for run in row.trend_runs %}
-            <div style="text-align:center; padding:14px 8px; background:white; border:1px solid var(--line); border-radius:10px;">
-              <div style="color:var(--muted); font-size:11px; font-weight:800;">{{ run.started_at.strftime('%b %d') }}</div>
-              <div style="font-size:24px; font-weight:900; letter-spacing:-.02em; margin-top:4px; color:{% if (run.visibility_rate or 0) > 0.5 %}var(--success){% elif (run.visibility_rate or 0) > 0.2 %}var(--warning){% else %}var(--danger){% endif %};">
-                {{ '%.0f'|format((run.visibility_rate or 0) * 100) }}%
-              </div>
-              <div style="color:var(--muted); font-size:11px; margin-top:2px;">vis</div>
-            </div>
-          {% endfor %}
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:24px;">
+          <h3 style="margin:0;">Recent trend</h3>
+          <span style="font-size:12px; color:var(--muted); font-weight:700;">{{ row.trend_runs|length }} run{{ '' if row.trend_runs|length == 1 else 's' }}</span>
+        </div>
+        <div style="position:relative; height:240px; margin-top:12px; background:white; border:1px solid var(--line); border-radius:14px; padding:14px;">
+          <canvas id="trend-{{ b.id }}" data-trend='{{ row.trend_json|safe }}'></canvas>
         </div>
       {% else %}
         <p style="margin-top:18px; color:var(--muted); font-size:13px;">No runs yet — first scheduled audit fires on {{ row.next_scheduled.strftime('%b %d') }}.</p>
@@ -86,9 +88,92 @@
   {% endfor %}
 {% endif %}
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    var canvases = document.querySelectorAll('canvas[data-trend]');
+    canvases.forEach(function (canvas) {
+      var data = JSON.parse(canvas.getAttribute('data-trend'));
+      if (!data.labels || !data.labels.length) return;
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Visibility %',
+              data: data.visibility,
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, .12)',
+              borderWidth: 2.5,
+              tension: 0.35,
+              fill: true,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#2563eb',
+            },
+            {
+              label: 'Citation rate %',
+              data: data.citation,
+              borderColor: '#7c3aed',
+              backgroundColor: 'rgba(124, 58, 237, .08)',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              tension: 0.35,
+              fill: false,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: '#7c3aed',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 14, font: { size: 12, weight: 600 }, color: '#334155' },
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, .94)',
+              titleFont: { weight: 700 },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function (ctx) {
+                  return ctx.dataset.label + ': ' + ctx.parsed.y + '%';
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', font: { size: 11, weight: 600 } },
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: 'rgba(15, 23, 42, .06)' },
+              ticks: {
+                color: '#64748b',
+                font: { size: 11 },
+                callback: function (v) { return v + '%'; },
+              },
+            },
+          },
+        },
+      });
+    });
+  })();
+</script>
+
 <div class="card" style="margin-top:32px; background:#f0f9ff; border-color:rgba(37,99,235,.18);">
-  <h3 style="margin-top:0;">How the cron works</h3>
-  <p style="color:var(--ink-2); font-size:14px; margin:8px 0;">Scheduled runs fire at 06:00 UTC on the 1st of each month. Brands are queued and processed in batches so spikes don't overload Apify or OpenRouter — your run will start within a window after the scheduled time.</p>
-  <p style="color:var(--muted); font-size:13px; margin:8px 0 0;">Subscribers get <strong>2 runs per calendar month</strong>: 1 from cron + 1 manual. The counter resets on the 1st when the new cron run fires.</p>
+  <h3 style="margin-top:0;">How monitoring works</h3>
+  <p style="color:var(--ink-2); font-size:14px; margin:8px 0;">We automatically re-audit each of your brands on the <strong>1st of every month</strong>, then save the report and update your trend chart. You'll get the same depth of analysis as a one-off audit — just running on autopilot in the background.</p>
+  <p style="color:var(--muted); font-size:13px; margin:8px 0 0;">Each subscription includes <strong>2 audit runs per month</strong>: the automatic one on the 1st, plus one extra you can trigger any time with the "Run audit now" button (useful right after a site change). The counter resets on the 1st when the new month starts.</p>
 </div>
 {% endblock %}

@@ -13,9 +13,18 @@
   </div>
   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/queries">Edit monitored questions</a>
-    <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0;">
-      <button class="btn" type="submit">Run audit now</button>
-    </form>
+    {% if user and user.is_master %}
+      <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0; display:flex; gap:6px; align-items:center; padding:6px; background:rgba(37,99,235,.06); border:1px solid rgba(37,99,235,.18); border-radius:14px;">
+        <span style="font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#1d4ed8; padding:0 8px;">Run as</span>
+        <button class="btn ghost" type="submit" name="engine_set" value="google_only" style="padding:8px 12px;">Google AI only</button>
+        <button class="btn ghost" type="submit" name="engine_set" value="two_engine" style="padding:8px 12px;">Two engine</button>
+        <button class="btn" type="submit" name="engine_set" value="full" style="padding:8px 12px;">All 5 engines</button>
+      </form>
+    {% else %}
+      <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0;">
+        <button class="btn" type="submit">Run audit now</button>
+      </form>
+    {% endif %}
   </div>
 </div>
 
@@ -107,7 +116,7 @@
           <td>{{ r.queries_total or "—" }}</td>
           <td>
             {% if r.status == "complete" %}
-              <a href="/report/{{ r.run_id }}" target="_blank">Open</a>
+              <a href="/dashboard/reports/{{ r.run_id }}">Open</a>
             {% elif r.status == "failed" %}
               <span style="color:var(--danger);" title="{{ r.error or '' }}">failed</span>
             {% else %}—{% endif %}

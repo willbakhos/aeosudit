@@ -175,6 +175,7 @@
   .subtab { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-decoration: none; }
   .subtab:hover { color: var(--ink); text-decoration: none; background: white; }
   .subtab.active { color: var(--ink); background: white; box-shadow: var(--shadow); }
+  {% block extra_css %}{% endblock %}
 </style>
 </head>
 <body>

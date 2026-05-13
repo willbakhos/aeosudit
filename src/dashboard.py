@@ -310,8 +310,16 @@ def brand_detail(request: Request, brand_id: str):
     )
 
 
+# Engine-set keys master accounts can pick from when starting a manual run.
+ENGINE_SETS: dict[str, set[str] | None] = {
+    "google_only": {"Google AI Overviews"},
+    "two_engine": {"Google AI Overviews", CHATGPT_LABEL},
+    "full": None,  # None means "no filter / all configured engines"
+}
+
+
 @router.post("/brands/{brand_id}/runs")
-def brand_run(request: Request, brand_id: str):
+def brand_run(request: Request, brand_id: str, engine_set: str = Form("")):
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
@@ -319,6 +327,11 @@ def brand_run(request: Request, brand_id: str):
         bid = UUID(brand_id)
     except ValueError:
         raise HTTPException(404, "Brand not found")
+    # Master accounts may override the tier-driven engine selection by passing
+    # an engine_set in the form. Regular users always use their brand's tier.
+    override: set[str] | None | str = "_no_override"
+    if user.get("is_master") and engine_set in ENGINE_SETS:
+        override = ENGINE_SETS[engine_set]
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
         if not brand or str(brand.user_id) != user["id"]:
@@ -335,9 +348,14 @@ def brand_run(request: Request, brand_id: str):
         s.refresh(run_rec)
         run_record_id = str(run_rec.id)
 
+    thread_args = (str(bid), run_record_id)
+    thread_kwargs: dict = {}
+    if override != "_no_override":
+        thread_kwargs["engines_override"] = override
     threading.Thread(
         target=_run_audit_for_brand,
-        args=(str(bid), run_record_id),
+        args=thread_args,
+        kwargs=thread_kwargs,
         daemon=True,
     ).start()
     return RedirectResponse(f"/dashboard/brands/{brand_id}", status_code=303)
@@ -458,6 +476,51 @@ def brand_queries_save(
 # Reports tab — every audit run across all brands, newest first
 # ---------------------------------------------------------------------------
 
+# Section navigation for the embedded report view. Anchors target both the
+# free-preview (report_free.html.j2) and full (report.html.j2) templates;
+# any anchor not present in a given report just scrolls to the top of the
+# iframe, which is a graceful no-op.
+REPORT_SECTIONS: list[dict[str, str]] = [
+    {"label": "Headline metrics", "anchor": "headline-metrics", "fallback": "visibility"},
+    {"label": "Engine heatmap", "anchor": "engine-heatmap", "fallback": "engines"},
+    {"label": "Action plan", "anchor": "action-plan", "fallback": "unlock"},
+    {"label": "Top cited sources", "anchor": "top-cited-sources", "fallback": "sources"},
+    {"label": "Competitor share-of-voice", "anchor": "competitor-sov", "fallback": "sources"},
+    {"label": "Technical foundations", "anchor": "technical-foundations", "fallback": "foundations"},
+    {"label": "Hallucination flags", "anchor": "hallucinations", "fallback": "evidence"},
+    {"label": "Per-query drill-down", "anchor": "query-drilldown", "fallback": "evidence"},
+]
+
+
+@router.get("/reports/{run_id}", response_class=HTMLResponse)
+def report_in_dashboard(request: Request, run_id: str):
+    """Wrap the standalone report in the dashboard chrome with a left
+    section nav. Existing /report/{run_id} URL keeps working for shared and
+    emailed links — this just gives logged-in users a continuous experience."""
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    # Verify the run belongs to this user (or is a master account viewing
+    # any run). Owners always pass; masters get cross-tenant access.
+    with get_session() as s:
+        run = s.exec(
+            select(AuditRunRecord).where(AuditRunRecord.run_id == run_id)
+        ).first()
+        if not run:
+            raise HTTPException(404, "Report not found")
+        if str(run.user_id) != user["id"] and not user.get("is_master"):
+            raise HTTPException(404, "Report not found")
+        brand = s.get(TrackedBrand, run.brand_id)
+    return _render(
+        "report_view.html.j2",
+        user=user,
+        run=run,
+        brand=brand,
+        sections=REPORT_SECTIONS,
+        active_tab="reports",
+    )
+
+
 @router.get("/reports", response_class=HTMLResponse)
 def reports(request: Request):
     user = _require_user(request)
@@ -503,7 +566,7 @@ def monitoring(request: Request):
                 .order_by(TrackedBrand.created_at.desc())
             )
         )
-        # Last 6 complete runs per brand for the trend strip
+        # Up to the most recent 12 complete runs per brand for the line chart.
         rows = []
         for b in brands:
             runs = list(
@@ -513,11 +576,22 @@ def monitoring(request: Request):
                     .where(AuditRunRecord.status == "complete")
                     .order_by(AuditRunRecord.started_at.desc())
                 )
-            )[:6]
+            )[:12]
             runs.reverse()  # oldest -> newest left to right
+            chart_payload = {
+                "labels": [r.started_at.strftime("%b %d") for r in runs],
+                "visibility": [
+                    round((r.visibility_rate or 0) * 100, 1) for r in runs
+                ],
+                "citation": [
+                    round((r.citation_rate or 0) * 100, 1) for r in runs
+                ],
+                "run_ids": [r.run_id for r in runs],
+            }
             rows.append({
                 "brand": b,
                 "trend_runs": runs,
+                "trend_json": json.dumps(chart_payload),
                 "next_scheduled": b.next_scheduled_run or _compute_next_scheduled_run(),
                 "monthly_quota": MONTHLY_RUN_QUOTA,
                 "runs_left": max(0, MONTHLY_RUN_QUOTA - (b.runs_this_month or 0)),
@@ -610,9 +684,17 @@ def _resolve_brand_queries(brand: TrackedBrand) -> list:
     return [Query(query=t, type=_classify_query(t)) for t in texts]
 
 
-def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
+def _run_audit_for_brand(
+    brand_id: str,
+    run_record_id: str,
+    *,
+    engines_override: set[str] | None | str = "_no_override",
+) -> None:
     """Background worker. Loads the brand, runs the existing audit pipeline,
-    persists headline metrics back to the AuditRunRecord row."""
+    persists headline metrics back to the AuditRunRecord row.
+    `engines_override` lets master-account callers pick an engine set ad-hoc
+    (None means "all engines", a set picks specific labels). The sentinel
+    "_no_override" means fall back to the brand's tier."""
     # Imports inside the function so importing src.dashboard at server startup
     # doesn't pay the audit-pipeline import cost until a run actually fires.
     from src.engines.apify import ApifyEngine
@@ -639,7 +721,12 @@ def _run_audit_for_brand(brand_id: str, run_record_id: str) -> None:
         if not brand or not run_rec:
             return
         run_id = run_rec.run_id
-        engine_labels = _engines_for_brand(brand)
+        # Honour an ad-hoc engine override (master-account manual runs);
+        # otherwise fall back to the brand's subscription tier.
+        if engines_override != "_no_override":
+            engine_labels = engines_override  # type: ignore[assignment]
+        else:
+            engine_labels = _engines_for_brand(brand)
         # Resolve the query list while the brand row is still attached to the
         # session, then detach by stashing plain strings in the snapshot.
         resolved_queries = _resolve_brand_queries(brand)
