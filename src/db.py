@@ -115,6 +115,21 @@ class TrackedBrand(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class TeamInvite(SQLModel, table=True):
+    """Pending invite to join an owner's workspace. Created from the Team
+    settings page; consumed when the invitee signs in via Supabase magic
+    link with a matching email and the auth flow checks for invites."""
+    __tablename__ = "monitor_team_invite"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    owner_user_id: UUID = Field(index=True)  # who sent the invite
+    email: str = Field(index=True)            # who they invited (lowercased)
+    token: str = Field(default_factory=lambda: uuid4().hex, index=True)
+    status: str = "pending"                   # pending | accepted | revoked
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    accepted_at: datetime | None = None
+
+
 class AuditRunRecord(SQLModel, table=True):
     """One audit execution against a tracked brand. Headline metrics are
     denormalised onto the row so the trend chart can render from a single

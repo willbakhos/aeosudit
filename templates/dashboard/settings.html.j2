@@ -1,8 +1,8 @@
 {% extends "dashboard/_layout.html.j2" %}
-{% block title %}Settings · monitoraeo{% endblock %}
+{% block title %}Account settings · monitoraeo{% endblock %}
 {% block content %}
-<h1>Settings</h1>
-<p class="lede">Profile, billing and team management.</p>
+<h1>Account settings</h1>
+<p class="lede">Profile, billing and team members for {{ user.email }}.</p>
 
 <div class="subtabs">
   <a href="/dashboard/settings/profile" class="subtab {% if sub == 'profile' %}active{% endif %}">Profile</a>
@@ -47,49 +47,68 @@
     <h2 style="margin-top:0;">Billing</h2>
     <p class="lede">Subscriptions, invoices and payment methods.</p>
 
-    <div style="padding:24px; background:#fef9c3; border:1px solid #fde68a; border-radius:12px; color:#854d0e;">
-      <strong>Stripe checkout isn't wired up yet.</strong>
-      <p style="margin:8px 0 0; font-size:14px;">When live, you'll manage your subscription, see your invoice history, and update card details here.</p>
-    </div>
-
-    <h3 style="margin-top:28px;">Current plan</h3>
-    <div style="padding:18px; background:#f8fafc; border:1px solid var(--line); border-radius:12px;">
-      <div style="font-weight:800; font-size:16px;">Free dashboard</div>
-      <p style="margin:6px 0 0; color:var(--muted); font-size:13px;">No active subscription. Upgrade to enable scheduled monthly audits across all your brands.</p>
-    </div>
-
-    <h3 style="margin-top:24px;">Upgrade options</h3>
-    <div class="grid cols-2">
-      <div class="card" style="margin:0; padding:18px;">
-        <div style="font-size:11px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;">Two Engine Monitoring</div>
-        <div style="font-size:30px; font-weight:950; letter-spacing:-.03em;">$35<small style="font-size:14px; color:var(--muted); font-weight:700;">/mo</small></div>
-        <p style="color:var(--muted); font-size:13px; margin:6px 0 12px;">Google AI + ChatGPT, monthly cron audits, trend chart.</p>
-        <a href="/pricing" class="btn ghost" style="font-size:13px; padding:8px 14px;">See details</a>
+    <h3 style="margin-top:18px;">Active subscriptions</h3>
+    {% if subscriptions %}
+      <div style="display:grid; gap:10px;">
+        {% for s in subscriptions %}
+          <div style="padding:16px 18px; background:#f8fafc; border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:800; font-size:15px;">{{ s.brand_name }}</div>
+              <div style="color:var(--muted); font-size:13px;">{{ s.tier_label }} · next bills {{ s.next_run.strftime('%b %d, %Y') if s.next_run else '—' }}</div>
+            </div>
+            <span class="pill scheduled">${{ s.price }}/mo</span>
+          </div>
+        {% endfor %}
       </div>
-      <div class="card" style="margin:0; padding:18px;">
-        <div style="font-size:11px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;">Full Monitoring</div>
-        <div style="font-size:30px; font-weight:950; letter-spacing:-.03em;">$95<small style="font-size:14px; color:var(--muted); font-weight:700;">/mo</small></div>
-        <p style="color:var(--muted); font-size:13px; margin:6px 0 12px;">All 5 engines tracked monthly, per-engine trends.</p>
-        <a href="/pricing" class="btn ghost" style="font-size:13px; padding:8px 14px;">See details</a>
+    {% else %}
+      <div style="padding:18px; background:#f8fafc; border:1px solid var(--line); border-radius:12px;">
+        <div style="font-weight:800;">Free dashboard</div>
+        <p style="margin:6px 0 0; color:var(--muted); font-size:13px;">No active subscriptions yet.</p>
       </div>
-    </div>
+    {% endif %}
+
+    <h3 style="margin-top:24px;">Manage in Stripe</h3>
+    {% if stripe_portal_url %}
+      <p style="color:var(--muted); font-size:14px; margin:0 0 12px;">Update card details, view invoices or cancel — all in the Stripe customer portal.</p>
+      <a href="{{ stripe_portal_url }}" target="_blank" rel="noopener" class="btn">Open billing portal ↗</a>
+    {% else %}
+      <p style="color:var(--muted); font-size:14px;">The billing portal opens once you have an active subscription.
+        Browse <a href="/pricing">pricing →</a> to start.</p>
+    {% endif %}
   </div>
 
 {% elif sub == 'team' %}
   <div class="card">
     <h2 style="margin-top:0;">Team</h2>
-    <p class="lede">Invite teammates to view your brands and reports.</p>
+    <p class="lede">Invite teammates to view your brands and reports. They'll get a magic-link sign-in to {{ user.email }}'s workspace.</p>
 
-    <div style="padding:24px; background:#fef9c3; border:1px solid #fde68a; border-radius:12px; color:#854d0e;">
-      <strong>Multi-user teams aren't built yet.</strong>
-      <p style="margin:8px 0 0; font-size:14px;">Coming soon: invite teammates by email, set role (Owner / Editor / Viewer), see audit log of who ran what.</p>
-    </div>
+    {% if team_status == 'invited' %}
+      <div class="card" style="margin:0 0 18px; background:#ecfdf5; border-color:rgba(22,163,74,.20);">
+        <strong style="color:var(--success);">Invite sent.</strong>
+        <span style="color:var(--muted); font-size:13px; margin-left:6px;">{{ invited_email }} will get an email with the sign-in link.</span>
+      </div>
+    {% elif team_status == 'send_failed' %}
+      <div class="card" style="margin:0 0 18px; background:#fef2f2; border-color:rgba(220,38,38,.18);">
+        <strong style="color:var(--danger);">Couldn't send the email.</strong>
+        <span style="color:var(--muted); font-size:13px; margin-left:6px;">Check that RESEND_API_KEY and REPORT_FROM_EMAIL are set on Railway.</span>
+      </div>
+    {% elif team_status == 'invalid_email' %}
+      <div class="card" style="margin:0 0 18px; background:#fef2f2; border-color:rgba(220,38,38,.18);">
+        <strong style="color:var(--danger);">That doesn't look like an email address.</strong>
+      </div>
+    {% endif %}
 
-    <h3 style="margin-top:28px;">Current members</h3>
+    <form method="post" action="/dashboard/settings/team/invite" style="display:flex; gap:8px; margin:0 0 24px; flex-wrap:wrap;">
+      <input type="email" name="email" placeholder="teammate@company.com" required
+             style="flex:1; min-width:240px; padding:12px 14px; border-radius:12px; border:1px solid var(--line); font:inherit; font-size:14px; background:white;">
+      <button type="submit" class="btn">Send invite</button>
+    </form>
+
+    <h3 style="margin-top:8px;">Members</h3>
     <div class="card" style="margin:0; padding:0;">
       <table>
         <thead>
-          <tr><th>Member</th><th>Role</th><th>Status</th></tr>
+          <tr><th>Member</th><th>Role</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           <tr>
@@ -108,10 +127,38 @@
             </td>
             <td><span class="pill ok">Owner</span></td>
             <td><span class="pill ok">Active</span></td>
+            <td></td>
           </tr>
+          {% for inv in pending_invites %}
+            <tr>
+              <td>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:30px; height:30px; border-radius:50%; display:grid; place-items:center; color:#64748b; background:#e2e8f0; font-size:12px; font-weight:900;">
+                    {{ inv.email[0]|upper }}
+                  </div>
+                  <div>
+                    <div style="font-weight:700;">{{ inv.email }}</div>
+                    <div style="color:var(--muted); font-size:12px;">Invited {{ inv.created_at.strftime('%b %d') }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="pill muted">Member</span></td>
+              <td><span class="pill" style="background:#fffbeb; color:#92400e;">Pending</span></td>
+              <td>
+                <form method="post" action="/dashboard/settings/team/invite/{{ inv.id }}/revoke" style="margin:0;">
+                  <button type="submit" class="btn ghost" style="padding:5px 10px; font-size:12px;">Revoke</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>
+
+    <p style="margin-top:18px; color:var(--muted); font-size:12px;">
+      Invitees who sign in with the invited email automatically gain read-only access to your brands and reports.
+      Cancel invites any time — pending invites stay pending until they're used or revoked.
+    </p>
   </div>
 {% endif %}
 {% endblock %}

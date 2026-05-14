@@ -1,58 +1,90 @@
 {% extends "dashboard/_layout.html.j2" %}
-{% block title %}Add brand · monitor-dashboard{% endblock %}
+{% block title %}{% if brand %}Edit {{ brand.name }}{% else %}Add brand{% endif %} · monitor-dashboard{% endblock %}
 {% block content %}
-<p style="margin:0 0 8px;"><a href="/dashboard">← All brands</a></p>
-<h1>Add a brand to monitor</h1>
+<p style="margin:0 0 8px;">
+  <a href="{% if brand %}/dashboard/brands/{{ brand.id }}{% else %}/dashboard{% endif %}">
+    ← {% if brand %}{{ brand.name }} brand page{% else %}All brands{% endif %}
+  </a>
+</p>
+<h1>{% if brand %}Edit {{ brand.name }}{% else %}Add a brand to monitor{% endif %}</h1>
 <p class="lede">
-  We'll use this profile every time you run an audit — no need to re-enter
-  competitors or facts. You can edit it later.
+  {% if brand %}
+    Update the profile we use every time we audit this brand. Changes apply on the next run.
+  {% else %}
+    We'll use this profile every time you run an audit — no need to re-enter
+    competitors or facts. You can edit it later.
+  {% endif %}
 </p>
 
-<form method="post" action="/dashboard/brands" class="card">
+{% set action = ('/dashboard/brands/' ~ brand.id ~ '/edit') if brand else '/dashboard/brands' %}
+<form method="post" action="{{ action }}" class="card">
   <label for="name">Brand name</label>
   <input type="text" name="name" id="name" required
+         value="{{ (brand.name if brand else '') }}"
          placeholder="e.g. JB Hi-Fi (use the exact spelling)">
 
   <label for="domain">Domain</label>
   <input type="text" name="domain" id="domain" required
+         value="{{ (brand.domain if brand else '') }}"
          placeholder="e.g. jbhifi.com.au">
 
   <label for="aliases">Aliases (comma-separated, optional)</label>
   <input type="text" name="aliases" id="aliases"
+         value="{{ ((brand.aliases or []) | join(', ')) if brand else '' }}"
          placeholder="JB, JB HiFi">
 
   <label for="competitors">Competitors (one per line — <code>Name | domain.com</code>)</label>
   <textarea name="competitors" id="competitors"
-            placeholder="Harvey Norman | harveynorman.com.au&#10;The Good Guys | thegoodguys.com.au"></textarea>
+            placeholder="Harvey Norman | harveynorman.com.au&#10;The Good Guys | thegoodguys.com.au">{% if brand %}{% for c in (brand.competitors or []) %}{{ c.name }}{% if c.domain %} | {{ c.domain }}{% endif %}
+{% endfor %}{% endif %}</textarea>
 
   <label for="ground_truth">Ground-truth facts (one per line, optional)</label>
   <textarea name="ground_truth" id="ground_truth"
-            placeholder="Headquartered in Melbourne, Australia&#10;Founded in 1974"></textarea>
+            placeholder="Headquartered in Melbourne, Australia&#10;Founded in 1974">{% if brand %}{{ (brand.ground_truth or []) | join('\n') }}{% endif %}</textarea>
 
   <div class="grid cols-2">
     <div>
-      <label for="locale_country">Locale country</label>
-      <input type="text" name="locale_country" id="locale_country" value="US">
+      <label for="locale_country">Location (country code)</label>
+      <select name="locale_country" id="locale_country" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:white; font:inherit; font-size:15px;">
+        {% set picked = brand.locale_country if brand else 'US' %}
+        <option value="US" {% if picked == 'US' %}selected{% endif %}>United States</option>
+        <option value="AU" {% if picked == 'AU' %}selected{% endif %}>Australia</option>
+        <option value="GB" {% if picked == 'GB' %}selected{% endif %}>United Kingdom</option>
+        <option value="CA" {% if picked == 'CA' %}selected{% endif %}>Canada</option>
+        <option value="NZ" {% if picked == 'NZ' %}selected{% endif %}>New Zealand</option>
+        <option value="IE" {% if picked == 'IE' %}selected{% endif %}>Ireland</option>
+        <option value="SG" {% if picked == 'SG' %}selected{% endif %}>Singapore</option>
+        <option value="IN" {% if picked == 'IN' %}selected{% endif %}>India</option>
+        <option value="DE" {% if picked == 'DE' %}selected{% endif %}>Germany</option>
+        <option value="FR" {% if picked == 'FR' %}selected{% endif %}>France</option>
+        <option value="ES" {% if picked == 'ES' %}selected{% endif %}>Spain</option>
+        <option value="IT" {% if picked == 'IT' %}selected{% endif %}>Italy</option>
+        <option value="NL" {% if picked == 'NL' %}selected{% endif %}>Netherlands</option>
+        <option value="BR" {% if picked == 'BR' %}selected{% endif %}>Brazil</option>
+        <option value="JP" {% if picked == 'JP' %}selected{% endif %}>Japan</option>
+      </select>
+      <p style="color:var(--muted); font-size:12px; margin:4px 0 0;">Drives Google AI Overviews localisation — searches are sent as a buyer in this country.</p>
     </div>
     <div>
-      <label for="locale_language">Locale language</label>
-      <input type="text" name="locale_language" id="locale_language" value="en">
+      <label for="locale_language">Language</label>
+      <input type="text" name="locale_language" id="locale_language" value="{{ brand.locale_language if brand else 'en' }}">
     </div>
   </div>
 
   <label for="tier" style="margin-top:18px;">Monitoring tier</label>
-  <select name="tier" id="tier">
-    <option value="">Free dashboard (no scheduled runs)</option>
-    <option value="two_engine_monthly">Two Engine Monitoring — $35/mo (Google AI + ChatGPT, monthly cron)</option>
-    <option value="full_monthly">Full Monitoring — $95/mo (all 5 engines, monthly cron)</option>
+  <select name="tier" id="tier" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:white; font:inherit; font-size:15px;">
+    {% set tier_now = brand.tier if brand else '' %}
+    <option value="" {% if tier_now == '' %}selected{% endif %}>Free dashboard (no scheduled runs)</option>
+    <option value="two_engine_monthly" {% if tier_now == 'two_engine_monthly' %}selected{% endif %}>Two Engine Monitoring — $35/mo (Google AI + ChatGPT, monthly cron)</option>
+    <option value="full_monthly" {% if tier_now == 'full_monthly' %}selected{% endif %}>Full Monitoring — $95/mo (all 5 engines, monthly cron)</option>
   </select>
   <p style="color:var(--muted); font-size:12px; margin:6px 0 0;">
     You can change this later. Subscription tiers will trigger Stripe checkout once payments are wired up.
   </p>
 
   <div style="margin-top:20px;display:flex;gap:8px;">
-    <button class="btn" type="submit">Save brand</button>
-    <a class="btn ghost" href="/dashboard">Cancel</a>
+    <button class="btn" type="submit">{% if brand %}Save changes{% else %}Save brand{% endif %}</button>
+    <a class="btn ghost" href="{% if brand %}/dashboard/brands/{{ brand.id }}{% else %}/dashboard{% endif %}">Cancel</a>
   </div>
 </form>
 {% endblock %}

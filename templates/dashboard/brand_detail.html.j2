@@ -12,13 +12,14 @@
     </p>
   </div>
   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/edit">Edit brand</a>
     <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/queries">Edit monitored questions</a>
     {% if user and user.is_master %}
-      <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0; display:flex; gap:6px; align-items:center; padding:6px; background:rgba(37,99,235,.06); border:1px solid rgba(37,99,235,.18); border-radius:14px;">
-        <span style="font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#1d4ed8; padding:0 8px;">Run as</span>
-        <button class="btn ghost" type="submit" name="engine_set" value="google_only" style="padding:8px 12px;">Google AI only</button>
-        <button class="btn ghost" type="submit" name="engine_set" value="two_engine" style="padding:8px 12px;">Two engine</button>
-        <button class="btn" type="submit" name="engine_set" value="full" style="padding:8px 12px;">All 5 engines</button>
+      <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" class="run-group" style="margin:0;">
+        <span class="run-group-label">Run as</span>
+        <button type="submit" name="engine_set" value="google_only" class="run-seg">Google AI</button>
+        <button type="submit" name="engine_set" value="two_engine" class="run-seg">2 engines</button>
+        <button type="submit" name="engine_set" value="full" class="run-seg primary">All 5</button>
       </form>
     {% else %}
       <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0;">

@@ -175,6 +175,65 @@
   .subtab { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-decoration: none; }
   .subtab:hover { color: var(--ink); text-decoration: none; background: white; }
   .subtab.active { color: var(--ink); background: white; box-shadow: var(--shadow); }
+
+  /* Master-only segmented "Run as …" control. One bordered group, three
+     connected segment buttons, primary segment uses the gradient. */
+  .run-group {
+    display: inline-flex; align-items: stretch; gap: 4px;
+    padding: 4px; border-radius: 12px;
+    background: rgba(241,245,249,.85);
+    border: 1px solid var(--line);
+  }
+  .run-group-label {
+    display: inline-flex; align-items: center;
+    padding: 0 12px;
+    font-size: 11px; font-weight: 900; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .run-seg {
+    appearance: none; border: 0; cursor: pointer;
+    padding: 8px 13px; border-radius: 8px;
+    background: transparent; color: var(--ink-2);
+    font: inherit; font-size: 13px; font-weight: 700;
+  }
+  .run-seg:hover { background: white; color: var(--ink); }
+  .run-seg.primary {
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: white; box-shadow: 0 6px 14px rgba(37,99,235,.22);
+  }
+  .run-seg.primary:hover { background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; }
+
+  /* User-menu dropdown — wraps the avatar+email pill, opens on click. */
+  .user-menu { position: relative; }
+  .user-menu summary {
+    list-style: none; cursor: pointer;
+  }
+  .user-menu summary::-webkit-details-marker { display: none; }
+  .user-menu .user-meta { transition: background .15s ease; }
+  .user-menu[open] .user-meta { background: rgba(241,245,249,1); }
+  .user-menu .menu-panel {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    min-width: 240px;
+    background: white; border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    padding: 8px; z-index: 60;
+  }
+  .user-menu .menu-panel a, .user-menu .menu-panel button {
+    display: block; width: 100%; text-align: left;
+    padding: 9px 12px; border-radius: 9px;
+    color: var(--ink-2); font-size: 13.5px; font-weight: 700;
+    text-decoration: none; background: transparent; border: 0; cursor: pointer;
+    font-family: inherit;
+  }
+  .user-menu .menu-panel a:hover, .user-menu .menu-panel button:hover {
+    background: #f1f5f9; color: var(--blue);
+  }
+  .user-menu .menu-panel .menu-divider {
+    height: 1px; background: var(--line); margin: 6px 0;
+  }
+  .user-menu .menu-panel .menu-foot {
+    padding: 8px 12px; font-size: 11px; color: var(--soft-muted); font-weight: 600;
+  }
   {% block extra_css %}{% endblock %}
 </style>
 </head>
@@ -192,16 +251,28 @@
   </a>
   <span class="spacer"></span>
   {% if user %}
-    <span class="user-meta">
-      <span class="avatar">{{ (user.email or '?')[0]|upper }}</span>
-      <span>{{ user.email }}</span>
-      {% if user.is_master %}
-        <span title="Master account — full access to every tier and engine combination" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">★ Master</span>
-      {% endif %}
-    </span>
-    <form method="post" action="/dashboard/logout" style="margin:0">
-      <button class="btn ghost" type="submit">Sign out</button>
-    </form>
+    <details class="user-menu">
+      <summary>
+        <span class="user-meta">
+          <span class="avatar">{{ (user.email or '?')[0]|upper }}</span>
+          <span>{{ user.email }}</span>
+          {% if user.is_master %}
+            <span title="Master account — full access to every tier and engine combination" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">★ Master</span>
+          {% endif %}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px; opacity:.55;"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </summary>
+      <div class="menu-panel">
+        <a href="/dashboard/settings/profile">Profile</a>
+        <a href="/dashboard/settings/billing">Billing &amp; subscription</a>
+        <a href="/dashboard/settings/team">Team members</a>
+        <div class="menu-divider"></div>
+        <form method="post" action="/dashboard/logout" style="margin:0">
+          <button type="submit">Sign out</button>
+        </form>
+        <div class="menu-foot">Account · {{ user.email }}</div>
+      </div>
+    </details>
   {% endif %}
 </nav>
 {% if user %}
@@ -218,10 +289,6 @@
     <a href="/dashboard/monitoring" class="tab {% if active_tab == 'monitoring' %}active{% endif %}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Monitoring
-    </a>
-    <a href="/dashboard/settings" class="tab {% if active_tab == 'settings' %}active{% endif %}">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      Settings
     </a>
   </div>
 </div>

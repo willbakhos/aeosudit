@@ -101,14 +101,27 @@ def _require_user(request: Request) -> dict | RedirectResponse:
 # Auth
 # ---------------------------------------------------------------------------
 
+CLAIM_COOKIE = "monitor_claim"
+
+
 @router.get("/login", response_class=HTMLResponse)
-def login_page(sent: int = 0, error: str = "") -> HTMLResponse:
-    return _render(
+def login_page(sent: int = 0, error: str = "", claim: str = "") -> HTMLResponse:
+    body = _render(
         "login.html.j2",
         sent=bool(sent),
         error=error or None,
         configured=supabase_configured(),
+        claim=(claim or None),
     )
+    if claim:
+        # Survives the magic-link round-trip — read on /dashboard after sign-in.
+        body.set_cookie(
+            CLAIM_COOKIE, claim,
+            max_age=3600, samesite="lax",
+            secure=os.environ.get("COOKIE_SECURE", "1") == "1",
+            httponly=False, path="/",
+        )
+    return body
 
 
 @router.post("/login")
@@ -181,11 +194,86 @@ def logout() -> RedirectResponse:
 # Brand list + CRUD
 # ---------------------------------------------------------------------------
 
+def _claim_preview_run(run_id: str, user_id: str) -> str | None:
+    """Hydrate a TrackedBrand + AuditRunRecord from a previously-run preview
+    so the user can see it in their dashboard. Returns the brand_id (str) on
+    success, None if the preview metadata is missing or the run was already
+    claimed by someone else."""
+    output_root = Path(os.environ.get("OUTPUT_ROOT", "output"))
+    meta_path = output_root / run_id / "preview_meta.json"
+    if not meta_path.exists():
+        return None
+    try:
+        meta = json.loads(meta_path.read_text())
+    except (OSError, ValueError):
+        return None
+    domain = (meta.get("domain") or "").strip()
+    brand_name = (meta.get("brand_name") or "").strip()
+    if not domain or not brand_name:
+        return None
+    with get_session() as s:
+        # If this preview was already claimed (by anyone), do nothing.
+        existing_run = s.exec(
+            select(AuditRunRecord).where(AuditRunRecord.run_id == run_id)
+        ).first()
+        if existing_run:
+            return str(existing_run.brand_id)
+        # Re-use an existing brand (same user + domain) so claiming a second
+        # preview for the same site doesn't duplicate the brand row.
+        brand = s.exec(
+            select(TrackedBrand)
+            .where(TrackedBrand.user_id == UUID(user_id))
+            .where(TrackedBrand.domain == domain)
+        ).first()
+        if brand is None:
+            brand = TrackedBrand(
+                user_id=UUID(user_id),
+                name=brand_name,
+                domain=domain,
+                aliases=[domain],
+                competitors=[],
+                ground_truth=[],
+                engines=[],
+                locale_country=(meta.get("country") or "US").upper(),
+                locale_language="en",
+                tier="",
+            )
+            s.add(brand)
+            s.commit()
+            s.refresh(brand)
+        run_rec = AuditRunRecord(
+            brand_id=brand.id,
+            user_id=UUID(user_id),
+            run_id=run_id,
+            status="complete",
+            finished_at=datetime.utcnow(),
+        )
+        s.add(run_rec)
+        s.commit()
+        return str(brand.id)
+
+
 @router.get("", response_class=HTMLResponse)
 def index(request: Request):
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
+    # If the user just signed in after running a free preview, claim the
+    # report into their dashboard now (cookie set on /dashboard/login?claim=…).
+    claim = request.cookies.get(CLAIM_COOKIE, "").strip()
+    if claim:
+        try:
+            brand_id = _claim_preview_run(claim, user["id"])
+        except Exception as exc:  # noqa: BLE001
+            print(f"[claim] failed for {claim}: {type(exc).__name__}: {exc}")
+            brand_id = None
+        target = (
+            f"/dashboard/brands/{brand_id}?claimed=1" if brand_id else "/dashboard"
+        )
+        resp = RedirectResponse(target, status_code=303)
+        resp.delete_cookie(CLAIM_COOKIE, path="/")
+        return resp
+
     with get_session() as s:
         brands = list(
             s.exec(
@@ -308,6 +396,70 @@ def brand_detail(request: Request, brand_id: str):
         latest=latest_complete,
         active_tab="brands",
     )
+
+
+@router.get("/brands/{brand_id}/edit", response_class=HTMLResponse)
+def brand_edit_page(request: Request, brand_id: str):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or str(brand.user_id) != user["id"]:
+            raise HTTPException(404, "Brand not found")
+        s.expunge(brand)
+    return _render("brand_form.html.j2", user=user, brand=brand, active_tab="brands")
+
+
+@router.post("/brands/{brand_id}/edit")
+def brand_update(
+    request: Request,
+    brand_id: str,
+    name: str = Form(...),
+    domain: str = Form(...),
+    aliases: str = Form(""),
+    competitors: str = Form(""),
+    ground_truth: str = Form(""),
+    locale_country: str = Form("US"),
+    locale_language: str = Form("en"),
+    tier: str = Form(""),
+):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    valid_tiers = {"", "two_engine_monthly", "full_monthly"}
+    tier_clean = tier.strip() if tier.strip() in valid_tiers else ""
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or str(brand.user_id) != user["id"]:
+            raise HTTPException(404, "Brand not found")
+        was_subscriber = bool(brand.tier)
+        brand.name = name.strip()
+        brand.domain = domain.strip()
+        brand.aliases = [a.strip() for a in aliases.split(",") if a.strip()]
+        brand.competitors = _parse_competitors(competitors)
+        brand.ground_truth = [g.strip() for g in ground_truth.splitlines() if g.strip()]
+        brand.locale_country = (locale_country.strip() or "US").upper()
+        brand.locale_language = locale_language.strip() or "en"
+        brand.tier = tier_clean
+        # Newly-subscribed brand → seed the next scheduled run; downgrades
+        # clear it so the cron stops picking the brand up.
+        if tier_clean and not was_subscriber:
+            brand.next_scheduled_run = _compute_next_scheduled_run()
+        elif not tier_clean:
+            brand.next_scheduled_run = None
+        brand.updated_at = datetime.utcnow()
+        s.add(brand)
+        s.commit()
+    return RedirectResponse(f"/dashboard/brands/{brand_id}", status_code=303)
 
 
 # Engine-set keys master accounts can pick from when starting a manual run.
@@ -637,23 +789,207 @@ def settings_billing(request: Request):
 
 
 @router.get("/settings/team", response_class=HTMLResponse)
-def settings_team(request: Request):
-    return _settings_page(request, "team")
+def settings_team(request: Request, sent: str = "", invited: str = ""):
+    status_map = {"1": "invited", "send_failed": "send_failed", "invalid": "invalid_email"}
+    return _settings_page(
+        request,
+        "team",
+        team_status=status_map.get(sent),
+        invited_email=invited or None,
+    )
 
 
-def _settings_page(request: Request, sub: str) -> HTMLResponse | RedirectResponse:
+def _send_team_invite_email(
+    *, owner_email: str, invitee_email: str, accept_url: str
+) -> None:
+    """Resend-backed invite email. Raises on failure so the route can flag it."""
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    from_addr = os.environ.get("REPORT_FROM_EMAIL", "").strip()
+    if not api_key or not from_addr:
+        raise RuntimeError("Resend not configured (RESEND_API_KEY / REPORT_FROM_EMAIL)")
+    import resend
+    resend.api_key = api_key
+    body_html = f"""
+      <p>{owner_email} has invited you to view their AI visibility audits on monitoraeo.</p>
+      <p>Click below to sign in and gain read-only access to their brands and reports:</p>
+      <p style="margin:18px 0;">
+        <a href="{accept_url}"
+           style="display:inline-block; padding:12px 22px; border-radius:999px;
+                  background:#2563eb; color:white; text-decoration:none;
+                  font-weight:700; font-family:Inter,sans-serif;">
+          Accept invite
+        </a>
+      </p>
+      <p style="color:#64748b; font-size:13px;">
+        If you didn't expect this invite you can safely ignore this email.
+      </p>
+    """
+    resend.Emails.send({
+        "from": from_addr,
+        "to": [invitee_email],
+        "reply_to": owner_email,
+        "subject": f"{owner_email} invited you to monitoraeo",
+        "html": body_html,
+    })
+
+
+@router.post("/settings/team/invite")
+def settings_team_invite(request: Request, email: str = Form(...)):
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
+    invitee = (email or "").strip().lower()
+    # Lightweight email shape check — just enough to reject obvious junk.
+    if "@" not in invitee or "." not in invitee.split("@")[-1]:
+        return RedirectResponse("/dashboard/settings/team?sent=invalid", status_code=303)
+    from src.db import TeamInvite
     with get_session() as s:
-        brand_count = len(list(
+        # Don't double-invite — re-use any existing pending invite.
+        existing = s.exec(
+            select(TeamInvite)
+            .where(TeamInvite.owner_user_id == UUID(user["id"]))
+            .where(TeamInvite.email == invitee)
+            .where(TeamInvite.status == "pending")
+        ).first()
+        if existing is None:
+            existing = TeamInvite(
+                owner_user_id=UUID(user["id"]),
+                email=invitee,
+            )
+            s.add(existing)
+            s.commit()
+            s.refresh(existing)
+        token = existing.token
+    base_url = os.environ.get("PUBLIC_BASE_URL", "https://monitoraeo.com").rstrip("/")
+    accept_url = f"{base_url}/dashboard/team/accept?token={token}"
+    try:
+        _send_team_invite_email(
+            owner_email=user["email"], invitee_email=invitee, accept_url=accept_url,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[team] invite email failed: {type(exc).__name__}: {exc}")
+        return RedirectResponse(
+            f"/dashboard/settings/team?sent=send_failed&invited={invitee}",
+            status_code=303,
+        )
+    return RedirectResponse(
+        f"/dashboard/settings/team?sent=1&invited={invitee}", status_code=303
+    )
+
+
+@router.post("/settings/team/invite/{invite_id}/revoke")
+def settings_team_invite_revoke(request: Request, invite_id: str):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    from src.db import TeamInvite
+    try:
+        iid = UUID(invite_id)
+    except ValueError:
+        raise HTTPException(404, "Invite not found")
+    with get_session() as s:
+        inv = s.get(TeamInvite, iid)
+        if not inv or str(inv.owner_user_id) != user["id"]:
+            raise HTTPException(404, "Invite not found")
+        inv.status = "revoked"
+        s.add(inv)
+        s.commit()
+    return RedirectResponse("/dashboard/settings/team", status_code=303)
+
+
+@router.get("/team/accept", response_class=HTMLResponse)
+def team_accept(request: Request, token: str = ""):
+    """Land here from the invite email. If signed in with the matching email,
+    flip the invite to accepted; otherwise bounce through the magic-link login
+    and come back. Cross-tenant brand visibility is a follow-up — for now
+    accepting just records the relationship."""
+    from src.db import TeamInvite
+    if not token:
+        raise HTTPException(404, "Invite not found")
+    with get_session() as s:
+        inv = s.exec(select(TeamInvite).where(TeamInvite.token == token)).first()
+        if not inv or inv.status != "pending":
+            return _render(
+                "team_accept.html.j2",
+                user=None,
+                state="missing",
+                invite=None,
+                active_tab="",
+            )
+        user = current_user(request)
+        if not user:
+            return RedirectResponse(
+                f"/dashboard/login?next=/dashboard/team/accept?token={token}",
+                status_code=303,
+            )
+        if (user.get("email") or "").lower() != inv.email.lower():
+            return _render(
+                "team_accept.html.j2",
+                user=user,
+                state="email_mismatch",
+                invite=inv,
+                active_tab="",
+            )
+        inv.status = "accepted"
+        inv.accepted_at = datetime.utcnow()
+        s.add(inv)
+        s.commit()
+    return _render(
+        "team_accept.html.j2",
+        user=user,
+        state="accepted",
+        invite=inv,
+        active_tab="",
+    )
+
+
+def _settings_page(
+    request: Request,
+    sub: str,
+    *,
+    team_status: str | None = None,
+    invited_email: str | None = None,
+) -> HTMLResponse | RedirectResponse:
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    from src.db import TeamInvite
+    from src.server import TIER_PLANS
+    with get_session() as s:
+        brands = list(
             s.exec(select(TrackedBrand).where(TrackedBrand.user_id == UUID(user["id"])))
-        ))
+        )
+        brand_count = len(brands)
+        # Subscription summary for the Billing tab.
+        subscriptions = []
+        for b in brands:
+            if b.tier and b.tier in TIER_PLANS:
+                plan = TIER_PLANS[b.tier]
+                subscriptions.append({
+                    "brand_name": b.name,
+                    "tier_label": plan.get("label", b.tier),
+                    "price": plan.get("price_usd", 0),
+                    "next_run": b.next_scheduled_run,
+                })
+        # Pending invites the owner has sent for the Team tab.
+        pending_invites = list(
+            s.exec(
+                select(TeamInvite)
+                .where(TeamInvite.owner_user_id == UUID(user["id"]))
+                .where(TeamInvite.status == "pending")
+                .order_by(TeamInvite.created_at.desc())
+            )
+        )
     return _render(
         "settings.html.j2",
         user=user,
         sub=sub,
         brand_count=brand_count,
+        subscriptions=subscriptions,
+        stripe_portal_url=os.environ.get("STRIPE_PORTAL_URL", "").strip() or None,
+        pending_invites=pending_invites,
+        team_status=team_status,
+        invited_email=invited_email,
         active_tab="settings",
     )
 

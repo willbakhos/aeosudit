@@ -10,6 +10,7 @@ Stripe webhook for local dev:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import secrets
@@ -544,6 +545,23 @@ def _run_preview_job(
     try:
         site = _build_preview_site(domain, brand_name, country=country)
         queries = _generic_free_queries(brand_name, category)
+        # Persist preview metadata so the dashboard "claim" flow can hydrate
+        # a TrackedBrand from a logged-out user's preview after they sign up.
+        try:
+            run_dir_meta = OUTPUT_ROOT / run_id
+            run_dir_meta.mkdir(parents=True, exist_ok=True)
+            (run_dir_meta / "preview_meta.json").write_text(
+                json.dumps({
+                    "run_id": run_id,
+                    "domain": domain,
+                    "brand_name": brand_name,
+                    "category": category,
+                    "country": country,
+                    "created_at": datetime.utcnow().isoformat(),
+                })
+            )
+        except OSError:
+            pass
         engine_objs = [
             ApifyEngine(
                 label=FREE_TIER_ENGINE,
@@ -983,7 +1001,8 @@ EMBED_AWARE_HEAD = """
 <style>
   html.embedded .report-nav,
   html.embedded nav.report-nav,
-  html.embedded .report-floating-cta { display: none !important; }
+  html.embedded .report-floating-cta,
+  html.embedded .report-claim-bar { display: none !important; }
 </style>
 <script>
   (function () {
@@ -996,6 +1015,29 @@ EMBED_AWARE_HEAD = """
     }
   })();
 </script>
+"""
+
+
+def _claim_cta_for(run_id: str) -> str:
+    """Sticky top bar on the public report inviting the visitor to keep this
+    report in their dashboard by signing up. Hidden when the report is
+    embedded (handled by the .embedded CSS rule above)."""
+    return f"""
+<div class="report-claim-bar" style="position: sticky; top: 0; z-index: 9998;
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            padding: 11px 18px;
+            background: linear-gradient(135deg, rgba(37,99,235,.96), rgba(124,58,237,.94));
+            color: white; font-family: Inter, system-ui, sans-serif;
+            font-size: 13.5px; font-weight: 700; box-shadow: 0 8px 22px rgba(37,99,235,.22);">
+  <span>Save this report to your dashboard — sign up free.</span>
+  <a href="/dashboard/login?claim={run_id}"
+     style="display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 999px;
+            background: white; color: #1d4ed8; text-decoration: none;
+            font-weight: 800; font-size: 13px;">
+    Save &amp; sign up →
+  </a>
+</div>
 """
 
 
@@ -1056,9 +1098,16 @@ def serve_report(run_id: str, refresh: int = 0, tier: str = "full") -> HTMLRespo
     if "<head>" in html:
         html = html.replace("<head>", f"<head>{head_inject}", 1)
     # Inject a floating "Run another preview" CTA when served over HTTP, so
-    # visitors can audit a new domain without backing out manually.
+    # visitors can audit a new domain without backing out manually. Plus a
+    # sticky "Save this report to your dashboard → Sign up" bar at the top
+    # so logged-out previews convert to accounts. Both are hidden when the
+    # report is embedded in /dashboard/reports/{id}.
     if "<body>" in html:
-        html = html.replace("<body>", f"<body>{RUN_ANOTHER_BAR}", 1)
+        html = html.replace(
+            "<body>",
+            f"<body>{_claim_cta_for(run_id)}{RUN_ANOTHER_BAR}",
+            1,
+        )
     return HTMLResponse(html)
 
 
