@@ -33,10 +33,33 @@
          value="{{ ((brand.aliases or []) | join(', ')) if brand else '' }}"
          placeholder="JB, JB HiFi">
 
-  <label for="competitors">Competitors (one per line — <code>Name | domain.com</code>)</label>
-  <textarea name="competitors" id="competitors"
-            placeholder="Harvey Norman | harveynorman.com.au&#10;The Good Guys | thegoodguys.com.au">{% if brand %}{% for c in (brand.competitors or []) %}{{ c.name }}{% if c.domain %} | {{ c.domain }}{% endif %}
-{% endfor %}{% endif %}</textarea>
+  <label>Competitors</label>
+  <div id="competitors-list" class="competitors-list">
+    {% set existing = (brand.competitors if brand and brand.competitors else []) %}
+    {% if existing %}
+      {% for c in existing %}
+        <div class="competitor-row">
+          <input type="text" name="competitor_name" value="{{ c.name or '' }}" placeholder="Brand name (e.g. Harvey Norman)">
+          <input type="text" name="competitor_domain" value="{{ c.domain or '' }}" placeholder="domain.com">
+          <button type="button" class="competitor-remove" title="Remove">×</button>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="competitor-row">
+        <input type="text" name="competitor_name" placeholder="Brand name (e.g. Harvey Norman)">
+        <input type="text" name="competitor_domain" placeholder="domain.com">
+        <button type="button" class="competitor-remove" title="Remove">×</button>
+      </div>
+    {% endif %}
+  </div>
+  <button type="button" id="add-competitor" class="btn ghost" style="margin-top:6px; font-size:13px; padding:8px 14px;">+ Add competitor</button>
+  <template id="competitor-row-template">
+    <div class="competitor-row">
+      <input type="text" name="competitor_name" placeholder="Brand name">
+      <input type="text" name="competitor_domain" placeholder="domain.com">
+      <button type="button" class="competitor-remove" title="Remove">×</button>
+    </div>
+  </template>
 
   <label for="ground_truth">Ground-truth facts (one per line, optional)</label>
   <textarea name="ground_truth" id="ground_truth"
@@ -71,20 +94,103 @@
     </div>
   </div>
 
-  <label for="tier" style="margin-top:18px;">Monitoring tier</label>
-  <select name="tier" id="tier" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:white; font:inherit; font-size:15px;">
-    {% set tier_now = brand.tier if brand else '' %}
-    <option value="" {% if tier_now == '' %}selected{% endif %}>Free dashboard (no scheduled runs)</option>
-    <option value="two_engine_monthly" {% if tier_now == 'two_engine_monthly' %}selected{% endif %}>Two Engine Monitoring — $35/mo (Google AI + ChatGPT, monthly cron)</option>
-    <option value="full_monthly" {% if tier_now == 'full_monthly' %}selected{% endif %}>Full Monitoring — $95/mo (all 5 engines, monthly cron)</option>
-  </select>
-  <p style="color:var(--muted); font-size:12px; margin:6px 0 0;">
-    You can change this later. Subscription tiers will trigger Stripe checkout once payments are wired up.
-  </p>
+  {% set tier_now = brand.tier if brand else '' %}
+  {% if user and user.is_master %}
+    <label for="tier" style="margin-top:18px;">
+      Monitoring tier
+      <span style="margin-left:8px; padding:2px 8px; border-radius:999px; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; vertical-align:middle;">Master only</span>
+    </label>
+    <select name="tier" id="tier" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:white; font:inherit; font-size:15px;">
+      <option value="" {% if tier_now == '' %}selected{% endif %}>Free dashboard (no scheduled runs)</option>
+      <option value="two_engine_monthly" {% if tier_now == 'two_engine_monthly' %}selected{% endif %}>Two Engine Monitoring — $35/mo (Google AI + ChatGPT)</option>
+      <option value="full_monthly" {% if tier_now == 'full_monthly' %}selected{% endif %}>Full Monitoring — $95/mo (all 5 engines)</option>
+    </select>
+    <p style="color:var(--muted); font-size:12px; margin:6px 0 0;">
+      Master-account override — bypasses Stripe checkout. Regular users
+      pick a tier through the pricing page.
+    </p>
+  {% else %}
+    {# Regular users can't self-assign a paid tier here — tier upgrades go
+       through Stripe. Persist whatever tier the brand already has. #}
+    <input type="hidden" name="tier" value="{{ tier_now }}">
+    {% if tier_now %}
+      <div class="card" style="margin-top:18px; background:#ecfdf5; border-color:rgba(22,163,74,.20); padding:14px 16px;">
+        <strong style="color:var(--success);">
+          {% if tier_now == 'full_monthly' %}Full Monitoring active{% else %}Two Engine Monitoring active{% endif %}
+        </strong>
+        <span style="color:var(--muted); font-size:13px; margin-left:6px;">
+          Manage or change your subscription in <a href="/dashboard/settings/billing">Account settings → Billing</a>.
+        </span>
+      </div>
+    {% else %}
+      <div class="card" style="margin-top:18px; background:#f8fafc; border-color:var(--line); padding:14px 16px;">
+        <strong>Monitoring is off for this brand.</strong>
+        <span style="color:var(--muted); font-size:13px; margin-left:6px;">
+          Add scheduled monthly audits and trend tracking via <a href="/pricing">our subscription plans →</a>.
+        </span>
+      </div>
+    {% endif %}
+  {% endif %}
 
   <div style="margin-top:20px;display:flex;gap:8px;">
     <button class="btn" type="submit">{% if brand %}Save changes{% else %}Save brand{% endif %}</button>
     <a class="btn ghost" href="{% if brand %}/dashboard/brands/{{ brand.id }}{% else %}/dashboard{% endif %}">Cancel</a>
   </div>
 </form>
+
+<style>
+  .competitors-list { display: flex; flex-direction: column; gap: 8px; }
+  .competitor-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 36px;
+    gap: 8px;
+    align-items: center;
+  }
+  .competitor-row input {
+    padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: white;
+    font: inherit; font-size: 15px;
+  }
+  .competitor-row input:focus {
+    outline: none; border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.18);
+  }
+  .competitor-remove {
+    width: 36px; height: 36px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: white; color: var(--muted);
+    font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .competitor-remove:hover { color: var(--danger); border-color: var(--danger); background: #fef2f2; }
+</style>
+
+<script>
+  (function () {
+    var list = document.getElementById('competitors-list');
+    var addBtn = document.getElementById('add-competitor');
+    var tmpl = document.getElementById('competitor-row-template');
+    if (!list || !addBtn || !tmpl) return;
+
+    addBtn.addEventListener('click', function () {
+      var clone = tmpl.content.cloneNode(true);
+      list.appendChild(clone);
+      // Focus the newly-added name input for fast entry.
+      var rows = list.querySelectorAll('.competitor-row');
+      var lastRow = rows[rows.length - 1];
+      if (lastRow) lastRow.querySelector('input[name="competitor_name"]').focus();
+    });
+
+    list.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('competitor-remove')) return;
+      var rows = list.querySelectorAll('.competitor-row');
+      // Always keep at least one empty row so the form has something to submit.
+      if (rows.length === 1) {
+        var row = rows[0];
+        row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      } else {
+        e.target.closest('.competitor-row').remove();
+      }
+    });
+  })();
+</script>
 {% endblock %}

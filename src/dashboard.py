@@ -302,7 +302,9 @@ def brand_new(request: Request):
 
 
 def _parse_competitors(raw: str) -> list[dict[str, str]]:
-    """Accept one competitor per line: 'Name' or 'Name | domain.com'."""
+    """Legacy textarea parser — kept for any caller still passing the old
+    'Name | domain.com' string format. Modern routes use the structured
+    form via _competitors_from_form."""
     out: list[dict[str, str]] = []
     for line in (raw or "").splitlines():
         line = line.strip()
@@ -316,13 +318,27 @@ def _parse_competitors(raw: str) -> list[dict[str, str]]:
     return out
 
 
+def _competitors_from_form(form) -> list[dict[str, str]]:
+    """Read paired competitor_name + competitor_domain fields from a form
+    submission and return the list of {name, domain} dicts. Drops rows
+    where both fields are empty so users can leave the seed row blank."""
+    names = form.getlist("competitor_name")
+    domains = form.getlist("competitor_domain")
+    out: list[dict[str, str]] = []
+    for n, d in zip(names, domains):
+        n_clean = (n or "").strip()
+        d_clean = (d or "").strip()
+        if n_clean or d_clean:
+            out.append({"name": n_clean, "domain": d_clean})
+    return out
+
+
 @router.post("/brands")
-def brand_create(
+async def brand_create(
     request: Request,
     name: str = Form(...),
     domain: str = Form(...),
     aliases: str = Form(""),
-    competitors: str = Form(""),
     ground_truth: str = Form(""),
     locale_country: str = Form("US"),
     locale_language: str = Form("en"),
@@ -331,17 +347,22 @@ def brand_create(
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
+    form = await request.form()
+    competitor_rows = _competitors_from_form(form)
+    # Tier upgrades go through Stripe — only master accounts can self-assign
+    # a paid tier from this form. Regular users always start at free.
     valid_tiers = {"", "two_engine_monthly", "full_monthly"}
-    tier_clean = tier.strip() if tier.strip() in valid_tiers else ""
+    requested_tier = tier.strip() if tier.strip() in valid_tiers else ""
+    tier_clean = requested_tier if user.get("is_master") else ""
     brand = TrackedBrand(
         user_id=UUID(user["id"]),
         name=name.strip(),
         domain=domain.strip(),
         aliases=[a.strip() for a in aliases.split(",") if a.strip()],
-        competitors=_parse_competitors(competitors),
+        competitors=competitor_rows,
         ground_truth=[g.strip() for g in ground_truth.splitlines() if g.strip()],
         engines=list(DEFAULT_ENGINES),
-        locale_country=locale_country.strip() or "US",
+        locale_country=(locale_country.strip() or "US").upper(),
         locale_language=locale_language.strip() or "en",
         tier=tier_clean,
         next_scheduled_run=_compute_next_scheduled_run() if tier_clean else None,
@@ -416,13 +437,12 @@ def brand_edit_page(request: Request, brand_id: str):
 
 
 @router.post("/brands/{brand_id}/edit")
-def brand_update(
+async def brand_update(
     request: Request,
     brand_id: str,
     name: str = Form(...),
     domain: str = Form(...),
     aliases: str = Form(""),
-    competitors: str = Form(""),
     ground_truth: str = Form(""),
     locale_country: str = Form("US"),
     locale_language: str = Form("en"),
@@ -435,17 +455,25 @@ def brand_update(
         bid = UUID(brand_id)
     except ValueError:
         raise HTTPException(404, "Brand not found")
+    form = await request.form()
+    competitor_rows = _competitors_from_form(form)
     valid_tiers = {"", "two_engine_monthly", "full_monthly"}
-    tier_clean = tier.strip() if tier.strip() in valid_tiers else ""
+    requested_tier = tier.strip() if tier.strip() in valid_tiers else ""
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
         if not brand or str(brand.user_id) != user["id"]:
             raise HTTPException(404, "Brand not found")
         was_subscriber = bool(brand.tier)
+        # Tier changes only honoured for master accounts; everyone else
+        # keeps whatever tier they have (Stripe is the upgrade path).
+        if user.get("is_master"):
+            tier_clean = requested_tier
+        else:
+            tier_clean = brand.tier or ""
         brand.name = name.strip()
         brand.domain = domain.strip()
         brand.aliases = [a.strip() for a in aliases.split(",") if a.strip()]
-        brand.competitors = _parse_competitors(competitors)
+        brand.competitors = competitor_rows
         brand.ground_truth = [g.strip() for g in ground_truth.splitlines() if g.strip()]
         brand.locale_country = (locale_country.strip() or "US").upper()
         brand.locale_language = locale_language.strip() or "en"
