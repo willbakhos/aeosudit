@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}monitoraeo{% endblock %}</title>
 <meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/favicon.png">
 <style>
   :root {
     --ink: #0f172a;
@@ -50,19 +52,12 @@
     display: flex; align-items: center; gap: 18px;
   }
   nav.topbar .brand {
-    display: inline-flex; align-items: center; gap: 12px;
-    font-weight: 900; letter-spacing: -.025em;
-    color: var(--ink); text-decoration: none;
-    font-size: 17px;
+    display: inline-flex; align-items: center;
+    text-decoration: none;
   }
   nav.topbar .brand:hover { text-decoration: none; }
-  nav.topbar .logo {
-    width: 36px; height: 36px;
-    border-radius: 12px;
-    display: grid; place-items: center;
-    color: white;
-    background: linear-gradient(135deg, var(--blue), var(--purple));
-    box-shadow: 0 12px 24px rgba(37,99,235,.26);
+  nav.topbar .brand img.wordmark {
+    display: block; height: 28px; width: auto;
   }
   nav.topbar .spacer { flex: 1; }
   nav.topbar .user-meta {
@@ -240,14 +235,8 @@
 <body>
 {% set active_tab = active_tab|default('') %}
 <nav class="topbar">
-  <a href="/dashboard" class="brand">
-    <span class="logo" aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </span>
-    <span>monitoraeo</span>
+  <a href="/dashboard" class="brand" aria-label="monitoraeo dashboard">
+    <img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo">
   </a>
   <span class="spacer"></span>
   {% if user %}

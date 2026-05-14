@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ config.brand.name }} AEO/GEO Snapshot | Free Preview</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/favicon.png">
 <style>
   :root {
     --ink: #0f172a;
@@ -44,8 +46,8 @@
 
   .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 58px; }
   .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom: 22px; }
-  .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink); font-weight:900; letter-spacing:-.035em; }
-  .logo { width:42px; height:42px; border-radius:14px; display:grid; place-items:center; color:white; background:linear-gradient(135deg,var(--blue),var(--purple)); box-shadow:0 14px 30px rgba(37,99,235,.26); }
+  .brand { display:inline-flex; align-items:center; text-decoration:none; }
+  .brand img.wordmark { display:block; height:30px; width:auto; }
   .top-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; }
   .chip { display:inline-flex; align-items:center; gap:7px; min-height:30px; padding:7px 11px; border-radius:999px; background:rgba(255,255,255,.78); border:1px solid var(--line); color:var(--muted); font-size:12px; font-weight:850; letter-spacing:.04em; text-transform:uppercase; backdrop-filter:blur(12px); }
   .chip.blue { color:#1d4ed8; background:rgba(239,246,255,.92); border-color:rgba(37,99,235,.18); }
@@ -262,7 +264,7 @@
 {% set competitor_names_strong %}{% for c in competitors_seen %}<strong>{{ c }}</strong>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endset %}
 <main class="shell">
   <header class="topbar">
-    <a class="brand" href="/"><span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>monitoraeo</span></a>
+    <a class="brand" href="/" aria-label="monitoraeo home"><img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo"></a>
     <div class="top-actions"><span class="chip warning">Free preview</span><span class="chip dark">{{ config.brand.name }}</span></div>
   </header>
 

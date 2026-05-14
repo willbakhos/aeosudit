@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Generating preview for {{ brand_name }}… | monitoraeo</title>
 <meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/favicon.png">
 <style>
   :root {
     --ink:#0f172a; --muted:#64748b; --line:rgba(15,23,42,.10);
@@ -20,11 +22,9 @@
       radial-gradient(circle at 85% 8%, rgba(124,58,237,.12), transparent 30rem),
       linear-gradient(180deg, #f8fbff 0%, #f8fafc 38%, #eef4ff 100%);
   }
-  .topbar { position:absolute; top:24px; left:24px; display:flex; align-items:center; gap:10px; }
-  .logo { width:36px; height:36px; border-radius:12px; display:grid; place-items:center;
-    color:white; background:linear-gradient(135deg, var(--blue), var(--purple));
-    box-shadow:0 12px 24px rgba(37,99,235,.22); }
-  .brand-mark { font-weight:900; letter-spacing:-.02em; color:var(--ink); text-decoration:none; }
+  .topbar { position:absolute; top:24px; left:24px; }
+  .topbar a { display:inline-flex; align-items:center; text-decoration:none; }
+  .topbar img.wordmark { display:block; height:28px; width:auto; }
 
   .card {
     width: min(620px, 100%);
@@ -80,15 +80,9 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand-mark" href="/">
-      <span class="logo" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
+    <a href="/" aria-label="monitoraeo home">
+      <img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo">
     </a>
-    <a class="brand-mark" href="/">monitoraeo</a>
   </header>
 
   <div class="card">

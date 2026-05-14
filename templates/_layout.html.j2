@@ -14,6 +14,8 @@
 <meta name="description" content="{{ _description }}">
 <link rel="canonical" href="{{ _canonical }}">
 <meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/favicon.png">
 
 <!-- Open Graph -->
 <meta property="og:site_name" content="{{ _site_name }}">
@@ -93,8 +95,9 @@
   .narrow { max-width: 760px; margin: 0 auto; }
 
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
-  .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.03em; text-decoration: none; color: var(--ink); }
-  .brand .logo { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; color: white; background: linear-gradient(135deg, var(--blue), var(--purple)); box-shadow: 0 14px 30px rgba(37,99,235,.26); }
+  .brand { display: inline-flex; align-items: center; text-decoration: none; }
+  .brand img.wordmark { display: block; height: 32px; width: auto; }
+  .brand:hover { text-decoration: none; }
   .nav { display: flex; align-items: center; gap: 26px; font-size: 14px; color: var(--muted); font-weight: 600; }
   .nav a { text-decoration: none; }
   .nav a:hover, .nav a.active { color: var(--blue); }
@@ -205,11 +208,8 @@
 <body>
 <main class="shell">
   <header class="topbar">
-    <a class="brand" href="/">
-      <div class="logo">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <span>monitoraeo</span>
+    <a class="brand" href="/" aria-label="monitoraeo home">
+      <img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo">
     </a>
     <nav class="nav">
       <a href="/what-is-aeo" class="desktop-only{% if active=='aeo' %} active{% endif %}">What is AEO</a>
@@ -236,11 +236,8 @@
 
   <footer class="footer">
     <div>
-      <a class="brand" href="/" style="margin-bottom:12px;">
-        <div class="logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 17.5L9.5 12l3.5 3.5L20 8.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <span>monitoraeo</span>
+      <a class="brand" href="/" style="margin-bottom:12px;" aria-label="monitoraeo home">
+        <img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo">
       </a>
       <p style="margin:12px 0 0; max-width:280px;">See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe your brand — and what to fix.</p>
     </div>
