@@ -1098,16 +1098,10 @@ def serve_report(run_id: str, refresh: int = 0, tier: str = "full") -> HTMLRespo
     if "<head>" in html:
         html = html.replace("<head>", f"<head>{head_inject}", 1)
     # Inject a floating "Run another preview" CTA when served over HTTP, so
-    # visitors can audit a new domain without backing out manually. Plus a
-    # sticky "Save this report to your dashboard → Sign up" bar at the top
-    # so logged-out previews convert to accounts. Both are hidden when the
-    # report is embedded in /dashboard/reports/{id}.
+    # visitors can audit a new domain without backing out manually. Hidden
+    # when the report is embedded in /dashboard/reports/{id}.
     if "<body>" in html:
-        html = html.replace(
-            "<body>",
-            f"<body>{_claim_cta_for(run_id)}{RUN_ANOTHER_BAR}",
-            1,
-        )
+        html = html.replace("<body>", f"<body>{RUN_ANOTHER_BAR}", 1)
     return HTMLResponse(html)
 
 

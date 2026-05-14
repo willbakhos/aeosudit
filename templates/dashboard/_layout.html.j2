@@ -235,7 +235,9 @@
 <body>
 {% set active_tab = active_tab|default('') %}
 <nav class="topbar">
-  <a href="/dashboard" class="brand" aria-label="monitoraeo dashboard">
+  {# Logged-in users land on the dashboard index when they click the wordmark;
+     logged-out (e.g. /dashboard/login) users go to the public marketing home. #}
+  <a href="{% if user %}/dashboard{% else %}/{% endif %}" class="brand" aria-label="monitoraeo home">
     <img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo">
   </a>
   <span class="spacer"></span>
