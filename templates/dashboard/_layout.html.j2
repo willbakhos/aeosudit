@@ -195,6 +195,9 @@
     <span class="user-meta">
       <span class="avatar">{{ (user.email or '?')[0]|upper }}</span>
       <span>{{ user.email }}</span>
+      {% if user.is_master %}
+        <span title="Master account — full access to every tier and engine combination" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">★ Master</span>
+      {% endif %}
     </span>
     <form method="post" action="/dashboard/logout" style="margin:0">
       <button class="btn ghost" type="submit">Sign out</button>

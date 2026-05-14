@@ -74,12 +74,20 @@
       </div>
 
       {% if row.trend_runs %}
-        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:24px;">
-          <h3 style="margin:0;">Recent trend</h3>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:24px; gap:12px; flex-wrap:wrap;">
+          <h3 style="margin:0;">Trend</h3>
           <span style="font-size:12px; color:var(--muted); font-weight:700;">{{ row.trend_runs|length }} run{{ '' if row.trend_runs|length == 1 else 's' }}</span>
         </div>
-        <div style="position:relative; height:240px; margin-top:12px; background:white; border:1px solid var(--line); border-radius:14px; padding:14px;">
-          <canvas id="trend-{{ b.id }}" data-trend='{{ row.trend_json|safe }}'></canvas>
+        <div class="metric-tabs" data-target="chart-{{ b.id }}" style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; padding:4px; background:rgba(241,245,249,.7); border-radius:12px; width:fit-content;">
+          <button type="button" class="metric-tab active" data-metric="visibility">Visibility</button>
+          <button type="button" class="metric-tab" data-metric="citation">Citation rate</button>
+          <button type="button" class="metric-tab" data-metric="sentiment">Sentiment</button>
+          <button type="button" class="metric-tab" data-metric="accuracy">Accuracy</button>
+          <button type="button" class="metric-tab" data-metric="hallucinations">Hallucinations</button>
+          <button type="button" class="metric-tab" data-metric="sov">Share of Voice</button>
+        </div>
+        <div style="position:relative; height:280px; margin-top:12px; background:white; border:1px solid var(--line); border-radius:14px; padding:14px;">
+          <canvas id="chart-{{ b.id }}" data-trend='{{ row.trend_json|safe }}'></canvas>
         </div>
       {% else %}
         <p style="margin-top:18px; color:var(--muted); font-size:13px;">No runs yet — first scheduled audit fires on {{ row.next_scheduled.strftime('%b %d') }}.</p>
@@ -88,84 +96,148 @@
   {% endfor %}
 {% endif %}
 
+<style>
+  .metric-tab {
+    appearance: none; border: 0; cursor: pointer;
+    padding: 7px 13px; border-radius: 9px;
+    background: transparent; color: var(--muted);
+    font: inherit; font-size: 12.5px; font-weight: 700;
+  }
+  .metric-tab:hover { color: var(--ink); background: white; }
+  .metric-tab.active { color: var(--ink); background: white; box-shadow: var(--shadow); }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
   (function () {
-    var canvases = document.querySelectorAll('canvas[data-trend]');
-    canvases.forEach(function (canvas) {
-      var data = JSON.parse(canvas.getAttribute('data-trend'));
-      if (!data.labels || !data.labels.length) return;
-      new Chart(canvas, {
+    var METRICS = {
+      visibility:     { label: 'Visibility %',     color: '#2563eb', suffix: '%' },
+      citation:       { label: 'Citation rate %',  color: '#7c3aed', suffix: '%' },
+      sentiment:      { label: 'Sentiment score',  color: '#16a34a', suffix: '%' },
+      accuracy:       { label: 'Accuracy score',   color: '#0ea5e9', suffix: '%' },
+      hallucinations: { label: 'Hallucination rate %', color: '#dc2626', suffix: '%' },
+    };
+
+    function hexToRgba(hex, a) {
+      var n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    }
+
+    function lineConfig(data, metric) {
+      var m = METRICS[metric];
+      return {
         type: 'line',
         data: {
           labels: data.labels,
-          datasets: [
-            {
-              label: 'Visibility %',
-              data: data.visibility,
-              borderColor: '#2563eb',
-              backgroundColor: 'rgba(37, 99, 235, .12)',
-              borderWidth: 2.5,
-              tension: 0.35,
-              fill: true,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              pointBackgroundColor: '#2563eb',
-            },
-            {
-              label: 'Citation rate %',
-              data: data.citation,
-              borderColor: '#7c3aed',
-              backgroundColor: 'rgba(124, 58, 237, .08)',
-              borderWidth: 2,
-              borderDash: [4, 4],
-              tension: 0.35,
-              fill: false,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-              pointBackgroundColor: '#7c3aed',
-            },
-          ],
+          datasets: [{
+            label: m.label,
+            data: data[metric] || [],
+            borderColor: m.color,
+            backgroundColor: hexToRgba(m.color, 0.12),
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: true,
+            spanGaps: true,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: m.color,
+          }],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { boxWidth: 14, font: { size: 12, weight: 600 }, color: '#334155' },
-            },
+            legend: { display: false },
             tooltip: {
               backgroundColor: 'rgba(15, 23, 42, .94)',
               titleFont: { weight: 700 },
-              bodyFont: { size: 12 },
               padding: 10,
               cornerRadius: 8,
               callbacks: {
                 label: function (ctx) {
-                  return ctx.dataset.label + ': ' + ctx.parsed.y + '%';
+                  if (ctx.parsed.y === null) return m.label + ': —';
+                  return m.label + ': ' + ctx.parsed.y + m.suffix;
                 },
               },
             },
           },
           scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: '#64748b', font: { size: 11, weight: 600 } },
-            },
+            x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11, weight: 600 } } },
             y: {
               beginAtZero: true,
               max: 100,
               grid: { color: 'rgba(15, 23, 42, .06)' },
-              ticks: {
-                color: '#64748b',
-                font: { size: 11 },
-                callback: function (v) { return v + '%'; },
-              },
+              ticks: { color: '#64748b', font: { size: 11 }, callback: function (v) { return v + m.suffix; } },
             },
           },
         },
+      };
+    }
+
+    function sovConfig(data) {
+      return {
+        type: 'bar',
+        data: {
+          labels: data.sov_labels || [],
+          datasets: [{
+            label: 'Mentions in latest run',
+            data: data.sov_counts || [],
+            backgroundColor: 'rgba(245, 158, 11, .65)',
+            borderColor: '#d97706',
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }],
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, .94)',
+              titleFont: { weight: 700 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function (ctx) { return ctx.parsed.x + ' mention' + (ctx.parsed.x === 1 ? '' : 's'); },
+              },
+            },
+          },
+          scales: {
+            x: { beginAtZero: true, grid: { color: 'rgba(15, 23, 42, .06)' }, ticks: { color: '#64748b', precision: 0 } },
+            y: { grid: { display: false }, ticks: { color: '#334155', font: { size: 12, weight: 700 } } },
+          },
+        },
+      };
+    }
+
+    function buildConfig(data, metric) {
+      if (metric === 'sov') return sovConfig(data);
+      return lineConfig(data, metric);
+    }
+
+    var canvases = document.querySelectorAll('canvas[data-trend]');
+    var charts = {};
+    canvases.forEach(function (canvas) {
+      var data = JSON.parse(canvas.getAttribute('data-trend'));
+      if (!data.labels || !data.labels.length) return;
+      charts[canvas.id] = { data: data, instance: new Chart(canvas, buildConfig(data, 'visibility')) };
+    });
+
+    document.querySelectorAll('.metric-tabs').forEach(function (tabs) {
+      var targetId = tabs.getAttribute('data-target');
+      tabs.querySelectorAll('.metric-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          tabs.querySelectorAll('.metric-tab').forEach(function (x) { x.classList.remove('active'); });
+          btn.classList.add('active');
+          var entry = charts[targetId];
+          if (!entry) return;
+          entry.instance.destroy();
+          var canvas = document.getElementById(targetId);
+          entry.instance = new Chart(canvas, buildConfig(entry.data, btn.getAttribute('data-metric')));
+        });
       });
     });
   })();

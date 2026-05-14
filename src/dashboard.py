@@ -578,15 +578,33 @@ def monitoring(request: Request):
                 )
             )[:12]
             runs.reverse()  # oldest -> newest left to right
+            # Latest-run share-of-voice as a top-N bar series for the SoV tab.
+            latest = runs[-1] if runs else None
+            latest_sov = sorted(
+                (latest.share_of_voice or {}).items() if latest else [],
+                key=lambda kv: kv[1],
+                reverse=True,
+            )[:8]
+
+            def _series(attr: str, *, scale: int = 100) -> list:
+                """Build a numeric series with None gaps where the metric was
+                never computed (e.g. older runs before LLM scoring rolled out)."""
+                out = []
+                for r in runs:
+                    v = getattr(r, attr, None)
+                    out.append(round(v * scale, 1) if v is not None else None)
+                return out
+
             chart_payload = {
                 "labels": [r.started_at.strftime("%b %d") for r in runs],
-                "visibility": [
-                    round((r.visibility_rate or 0) * 100, 1) for r in runs
-                ],
-                "citation": [
-                    round((r.citation_rate or 0) * 100, 1) for r in runs
-                ],
                 "run_ids": [r.run_id for r in runs],
+                "visibility": _series("visibility_rate"),
+                "citation": _series("citation_rate"),
+                "sentiment": _series("sentiment_avg"),
+                "accuracy": _series("accuracy_avg"),
+                "hallucinations": _series("hallucination_rate"),
+                "sov_labels": [c for c, _ in latest_sov],
+                "sov_counts": [n for _, n in latest_sov],
             }
             rows.append({
                 "brand": b,
@@ -800,22 +818,47 @@ def _run_audit_for_brand(
 
         run_dir = output_root / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
+        # Capture the site screenshot in parallel with the audit so the report
+        # hero has the same browser-frame visual the free preview uses.
+        # Non-fatal — if the screenshot service is down we just render the
+        # placeholder skeleton.
+        try:
+            from src.screenshot import capture as capture_screenshot
+            screenshot_path = capture_screenshot(
+                brand_snapshot["domain"], run_dir
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[audit] screenshot capture failed: {type(exc).__name__}: {exc}")
+            screenshot_path = None
         responses = asyncio.run(run_audit(engine_objs, queries, run_dir))
+
+        # Tier may enable LLM scoring (sentiment / accuracy / hallucination
+        # flags). Run it now so the rows we score and persist have the full
+        # picture — without this, the second-pass metrics stay None and the
+        # trend chart can only plot visibility + citation.
+        from src.server import TIER_PLANS
+        plan_cfg = TIER_PLANS.get(brand_snapshot["tier"], {})
+        llm_scores: list = []
+        if plan_cfg.get("llm_scoring"):
+            try:
+                from src.llm_scorer import score_all
+                llm_scores = list(asyncio.run(score_all(responses, site)))
+            except Exception as exc:  # noqa: BLE001
+                print(f"[audit] llm scoring failed: {type(exc).__name__}: {exc}")
+                llm_scores = []
         rows = [
             ScoredRow(
                 response=r,
                 deterministic=score_response(r, site),
-                llm=LLMScore(),
+                llm=(llm_scores[i] if i < len(llm_scores) and llm_scores[i] else LLMScore()),
             )
-            for r in responses
+            for i, r in enumerate(responses)
         ]
         write_csv(rows, run_dir)
         # Monitoring runs always render the "full" report template so the
         # subscriber sees every metric the paid one-shot audit produces. If
-        # their tier enables the action plan (full_monthly / two_engine_monthly),
-        # generate it with Claude before rendering so the report includes it.
-        from src.server import TIER_PLANS
-        plan_cfg = TIER_PLANS.get(brand_snapshot["tier"], {})
+        # their tier enables the action plan, generate it with Claude before
+        # rendering so the report includes it.
         action_plan = None
         if plan_cfg.get("action_plan"):
             try:
@@ -823,8 +866,19 @@ def _run_audit_for_brand(
                 action_plan = generate_action_plan(rows, site)
             except Exception as exc:  # noqa: BLE001
                 print(f"[audit] action_plan generation failed: {type(exc).__name__}: {exc}")
-        write_html(rows, site, run_dir, tier="full", action_plan=action_plan)
+        write_html(
+            rows,
+            site,
+            run_dir,
+            tier="full",
+            action_plan=action_plan,
+            screenshot=screenshot_path.name if screenshot_path else None,
+        )
 
+        # Aggregate the headline metrics for the dashboard trend chart.
+        # Only count rows where the brand was actually mentioned for the
+        # sentiment/accuracy averages — "not_mentioned" answers are noise
+        # that would otherwise drag the rolling averages toward 0.
         n = len(rows) or 1
         visibility = sum(1 for r in rows if r.deterministic.mentioned) / n
         citation = sum(1 for r in rows if r.deterministic.cited_as_source) / n
@@ -832,6 +886,30 @@ def _run_audit_for_brand(
         for r in rows:
             for c in r.deterministic.competitors_mentioned:
                 sov[c] = sov.get(c, 0) + 1
+
+        sentiment_map = {"positive": 1.0, "neutral": 0.5, "negative": 0.0}
+        accuracy_map = {"accurate": 1.0, "partial": 0.5, "inaccurate": 0.0}
+        sent_vals = [
+            sentiment_map[r.llm.sentiment]
+            for r in rows
+            if r.llm and r.llm.sentiment in sentiment_map
+        ]
+        acc_vals = [
+            accuracy_map[r.llm.accuracy]
+            for r in rows
+            if r.llm and r.llm.accuracy in accuracy_map
+        ]
+        sentiment_avg = sum(sent_vals) / len(sent_vals) if sent_vals else None
+        accuracy_avg = sum(acc_vals) / len(acc_vals) if acc_vals else None
+        hallucination_rate = (
+            sum(
+                1
+                for r in rows
+                if r.llm
+                and (r.llm.hallucination_flags or (r.llm.confidence and r.llm.confidence < 0.7))
+            )
+            / n
+        )
 
         with get_session() as s:
             run_rec = s.get(AuditRunRecord, UUID(run_record_id))
@@ -841,6 +919,9 @@ def _run_audit_for_brand(
                 run_rec.queries_total = n
                 run_rec.visibility_rate = visibility
                 run_rec.citation_rate = citation
+                run_rec.sentiment_avg = sentiment_avg
+                run_rec.accuracy_avg = accuracy_avg
+                run_rec.hallucination_rate = hallucination_rate
                 run_rec.share_of_voice = sov
                 s.add(run_rec)
             # Update brand scheduling state on successful runs.
