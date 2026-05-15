@@ -879,6 +879,54 @@ def create_checkout(req: CheckoutRequest) -> JSONResponse:
     return JSONResponse({"id": session.id, "url": session.url})
 
 
+@app.post("/buy")
+def buy_redirect(
+    tier: str = Form(...),
+    brand_name: str = Form(""),
+    domain: str = Form(""),
+):
+    """Form-POST entry point used by the in-report tier cards. Creates a
+    Stripe Checkout Session for the chosen tier and 303-redirects the
+    browser to the Stripe-hosted page. Email is collected by Stripe
+    (we don't have it yet for cold-email visitors)."""
+    if tier not in TIER_PLANS:
+        raise HTTPException(400, f"Unknown tier {tier!r}")
+    plan = TIER_PLANS[tier]
+    price_id = os.environ.get(plan["stripe_env"], "").strip()
+    if not price_id:
+        raise HTTPException(500, f"No {plan['stripe_env']} env var configured")
+    if not stripe.api_key:
+        raise HTTPException(500, "STRIPE_SECRET_KEY is not set")
+    session = stripe.checkout.Session.create(
+        mode=plan["stripe_mode"],
+        line_items=[{"price": price_id, "quantity": 1}],
+        success_url=f"{PUBLIC_BASE_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel",
+        metadata={
+            "tier": tier,
+            "brand_name": brand_name.strip(),
+            "domain": domain.strip(),
+        },
+    )
+    return RedirectResponse(session.url, status_code=303)
+
+
+def _meta_with_email(meta: dict[str, Any], session: dict | Any) -> dict[str, Any]:
+    """Stripe-collected emails live on session.customer_email or
+    session.customer_details.email — not in the metadata we set. Fold them
+    into the meta dict so /checkout/success and _fulfil_order both work
+    when we don't pre-supply email at session-create time."""
+    out = dict(meta or {})
+    if not out.get("email"):
+        ce = ""
+        if hasattr(session, "get"):
+            ce = (session.get("customer_email") or "")
+            if not ce:
+                ce = ((session.get("customer_details") or {}).get("email") or "")
+        out["email"] = ce.strip()
+    return out
+
+
 @app.get("/checkout/success", response_class=HTMLResponse)
 def checkout_success(session_id: str | None = None) -> HTMLResponse:
     """After Stripe redirects back, ask the customer for their competitor list
@@ -891,7 +939,7 @@ def checkout_success(session_id: str | None = None) -> HTMLResponse:
     elif session_id and stripe.api_key:
         try:
             sess = stripe.checkout.Session.retrieve(session_id)
-            meta = sess.get("metadata") or {}
+            meta = _meta_with_email(sess.get("metadata") or {}, sess)
             PENDING_ORDERS[session_id] = meta
         except Exception:  # noqa: BLE001
             meta = {}
@@ -1018,7 +1066,10 @@ async def stripe_webhook(request: Request) -> JSONResponse:
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         sid = session.get("id") or ""
-        meta = session.get("metadata") or {}
+        # Fold Stripe-collected email into meta so the post-payment setup
+        # page and _fulfil_order both have it (we don't pre-supply email
+        # for /buy-driven flows).
+        meta = _meta_with_email(session.get("metadata") or {}, session)
         # Don't fire the audit yet — the customer still needs to enter their
         # competitor list via /checkout/success → /orders/setup.
         PENDING_ORDERS[sid] = meta
