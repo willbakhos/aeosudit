@@ -541,7 +541,7 @@ def _run_preview_job(
     run_id: str, domain: str, brand_name: str, category: str | None, country: str = "US"
 ) -> None:
     """Background worker for a free preview. Updates PREVIEW_JOBS as it progresses."""
-    _set_step(run_id, "Capturing site screenshot…", 8)
+    _set_step(run_id, "Pulling your site snapshot…", 8)
     try:
         site = _build_preview_site(domain, brand_name, country=country)
         queries = _generic_free_queries(brand_name, category)
@@ -573,7 +573,7 @@ def _run_preview_job(
         run_dir.mkdir(parents=True, exist_ok=True)
         screenshot_path = capture_screenshot(domain, run_dir)
 
-        _set_step(run_id, f"Asking Google AI {len(queries)} buyer-facing questions…", 25)
+        _set_step(run_id, f"Gathering AI answers across {len(queries)} buyer questions…", 25)
 
         async def _gather():
             return await asyncio.gather(
@@ -582,7 +582,7 @@ def _run_preview_job(
             )
 
         responses, tech = asyncio.run(_gather())
-        _set_step(run_id, "Extracting competitors from the answers…", 70)
+        _set_step(run_id, "Identifying competitors named in the answers…", 70)
 
         # Auto-extract competitors from the responses via Haiku, then inject
         # into the SiteConfig so the deterministic scorer can flag them in the
@@ -594,7 +594,7 @@ def _run_preview_job(
         except Exception:  # noqa: BLE001
             site.competitors = []
 
-        _set_step(run_id, "Scoring visibility and citations…", 85)
+        _set_step(run_id, "Compiling visibility and citation scores…", 85)
         rows = [
             ScoredRow(
                 response=r,
@@ -604,7 +604,7 @@ def _run_preview_job(
             for r in responses
         ]
         write_csv(rows, run_dir)
-        _set_step(run_id, "Rendering your report…", 95)
+        _set_step(run_id, "Assembling your report…", 95)
         write_html(
             rows,
             site,
