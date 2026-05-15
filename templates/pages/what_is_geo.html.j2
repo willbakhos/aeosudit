@@ -4,6 +4,42 @@
 {% set page_description = "GEO (Generative Engine Optimisation) is the technical and content layer that decides whether AI engines can actually read, understand, parse and trust your site. The 15 things that matter — robots.txt for AI bots, llms.txt, JSON-LD schema, server-rendered content, and more." %}
 {% block title %}What is GEO? Generative Engine Optimisation explained | monitoraeo{% endblock %}
 
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is GEO (Generative Engine Optimisation)?",
+      "acceptedAnswer": {"@type": "Answer", "text": "GEO is the technical and content-quality layer that decides whether generative AI systems (Claude, ChatGPT, Perplexity, Gemini, Google AI Overviews) can read, parse and trust a site's content. It covers crawlability, structured data, semantic HTML, server-rendered content, llms.txt, and entity signals. Where SEO optimises for blue-link rankings and AEO measures the AI-answer outcome, GEO is the foundation that determines if AI can ingest the site at all."}
+    },
+    {
+      "@type": "Question",
+      "name": "How is GEO different from SEO?",
+      "acceptedAnswer": {"@type": "Answer", "text": "SEO optimises for ranking algorithms (Google, Bing) that return blue links. GEO optimises for retrieval-augmented generation pipelines that ingest content into an AI's answer. Many SEO best practices help GEO (canonical URLs, fast pages, semantic HTML), but GEO adds requirements like server-rendered HTML, /llms.txt, FAQPage schema and explicit entity definitions that traditional SEO doesn't prioritise."}
+    },
+    {
+      "@type": "Question",
+      "name": "How is GEO different from AEO?",
+      "acceptedAnswer": {"@type": "Answer", "text": "AEO (Answer Engine Optimisation) measures the outcome — does the AI name your brand, cite your domain, recommend you. GEO measures the foundation — can the AI even read your site cleanly enough to consider you. Bad GEO caps your AEO ceiling: a site invisible to AI crawlers cannot be cited no matter how strong the brand."}
+    },
+    {
+      "@type": "Question",
+      "name": "What does a GEO audit check for?",
+      "acceptedAnswer": {"@type": "Answer", "text": "A monitoraeo GEO audit runs 15 checks across six categories: crawlability (robots.txt allows GPTBot/ClaudeBot/PerplexityBot, sitemap.xml present, llms.txt published), structured data (Organization, FAQPage, Product schemas), metadata (description, canonical, Open Graph), content shape (single H1, server-rendered HTML, alt text), performance (HTTPS, mobile viewport, response time) and entity signals (brand name disambiguation, sameAs links)."}
+    },
+    {
+      "@type": "Question",
+      "name": "What is llms.txt and do I need one?",
+      "acceptedAnswer": {"@type": "Answer", "text": "llms.txt is an emerging standard (llmstxt.org) — a markdown file at /llms.txt that summarises the site for AI crawlers, similar to how robots.txt summarises crawl rules. It tells LLMs what the site is, who it's for, and which pages are authoritative content. Major AI ingestion pipelines are starting to honour it. Yes, publish one — it's a five-minute task with measurable upside."}
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block extra_css %}
   .pillar { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
   .pillar h3 { margin-top: 0; font-size: 18px; }

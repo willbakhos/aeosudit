@@ -4,6 +4,42 @@
 {% set page_description = "Track your AI visibility every month. Re-runs the full audit, emails a one-page diff when visibility moves, alerts on new competitors or hallucinations. Coming soon — join the waitlist." %}
 {% block title %}Monitoring — track AI visibility every month | monitoraeo{% endblock %}
 
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is AI visibility monitoring?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Monitoring re-runs your full AEO + GEO audit every month and emails you a one-page diff. You see what moved (visibility up or down per engine), who's new in the cited-domains list, and which technical foundations regressed since last month. An audit is a snapshot; monitoring catches drift between snapshots."}
+    },
+    {
+      "@type": "Question",
+      "name": "How often does monitoraeo re-audit my brand?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Subscribers get one automatic cron-scheduled run on the 1st of every month at 06:00 UTC, plus one manual run any time you want a fresh check (e.g. right after a site change). Two runs per calendar month — the counter resets when the monthly cron fires."}
+    },
+    {
+      "@type": "Question",
+      "name": "What's the difference between Two Engine Monitoring ($35/mo) and Full Monitoring ($95/mo)?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Two Engine Monitoring covers Google AI Overviews + ChatGPT with 20 monitored buyer questions. Full Monitoring tracks all 5 engines (adds Claude, Perplexity, Gemini), 40 monitored questions, per-engine trend charts, competitor and source change alerts. Both subscriptions include the matching one-off audit."}
+    },
+    {
+      "@type": "Question",
+      "name": "Can I edit which buyer questions are monitored?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes. From the dashboard you can replace the auto-generated buyer questions with your own list — up to 20 questions on Two Engine Monitoring, up to 40 on Full Monitoring. Edits apply on the next scheduled run."}
+    },
+    {
+      "@type": "Question",
+      "name": "Can I cancel any time?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes — Stripe-managed subscription, cancel any time from Account settings → Billing. You keep access until the end of the current billing period."}
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block extra_css %}
   .feature { padding: 24px; border-radius: 22px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
   .feature h3 { margin-top: 0; }

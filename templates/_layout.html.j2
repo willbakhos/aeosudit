@@ -55,6 +55,22 @@
   ]
 }
 </script>
+{# Per-page breadcrumb. Set `breadcrumbs` in the route's _render call to a
+   list of {name, path} dicts (omit the leading Home — added automatically). #}
+{% if breadcrumbs %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type":"ListItem","position":1,"name":"Home","item":"{{ _base_url }}/"}
+    {%- for crumb in breadcrumbs %},
+    {"@type":"ListItem","position":{{ loop.index + 1 }},"name":"{{ crumb.name }}","item":"{{ _base_url }}{{ crumb.path }}"}
+    {%- endfor %}
+  ]
+}
+</script>
+{% endif %}
 {% block schema %}{% endblock %}
 <style>
   :root {

@@ -259,8 +259,68 @@ def robots_txt() -> PlainTextResponse:
         "User-agent: anthropic-ai\nAllow: /\n\n"
         "User-agent: cohere-ai\nAllow: /\n\n"
         f"Sitemap: {SITE_BASE_URL}/sitemap.xml\n"
+        f"# AI summary: {SITE_BASE_URL}/llms.txt\n"
     )
     return PlainTextResponse(body, media_type="text/plain")
+
+
+@app.get("/llms.txt", response_class=PlainTextResponse)
+def llms_txt() -> PlainTextResponse:
+    """The emerging /llms.txt standard (https://llmstxt.org) — a markdown
+    summary that tells LLM crawlers what monitoraeo is and which pages
+    are authoritative content. Returns text/markdown so AI agents that
+    sniff the content type recognise it."""
+    body = f"""# monitoraeo
+
+> AI Answer Engine Optimisation (AEO) and Generative Engine Optimisation (GEO) audits. \
+We measure how often Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews \
+name a brand, cite its domain, and recommend it in buyer-facing answers — then \
+turn the gaps into a fix list.
+
+monitoraeo is the AEO/GEO audit platform for brands that want to be the answer when \
+buyers ask AI a question. The product runs real-time queries across the five major \
+AI answer engines, scores visibility, citation rate, sentiment, accuracy and \
+hallucination risk per engine, and produces a prioritised action plan.
+
+## Key concepts
+- [What is AEO?]({SITE_BASE_URL}/what-is-aeo): Answer Engine Optimisation — the practice of getting your brand named, cited and recommended in AI answers from ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews.
+- [What is GEO?]({SITE_BASE_URL}/what-is-geo): Generative Engine Optimisation — the technical and content layer that makes a site retrievable, parseable and quotable by generative AI systems.
+- [AEO vs SEO]({SITE_BASE_URL}/aeo-vs-seo): Where traditional SEO ends (ranking blue links) and AEO begins (winning the synthesised answer).
+
+## Product
+- [How it works]({SITE_BASE_URL}/how-it-works): A monitoraeo audit takes a domain, runs 40 buyer-facing queries across 5 engines (200 AI answers), and scores how each engine describes the brand.
+- [Audit product]({SITE_BASE_URL}/product/audit): One-off diagnostic across all 5 AI engines.
+- [Monitoring product]({SITE_BASE_URL}/product/monitoring): Monthly cron-scheduled audits with trend charts so you see drift over time.
+
+## Pricing
+- [Free preview]({SITE_BASE_URL}/#preview): 8 buyer-facing questions on Google AI Overviews. No account, ~30 seconds.
+- [Two Engine Audit]({SITE_BASE_URL}/pricing): $29 one-off — Google AI + ChatGPT, 40 queries, competitor share-of-voice, hallucination flags.
+- [Full Audit]({SITE_BASE_URL}/pricing): $79 one-off — all 5 engines (ChatGPT, Claude, Perplexity, Gemini, Google AI), 40 queries × 5 engines = 200 answers, action plan.
+- [Two Engine Monitoring]({SITE_BASE_URL}/pricing): $35/mo — includes the Two Engine Audit, monthly re-runs, trend chart, includes 20 monitored buyer questions.
+- [Full Monitoring]({SITE_BASE_URL}/pricing): $95/mo — includes the Full Audit, all 5 engines monitored monthly, per-engine trends, competitor + source change tracking, includes 40 monitored buyer questions.
+
+## Engines covered
+- Google AI Overviews (free preview tier and up)
+- ChatGPT (Two Engine and up)
+- Claude (Full and up)
+- Perplexity (Full and up)
+- Gemini (Full and up)
+
+## What every audit measures
+- Visibility — % of AI answers that name the brand
+- Citation rate — % that link to the brand's domain as a source
+- Competitor share-of-voice — who gets named or cited instead
+- Hallucination flags — false claims AI engines make about the brand
+- Sentiment + accuracy (paid tiers) — second-pass LLM scoring of every answer
+- Technical foundations — 15 GEO checks across crawlability, structured data, metadata, content, performance and entity signals
+
+## Helpful links
+- [Pricing]({SITE_BASE_URL}/pricing)
+- [Run a free preview]({SITE_BASE_URL}/#preview)
+- [Support]({SITE_BASE_URL}/support)
+- [Sitemap]({SITE_BASE_URL}/sitemap.xml)
+"""
+    return PlainTextResponse(body, media_type="text/markdown; charset=utf-8")
 
 
 @app.get("/sitemap.xml")
@@ -286,52 +346,68 @@ def sitemap_xml() -> Response:
 
 @app.get("/pricing", response_class=HTMLResponse)
 def page_pricing(request: Request) -> HTMLResponse:
-    return _render("pricing.html.j2", request=request)
+    return _render("pricing.html.j2", request=request,
+                   breadcrumbs=[{"name": "Pricing", "path": "/pricing"}])
 
 
 @app.get("/what-is-aeo", response_class=HTMLResponse)
 def page_what_is_aeo(request: Request) -> HTMLResponse:
-    return _render("what_is_aeo.html.j2", request=request)
+    return _render("what_is_aeo.html.j2", request=request,
+                   breadcrumbs=[{"name": "What is AEO?", "path": "/what-is-aeo"}])
 
 
 @app.get("/aeo-vs-seo", response_class=HTMLResponse)
 def page_aeo_vs_seo(request: Request) -> HTMLResponse:
-    return _render("aeo_vs_seo.html.j2", request=request)
+    return _render("aeo_vs_seo.html.j2", request=request,
+                   breadcrumbs=[{"name": "AEO vs SEO", "path": "/aeo-vs-seo"}])
 
 
 @app.get("/what-is-geo", response_class=HTMLResponse)
 def page_what_is_geo(request: Request) -> HTMLResponse:
-    return _render("what_is_geo.html.j2", request=request)
+    return _render("what_is_geo.html.j2", request=request,
+                   breadcrumbs=[{"name": "What is GEO?", "path": "/what-is-geo"}])
 
 
 @app.get("/product/audit", response_class=HTMLResponse)
 def page_product_audit(request: Request) -> HTMLResponse:
-    return _render("product_audit.html.j2", request=request)
+    return _render("product_audit.html.j2", request=request,
+                   breadcrumbs=[
+                       {"name": "Product", "path": "/product/audit"},
+                       {"name": "Audit", "path": "/product/audit"},
+                   ])
 
 
 @app.get("/product/monitoring", response_class=HTMLResponse)
 def page_product_monitoring(request: Request) -> HTMLResponse:
-    return _render("product_monitoring.html.j2", request=request)
+    return _render("product_monitoring.html.j2", request=request,
+                   breadcrumbs=[
+                       {"name": "Product", "path": "/product/audit"},
+                       {"name": "Monitoring", "path": "/product/monitoring"},
+                   ])
 
 
 @app.get("/how-it-works", response_class=HTMLResponse)
 def page_how_it_works(request: Request) -> HTMLResponse:
-    return _render("how_it_works.html.j2", request=request)
+    return _render("how_it_works.html.j2", request=request,
+                   breadcrumbs=[{"name": "How it works", "path": "/how-it-works"}])
 
 
 @app.get("/privacy", response_class=HTMLResponse)
 def page_privacy(request: Request) -> HTMLResponse:
-    return _render("privacy.html.j2", request=request)
+    return _render("privacy.html.j2", request=request,
+                   breadcrumbs=[{"name": "Privacy", "path": "/privacy"}])
 
 
 @app.get("/terms", response_class=HTMLResponse)
 def page_terms(request: Request) -> HTMLResponse:
-    return _render("terms.html.j2", request=request)
+    return _render("terms.html.j2", request=request,
+                   breadcrumbs=[{"name": "Terms", "path": "/terms"}])
 
 
 @app.get("/support", response_class=HTMLResponse)
 def page_support(request: Request, status: str = "") -> HTMLResponse:
-    return _render("support.html.j2", request=request, status=status or None)
+    return _render("support.html.j2", request=request, status=status or None,
+                   breadcrumbs=[{"name": "Support", "path": "/support"}])
 
 
 SUPPORT_TO_EMAIL = os.environ.get("SUPPORT_TO_EMAIL", "hello@example.com")

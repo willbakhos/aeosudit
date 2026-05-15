@@ -4,6 +4,38 @@
 {% set page_description = "See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe, cite and recommend your brand. Free 8-question preview in 30 seconds. Paid audits from $29, monitoring from $35/mo." %}
 {% block title %}monitoraeo — see how AI engines describe your brand{% endblock %}
 
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "monitoraeo",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "AI Answer Engine Optimisation",
+  "operatingSystem": "Web",
+  "description": "Audit how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe, cite and recommend your brand across 40 buyer-facing questions. Free 8-question preview in 30 seconds.",
+  "url": "{{ _base_url }}/",
+  "publisher": { "@id": "{{ _base_url }}/#org" },
+  "offers": [
+    {"@type": "Offer", "name": "Free preview", "price": "0", "priceCurrency": "USD", "url": "{{ _base_url }}/#preview"},
+    {"@type": "Offer", "name": "Two Engine Audit", "price": "29", "priceCurrency": "USD", "url": "{{ _base_url }}/pricing"},
+    {"@type": "Offer", "name": "Full Audit", "price": "79", "priceCurrency": "USD", "url": "{{ _base_url }}/pricing"},
+    {"@type": "Offer", "name": "Two Engine Monitoring", "price": "35", "priceCurrency": "USD", "url": "{{ _base_url }}/pricing", "priceSpecification": {"@type": "UnitPriceSpecification", "billingDuration": "P1M", "price": "35", "priceCurrency": "USD"}},
+    {"@type": "Offer", "name": "Full Monitoring", "price": "95", "priceCurrency": "USD", "url": "{{ _base_url }}/pricing", "priceSpecification": {"@type": "UnitPriceSpecification", "billingDuration": "P1M", "price": "95", "priceCurrency": "USD"}}
+  ],
+  "featureList": [
+    "AI answer visibility scoring across 5 engines",
+    "Citation rate measurement per AI engine",
+    "Competitor share-of-voice tracking",
+    "Hallucination + accuracy flagging via second-pass LLM scoring",
+    "15-check technical GEO audit (crawlability, schema, performance)",
+    "Monthly cron-scheduled re-audits with trend charts",
+    "Hosted HTML report + PDF + CSV export"
+  ]
+}
+</script>
+{% endblock %}
+
 {% block extra_css %}
   .hero { position: relative; overflow: hidden; border-radius: 34px; padding: 56px 44px; background: linear-gradient(135deg, rgba(15,23,42,.97) 0%, rgba(30,41,59,.96) 48%, rgba(30,64,175,.94) 100%); color: white; box-shadow: var(--shadow); }
   .hero::before { content: ""; position: absolute; inset: -2px; background: radial-gradient(circle at 78% 20%, rgba(6,182,212,.28), transparent 24rem), radial-gradient(circle at 8% 90%, rgba(124,58,237,.32), transparent 22rem); pointer-events: none; }

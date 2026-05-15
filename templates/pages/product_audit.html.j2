@@ -46,6 +46,39 @@
   ]
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is an AEO audit?",
+      "acceptedAnswer": {"@type": "Answer", "text": "An AEO (Answer Engine Optimisation) audit measures how often Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews name a brand, cite its domain, and recommend it in buyer-facing answers. monitoraeo runs 40 buyer questions across all 5 engines (200 AI answers), scores visibility, citation rate, sentiment and hallucination risk per engine, and produces a prioritised action plan."}
+    },
+    {
+      "@type": "Question",
+      "name": "Which AI engines does monitoraeo test?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Five engines: Google AI Overviews (free preview tier and up), ChatGPT (Two Engine Audit and up), Claude, Perplexity and Gemini (Full Audit only). Each engine is queried with the same buyer questions and uses its native web search."}
+    },
+    {
+      "@type": "Question",
+      "name": "How long does an audit take?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Free preview: ~30 seconds (8 questions on Google AI Overviews only). Full paid audit: 5–10 minutes (40 questions × 5 engines = 200 individual answers). The hosted report and PDF arrive by email when the run finishes."}
+    },
+    {
+      "@type": "Question",
+      "name": "What's the difference between Two Engine Audit and Full Audit?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Two Engine Audit ($29 one-off) covers Google AI Overviews + ChatGPT — the two engines most buyers actually use. Full Audit ($79 one-off) adds Claude, Perplexity and Gemini, plus a Claude-generated prioritised action plan and the full hallucination + accuracy second-pass scoring."}
+    },
+    {
+      "@type": "Question",
+      "name": "Is the free preview really free?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes. No card, no signup. The preview runs 8 buyer questions on Google AI Overviews and shows visibility + citation rate. Paid tiers expand the engine set, query count, scoring depth and add the prioritised action plan."}
+    }
+  ]
+}
+</script>
 {% endblock %}
 
 {% block extra_css %}

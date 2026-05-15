@@ -4,6 +4,38 @@
 {% set page_description = "Step-by-step: how monitoraeo takes a domain and turns it into an audit. Query generation, 5-engine parallel testing, deterministic scoring, LLM hallucination check, hosted report. Plain-English, no black box." %}
 {% block title %}How it works — from domain to audit | monitoraeo{% endblock %}
 
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How a monitoraeo AEO audit works",
+  "description": "Step-by-step process: monitoraeo turns a domain into a 5-engine AI visibility audit by generating buyer questions, querying every major AI engine, scoring how each one describes the brand, running a parallel GEO check, and assembling a hosted report.",
+  "totalTime": "PT10M",
+  "supply": [
+    {"@type": "HowToSupply", "name": "Your domain"},
+    {"@type": "HowToSupply", "name": "Your brand name (exact spelling)"},
+    {"@type": "HowToSupply", "name": "Your category or niche (optional)"}
+  ],
+  "tool": [
+    {"@type": "HowToTool", "name": "Google AI Overviews"},
+    {"@type": "HowToTool", "name": "ChatGPT (gpt-5-mini)"},
+    {"@type": "HowToTool", "name": "Claude (Haiku 4.5)"},
+    {"@type": "HowToTool", "name": "Perplexity (Sonar)"},
+    {"@type": "HowToTool", "name": "Gemini (2.5 Flash)"}
+  ],
+  "step": [
+    {"@type":"HowToStep","position":1,"name":"Submit your domain, brand and category","text":"Three fields. Brand name must match exactly how you brand it (e.g. 'JB Hi-Fi' not 'jbhifi'). Category sharpens the buyer-question generator."},
+    {"@type":"HowToStep","position":2,"name":"Generate a 40-question buyer-query set","text":"Five intent buckets: brand, category, problem, comparison, vertical. Free preview uses 8 questions; paid full audit uses all 40."},
+    {"@type":"HowToStep","position":3,"name":"Query 5 AI engines in parallel","text":"Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini — each gets the same questions and uses its native web search. We capture full answer text plus source citations."},
+    {"@type":"HowToStep","position":4,"name":"Run a 15-check GEO audit on the site","text":"Crawlability, structured data, metadata, content shape, performance and entity signals — the technical foundation that determines whether AI engines can read the site at all."},
+    {"@type":"HowToStep","position":5,"name":"Score every AI answer (deterministic + LLM)","text":"Deterministic regex/URL parse for visibility, citation rate and competitors. Paid tiers add a second-pass Claude Haiku call for sentiment, accuracy and hallucination flags."},
+    {"@type":"HowToStep","position":6,"name":"Assemble the report","text":"Headline metrics, engine heatmap, top-cited domains, competitor share-of-voice, hallucination flags and per-query drill-down — single hosted HTML page plus PDF + CSV exports."},
+    {"@type":"HowToStep","position":7,"name":"Deliver by email","text":"One email with the hosted report link, PDF attachment and CSV attachment. Usually under 10 minutes from payment."}
+  ]
+}
+</script>
+{% endblock %}
 {% block extra_css %}
   .step-card { padding: 28px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); margin-bottom: 18px; display: grid; grid-template-columns: 90px 1fr; gap: 22px; align-items: start; }
   .step-num { font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -.05em; color: var(--blue); opacity: .35; }
@@ -20,6 +52,13 @@
 <span class="eyebrow">How it works</span>
 <h1 class="page-title">From a domain to an audit in minutes.</h1>
 <p class="page-lede">Here's exactly what happens between you typing your URL into the form and getting a finished report. No black box.</p>
+
+<aside aria-label="Quick answer" style="margin:18px 0 28px; padding:18px 22px; border-radius:14px; background:linear-gradient(135deg,#eef2ff,#f0f9ff); border:1px solid #c7d2fe;">
+  <strong style="display:block; font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#4338ca;">Quick answer</strong>
+  <p style="margin:6px 0 0; font-size:15px; line-height:1.55; color:var(--ink-2);">
+    A monitoraeo audit takes a domain plus a brand name, generates 40 buyer-facing questions, asks them across <strong>5 AI engines</strong> in parallel (Claude, ChatGPT, Perplexity, Gemini, Google AI Overviews), runs a parallel <strong>15-check technical GEO audit</strong> on the site, scores every answer for visibility / citation / sentiment / hallucination risk, and emails you a hosted HTML report plus PDF and CSV — usually within 10 minutes.
+  </p>
+</aside>
 
 <div class="step-card">
   <div class="step-num">01</div>
