@@ -386,7 +386,7 @@ def brand_detail(request: Request, brand_id: str):
         raise HTTPException(404, "Brand not found")
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         runs = list(
             s.exec(
@@ -430,7 +430,7 @@ def brand_edit_page(request: Request, brand_id: str):
         raise HTTPException(404, "Brand not found")
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         s.expunge(brand)
     return _render("brand_form.html.j2", user=user, brand=brand, active_tab="brands")
@@ -461,7 +461,7 @@ async def brand_update(
     requested_tier = tier.strip() if tier.strip() in valid_tiers else ""
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         was_subscriber = bool(brand.tier)
         # Tier changes only honoured for master accounts; everyone else
@@ -514,7 +514,7 @@ def brand_run(request: Request, brand_id: str, engine_set: str = Form("")):
         override = ENGINE_SETS[engine_set]
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         from src.server import _make_run_id
         run_rec = AuditRunRecord(
@@ -562,7 +562,7 @@ def _load_owned_brand(request: Request, brand_id: str) -> tuple[dict, TrackedBra
         raise HTTPException(404, "Brand not found")
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         # Detach by expunging — caller works from in-memory state.
         s.expunge(brand)
@@ -580,7 +580,7 @@ def brand_queries_edit(request: Request, brand_id: str, saved: int = 0, error: s
         raise HTTPException(404, "Brand not found")
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         # Effective list = stored if any, else the templated seed
         if brand.monitored_queries:
@@ -630,7 +630,7 @@ def brand_queries_save(
 
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
-        if not brand or str(brand.user_id) != user["id"]:
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
         limit = _tier_query_limit(brand.tier)
         if limit <= 0:
@@ -795,6 +795,212 @@ def monitoring(request: Request):
                 "runs_left": max(0, MONTHLY_RUN_QUOTA - (b.runs_this_month or 0)),
             })
     return _render("monitoring.html.j2", user=user, rows=rows, active_tab="monitoring")
+
+
+# ---------------------------------------------------------------------------
+# Admin — master-only super-admin surface
+# ---------------------------------------------------------------------------
+
+def _require_master(request: Request):
+    """Same as _require_user but additionally enforces is_master.
+    Returns 404 (not 403) on non-master so the URL doesn't even hint at
+    the existence of an admin surface for regular users."""
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    if not user.get("is_master"):
+        raise HTTPException(404, "Not found")
+    return user
+
+
+def _list_auth_users() -> list[dict]:
+    """Read every Supabase auth.users row via the existing Postgres
+    connection. Returns [] gracefully if the auth schema isn't reachable
+    (e.g. local dev with no DATABASE_URL). Sorted newest-first."""
+    from sqlalchemy import text
+    from src.db import engine
+    try:
+        eng = engine()
+    except RuntimeError:
+        return []
+    rows: list[dict] = []
+    try:
+        with eng.connect() as conn:
+            result = conn.execute(text(
+                "SELECT id, email, created_at, last_sign_in_at, "
+                "       email_confirmed_at "
+                "FROM auth.users ORDER BY created_at DESC"
+            ))
+            for r in result.mappings():
+                rows.append({
+                    "id": str(r["id"]),
+                    "email": r["email"] or "",
+                    "created_at": r["created_at"],
+                    "last_sign_in_at": r["last_sign_in_at"],
+                    "email_confirmed_at": r["email_confirmed_at"],
+                })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[admin] auth.users query failed: {type(exc).__name__}: {exc}")
+        return []
+    return rows
+
+
+@router.get("/admin", response_class=HTMLResponse)
+def admin_index(
+    request: Request, deleted: int = 0, error: str = "",
+):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    auth_users = _list_auth_users()
+
+    # One-shot fetch of every brand + run, then group in Python — much faster
+    # than N+1 queries when the user list is small/medium.
+    with get_session() as s:
+        all_brands = list(s.exec(select(TrackedBrand)))
+        all_runs = list(s.exec(select(AuditRunRecord)))
+
+    brands_by_user: dict[str, list[TrackedBrand]] = {}
+    for b in all_brands:
+        brands_by_user.setdefault(str(b.user_id), []).append(b)
+    runs_by_user: dict[str, list[AuditRunRecord]] = {}
+    for r in all_runs:
+        runs_by_user.setdefault(str(r.user_id), []).append(r)
+
+    from src.server import TIER_PLANS
+    summaries = []
+    for u in auth_users:
+        brands = brands_by_user.get(u["id"], [])
+        runs = runs_by_user.get(u["id"], [])
+        active_subs = [
+            {"brand": b.name, "tier": b.tier, "label": TIER_PLANS.get(b.tier, {}).get("label", b.tier)}
+            for b in brands if b.tier
+        ]
+        latest_run = max(runs, key=lambda r: r.started_at) if runs else None
+        summaries.append({
+            **u,
+            "brand_count": len(brands),
+            "run_count": len(runs),
+            "active_subs": active_subs,
+            "is_master": is_master_email(u["email"]),
+            "latest_run_at": latest_run.started_at if latest_run else None,
+        })
+    return _render(
+        "admin_users.html.j2",
+        user=user,
+        users=summaries,
+        flash_deleted=bool(deleted),
+        flash_error=error or None,
+        active_tab="admin",
+    )
+
+
+def is_master_email(email: str) -> bool:
+    """Module-level alias so templates can call this via dashboard import."""
+    from src.auth import is_master
+    return is_master(email)
+
+
+@router.get("/admin/users/{target_user_id}", response_class=HTMLResponse)
+def admin_user_detail(
+    request: Request, target_user_id: str, error: str = "",
+):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        target_uuid = UUID(target_user_id)
+    except ValueError:
+        raise HTTPException(404, "User not found")
+
+    auth_users = _list_auth_users()
+    target = next((u for u in auth_users if u["id"] == target_user_id), None)
+    if not target:
+        raise HTTPException(404, "User not found")
+
+    with get_session() as s:
+        brands = list(
+            s.exec(
+                select(TrackedBrand)
+                .where(TrackedBrand.user_id == target_uuid)
+                .order_by(TrackedBrand.created_at.desc())
+            )
+        )
+        runs = list(
+            s.exec(
+                select(AuditRunRecord)
+                .where(AuditRunRecord.user_id == target_uuid)
+                .order_by(AuditRunRecord.started_at.desc())
+            )
+        )
+    from src.server import TIER_PLANS
+    return _render(
+        "admin_user_detail.html.j2",
+        user=user,
+        target=target,
+        brands=brands,
+        runs=runs[:25],
+        run_total=len(runs),
+        tier_plans=TIER_PLANS,
+        is_self=(target_user_id == user["id"]),
+        flash_error=error or None,
+        active_tab="admin",
+    )
+
+
+@router.post("/admin/users/{target_user_id}/delete")
+def admin_user_delete(request: Request, target_user_id: str):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    if target_user_id == user["id"]:
+        return RedirectResponse(
+            f"/dashboard/admin/users/{target_user_id}?error=cant_delete_self",
+            status_code=303,
+        )
+    try:
+        target_uuid = UUID(target_user_id)
+    except ValueError:
+        raise HTTPException(404, "User not found")
+
+    # Cascade-clean our public tables before asking Supabase to remove the
+    # auth.users row (FK-free, but we want a clean state regardless).
+    from src.db import TeamInvite
+    with get_session() as s:
+        for r in s.exec(
+            select(AuditRunRecord).where(AuditRunRecord.user_id == target_uuid)
+        ):
+            s.delete(r)
+        for b in s.exec(
+            select(TrackedBrand).where(TrackedBrand.user_id == target_uuid)
+        ):
+            s.delete(b)
+        for inv in s.exec(
+            select(TeamInvite).where(TeamInvite.owner_user_id == target_uuid)
+        ):
+            s.delete(inv)
+        s.commit()
+
+    # Drop the auth.users row via the Supabase admin API. Requires
+    # SUPABASE_SERVICE_ROLE_KEY (separate from the anon key) — without it
+    # we still wipe the public-schema rows but the auth row stays.
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    if service_key and supabase_url:
+        try:
+            from supabase import create_client  # type: ignore[import-not-found]
+            admin_client = create_client(supabase_url, service_key)
+            admin_client.auth.admin.delete_user(target_user_id)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[admin] supabase delete_user failed: {type(exc).__name__}: {exc}")
+            return RedirectResponse(
+                "/dashboard/admin?error=auth_delete_failed", status_code=303
+            )
+    else:
+        return RedirectResponse(
+            "/dashboard/admin?error=missing_service_key", status_code=303
+        )
+    return RedirectResponse("/dashboard/admin?deleted=1", status_code=303)
 
 
 # ---------------------------------------------------------------------------

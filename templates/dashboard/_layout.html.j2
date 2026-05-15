@@ -171,6 +171,14 @@
   .subtab:hover { color: var(--ink); text-decoration: none; background: white; }
   .subtab.active { color: var(--ink); background: white; box-shadow: var(--shadow); }
 
+  /* Admin tab — amber accent so it's obviously a privileged surface. */
+  .tabbar .tab-admin { color: #92400e; }
+  .tabbar .tab-admin:hover { color: #92400e; background: rgba(245,158,11,.08); }
+  .tabbar .tab-admin.active {
+    color: #92400e; background: linear-gradient(135deg,#fef3c7,#fde68a);
+    box-shadow: 0 6px 14px rgba(217,119,6,.18);
+  }
+
   /* Master-only segmented "Run as …" control. One bordered group, three
      connected segment buttons, primary segment uses the gradient. */
   .run-group {
@@ -281,6 +289,12 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Monitoring
     </a>
+    {% if user.is_master %}
+      <a href="/dashboard/admin" class="tab tab-admin {% if active_tab == 'admin' %}active{% endif %}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 .9-4.5 4.4 1 6.7L12 17l-5.5 3 1-6.7L3 8.9 9 8z"/></svg>
+        Admin
+      </a>
+    {% endif %}
   </div>
 </div>
 {% endif %}
