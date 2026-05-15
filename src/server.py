@@ -956,6 +956,52 @@ def checkout_cancel() -> str:
     return "<p>Checkout cancelled.</p>"
 
 
+def _record_purchase(
+    *,
+    email: str,
+    tier: str,
+    brand_name: str = "",
+    domain: str = "",
+    stripe_event_id: str = "",
+    stripe_session_id: str = "",
+    stripe_invoice_id: str = "",
+    kind: str = "one_off",
+    amount_usd: float | None = None,
+) -> None:
+    """Persist a Purchase row idempotently. Skips if a row with the same
+    stripe_event_id already exists, so re-delivered webhooks don't double-count.
+    Pulls amount from TIER_PLANS when the caller doesn't pass an explicit one."""
+    if not email or not tier:
+        return
+    if amount_usd is None:
+        amount_usd = float(TIER_PLANS.get(tier, {}).get("price_usd", 0))
+    try:
+        from sqlmodel import select as _select
+        from src.db import Purchase, get_session
+        with get_session() as s:
+            if stripe_event_id:
+                existing = s.exec(
+                    _select(Purchase).where(Purchase.stripe_event_id == stripe_event_id)
+                ).first()
+                if existing:
+                    return
+            row = Purchase(
+                email=email.strip().lower(),
+                tier=tier,
+                amount_usd=amount_usd,
+                brand_name=brand_name,
+                domain=domain,
+                stripe_event_id=stripe_event_id,
+                stripe_session_id=stripe_session_id,
+                stripe_invoice_id=stripe_invoice_id,
+                kind=kind,
+            )
+            s.add(row)
+            s.commit()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[purchase] persist failed: {type(exc).__name__}: {exc}")
+
+
 @app.post("/webhooks/stripe")
 async def stripe_webhook(request: Request) -> JSONResponse:
     payload = await request.body()
@@ -967,6 +1013,8 @@ async def stripe_webhook(request: Request) -> JSONResponse:
     except (ValueError, stripe.error.SignatureVerificationError) as exc:
         raise HTTPException(400, f"Webhook signature failed: {exc}")
 
+    event_id = event.get("id") or ""
+
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         sid = session.get("id") or ""
@@ -974,6 +1022,54 @@ async def stripe_webhook(request: Request) -> JSONResponse:
         # Don't fire the audit yet — the customer still needs to enter their
         # competitor list via /checkout/success → /orders/setup.
         PENDING_ORDERS[sid] = meta
+        # Persist the purchase regardless of whether they finish the setup
+        # form so the admin revenue counter never under-reports.
+        tier = (meta.get("tier") or "").strip()
+        plan = TIER_PLANS.get(tier, {})
+        amount = (session.get("amount_total") or 0) / 100.0
+        _record_purchase(
+            email=(session.get("customer_email") or meta.get("email") or "").strip(),
+            tier=tier,
+            brand_name=meta.get("brand_name") or "",
+            domain=meta.get("domain") or "",
+            stripe_event_id=event_id,
+            stripe_session_id=sid,
+            kind=("subscription_initial" if plan.get("stripe_mode") == "subscription" else "one_off"),
+            amount_usd=amount or float(plan.get("price_usd", 0)),
+        )
+
+    elif event["type"] == "invoice.paid":
+        # Subscription renewals — Stripe sends one of these per billing cycle
+        # after the initial checkout. Skip the very first invoice (already
+        # captured by checkout.session.completed) by checking billing_reason.
+        invoice = event["data"]["object"]
+        reason = invoice.get("billing_reason") or ""
+        if reason in ("subscription_create",):
+            # Initial sub charge — already recorded via checkout.session.completed.
+            return JSONResponse({"received": True})
+        amount = (invoice.get("amount_paid") or 0) / 100.0
+        if amount <= 0:
+            return JSONResponse({"received": True})
+        # Resolve tier from the line item's price id.
+        line_items = (invoice.get("lines") or {}).get("data") or []
+        price_id = ""
+        for item in line_items:
+            price_id = (item.get("price") or {}).get("id") or ""
+            if price_id:
+                break
+        tier = ""
+        for t, plan in TIER_PLANS.items():
+            if os.environ.get(plan.get("stripe_env", ""), "").strip() == price_id:
+                tier = t
+                break
+        _record_purchase(
+            email=(invoice.get("customer_email") or "").strip(),
+            tier=tier,
+            stripe_event_id=event_id,
+            stripe_invoice_id=invoice.get("id") or "",
+            kind="subscription_renewal",
+            amount_usd=amount,
+        )
 
     return JSONResponse({"received": True})
 

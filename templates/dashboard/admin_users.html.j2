@@ -12,9 +12,14 @@
       Master-only — regular accounts get a 404 on this URL.
     </p>
   </div>
-  <span class="pill" style="background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-weight:900;">
-    {{ users|length }} user{{ '' if users|length == 1 else 's' }}
-  </span>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <span class="pill" style="background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-weight:900;">
+      {{ users|length }} user{{ '' if users|length == 1 else 's' }}
+    </span>
+    <span class="pill" style="background:#ecfdf5; color:#166534; font-weight:900;">
+      ${{ '%.2f'|format(grand_revenue_usd) }} total revenue
+    </span>
+  </div>
 </div>
 
 {% if q_deleted %}
@@ -47,9 +52,10 @@
       <tr>
         <th>User</th>
         <th>Signed up</th>
-        <th>Last sign-in</th>
         <th>Brands</th>
         <th>Runs</th>
+        <th>Purchases</th>
+        <th>Revenue</th>
         <th>Active subscriptions</th>
         <th></th>
       </tr>
@@ -80,18 +86,32 @@
           </td>
           <td style="white-space:nowrap; font-size:13px; color:var(--ink-2);">
             {% if u.created_at %}{{ u.created_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}
-          </td>
-          <td style="white-space:nowrap; font-size:13px; color:var(--muted);">
-            {% if u.last_sign_in_at %}{{ u.last_sign_in_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}
+            {% if u.last_sign_in_at %}
+              <div style="font-size:11px; color:var(--muted);">last in {{ u.last_sign_in_at.strftime('%b %d') }}</div>
+            {% endif %}
           </td>
           <td>{{ u.brand_count }}</td>
           <td>{{ u.run_count }}</td>
+          <td>
+            {% if u.purchase_count %}
+              <span style="font-weight:800;">{{ u.purchase_count }}</span>
+            {% else %}
+              <span style="color:var(--muted);">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.revenue_usd %}
+              <span style="font-weight:900; color:#166534;">${{ '%.2f'|format(u.revenue_usd) }}</span>
+            {% else %}
+              <span style="color:var(--muted);">$0</span>
+            {% endif %}
+          </td>
           <td>
             {% if u.active_subs %}
               {% for s in u.active_subs %}
                 <div style="font-size:12px; margin-bottom:2px;">
                   <span class="pill scheduled" style="font-size:10px;">
-                    {% if s.tier == 'full_monthly' %}Full{% else %}2-Engine{% endif %}
+                    {% if s.tier == 'full_monthly' %}5-Engine{% else %}2-Engine{% endif %}
                   </span>
                   <span style="color:var(--muted);">{{ s.brand }}</span>
                 </div>
@@ -105,7 +125,7 @@
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="7" style="padding:30px; text-align:center; color:var(--muted);">
+        <tr><td colspan="8" style="padding:30px; text-align:center; color:var(--muted);">
           No users found. If you expect users to be here, check that
           DATABASE_URL connects to a project with auth.users populated.
         </td></tr>

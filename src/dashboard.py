@@ -845,6 +845,18 @@ def _list_auth_users() -> list[dict]:
     return rows
 
 
+_TIER_SHORT_LABELS = {
+    "two_engine": "2-engine audit",
+    "full_audit": "5-engine audit",
+    "two_engine_monthly": "2-engine monitoring",
+    "full_monthly": "5-engine monitoring",
+}
+
+
+def _short_tier(tier: str) -> str:
+    return _TIER_SHORT_LABELS.get(tier, tier or "—")
+
+
 @router.get("/admin", response_class=HTMLResponse)
 def admin_index(
     request: Request, deleted: int = 0, error: str = "",
@@ -854,11 +866,12 @@ def admin_index(
         return user
     auth_users = _list_auth_users()
 
-    # One-shot fetch of every brand + run, then group in Python — much faster
-    # than N+1 queries when the user list is small/medium.
+    # One-shot fetch of every brand + run + purchase, then group in Python.
+    from src.db import Purchase
     with get_session() as s:
         all_brands = list(s.exec(select(TrackedBrand)))
         all_runs = list(s.exec(select(AuditRunRecord)))
+        all_purchases = list(s.exec(select(Purchase)))
 
     brands_by_user: dict[str, list[TrackedBrand]] = {}
     for b in all_brands:
@@ -866,12 +879,18 @@ def admin_index(
     runs_by_user: dict[str, list[AuditRunRecord]] = {}
     for r in all_runs:
         runs_by_user.setdefault(str(r.user_id), []).append(r)
+    # Purchases are matched to users by lowercase email (Stripe doesn't
+    # know about Supabase user_ids).
+    purchases_by_email: dict[str, list[Purchase]] = {}
+    for p in all_purchases:
+        purchases_by_email.setdefault((p.email or "").lower(), []).append(p)
 
     from src.server import TIER_PLANS
     summaries = []
     for u in auth_users:
         brands = brands_by_user.get(u["id"], [])
         runs = runs_by_user.get(u["id"], [])
+        purchases = purchases_by_email.get((u["email"] or "").lower(), [])
         active_subs = [
             {"brand": b.name, "tier": b.tier, "label": TIER_PLANS.get(b.tier, {}).get("label", b.tier)}
             for b in brands if b.tier
@@ -884,11 +903,16 @@ def admin_index(
             "active_subs": active_subs,
             "is_master": is_master_email(u["email"]),
             "latest_run_at": latest_run.started_at if latest_run else None,
+            "purchase_count": len(purchases),
+            "revenue_usd": round(sum(p.amount_usd or 0 for p in purchases), 2),
         })
+    # Footer totals for the admin index header.
+    grand_total = round(sum(s["revenue_usd"] for s in summaries), 2)
     return _render(
         "admin_users.html.j2",
         user=user,
         users=summaries,
+        grand_revenue_usd=grand_total,
         flash_deleted=bool(deleted),
         flash_error=error or None,
         active_tab="admin",
@@ -918,6 +942,7 @@ def admin_user_detail(
     if not target:
         raise HTTPException(404, "User not found")
 
+    from src.db import Purchase
     with get_session() as s:
         brands = list(
             s.exec(
@@ -933,7 +958,28 @@ def admin_user_detail(
                 .order_by(AuditRunRecord.started_at.desc())
             )
         )
+        purchases = list(
+            s.exec(
+                select(Purchase)
+                .where(Purchase.email == (target["email"] or "").lower())
+                .order_by(Purchase.created_at.desc())
+            )
+        )
     from src.server import TIER_PLANS
+    revenue_usd = round(sum(p.amount_usd or 0 for p in purchases), 2)
+    purchases_view = [
+        {
+            "created_at": p.created_at,
+            "tier": p.tier,
+            "tier_short": _short_tier(p.tier),
+            "tier_label": TIER_PLANS.get(p.tier, {}).get("label", p.tier),
+            "amount_usd": p.amount_usd,
+            "brand_name": p.brand_name,
+            "domain": p.domain,
+            "kind": p.kind,
+        }
+        for p in purchases
+    ]
     return _render(
         "admin_user_detail.html.j2",
         user=user,
@@ -941,6 +987,8 @@ def admin_user_detail(
         brands=brands,
         runs=runs[:25],
         run_total=len(runs),
+        purchases=purchases_view,
+        revenue_usd=revenue_usd,
         tier_plans=TIER_PLANS,
         is_self=(target_user_id == user["id"]),
         flash_error=error or None,
@@ -964,7 +1012,9 @@ def admin_user_delete(request: Request, target_user_id: str):
         raise HTTPException(404, "User not found")
 
     # Cascade-clean our public tables before asking Supabase to remove the
-    # auth.users row (FK-free, but we want a clean state regardless).
+    # auth.users row (FK-free, but we want a clean state regardless). We
+    # deliberately keep Purchase rows so deleting a customer doesn't make
+    # historical revenue evaporate from accounting.
     from src.db import TeamInvite
     with get_session() as s:
         for r in s.exec(

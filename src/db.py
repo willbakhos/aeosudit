@@ -115,6 +115,26 @@ class TrackedBrand(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class Purchase(SQLModel, table=True):
+    """Every successful Stripe charge — one-off audits AND each subscription
+    billing cycle. Keyed by stripe id (idempotent) and matched to a Supabase
+    user by lowercase email. Drives the admin "report purchases" + revenue
+    columns. Created from the /webhooks/stripe handler."""
+    __tablename__ = "monitor_purchase"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    email: str = Field(index=True)              # lowercased
+    tier: str                                   # two_engine | full_audit | two_engine_monthly | full_monthly
+    amount_usd: float = 0.0                     # at-the-time tier price (USD)
+    brand_name: str = ""
+    domain: str = ""
+    stripe_event_id: str = Field(default="", index=True)   # webhook event id
+    stripe_session_id: str = Field(default="", index=True) # checkout session id (one-offs + first sub charge)
+    stripe_invoice_id: str = Field(default="", index=True) # invoice id (sub renewals)
+    kind: str = "one_off"                       # one_off | subscription_initial | subscription_renewal
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class TeamInvite(SQLModel, table=True):
     """Pending invite to join an owner's workspace. Created from the Team
     settings page; consumed when the invitee signs in via Supabase magic
