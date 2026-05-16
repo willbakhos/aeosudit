@@ -91,7 +91,8 @@
   .mini-score strong { display:block; margin-top:4px; color:white; font-size:34px; line-height:1; letter-spacing:-.05em; }
   .hero-footnote { margin-top:18px!important; color:rgba(226,232,240,.62)!important; font-size:13px!important; }
 
-  .report-nav { position:sticky; top:0; z-index:10; display:flex; justify-content:center; align-items:center; gap:8px; overflow-x:auto; margin:18px 0 28px; padding:12px; border-radius:999px; background:rgba(255,255,255,.76); border:1px solid var(--line); box-shadow:var(--shadow-soft); backdrop-filter:blur(16px); }
+  .report-nav { position:sticky; top:0; z-index:10; display:flex; justify-content:center; align-items:center; gap:8px; margin:18px 0 28px; padding:12px; border-radius:999px; background:rgba(255,255,255,.76); border:1px solid var(--line); box-shadow:var(--shadow-soft); backdrop-filter:blur(16px); }
+  .report-nav-scroll { display:flex; align-items:center; gap:8px; min-width:0; }
   .report-nav a { white-space:nowrap; text-decoration:none; color:var(--muted); font-size:13px; font-weight:900; padding:9px 13px; border-radius:999px; }
   .report-nav a:hover { color:var(--blue); background:rgba(37,99,235,.08); }
   .report-nav a.active { color:white; background:linear-gradient(135deg,var(--blue),var(--purple)); box-shadow:0 8px 18px rgba(37,99,235,.22); }
@@ -99,8 +100,9 @@
      so it reads as a "buy" action and is visually distinct from the cool
      blue→purple "active section" pill. */
   .report-nav a.cta {
+    flex:0 0 auto;
     color:white; background:linear-gradient(135deg,#f59e0b,#ea580c);
-    padding:10px 18px; margin-left:8px;
+    padding:10px 18px;
     box-shadow:0 8px 20px rgba(234,88,12,.32);
     transition: transform .15s ease, box-shadow .15s ease;
   }
@@ -303,12 +305,21 @@
     .report-nav {
       border-radius:18px; padding:8px; gap:6px;
       flex-wrap:nowrap; justify-content:flex-start;
-      scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
     }
-    .report-nav a { scroll-snap-align:start; font-size:12px; padding:8px 11px; }
-    .report-nav a.cta { padding:9px 14px; margin-left:4px; }
+    .report-nav-scroll {
+      flex:1 1 auto; min-width:0; gap:6px;
+      overflow-x:auto; -webkit-overflow-scrolling:touch;
+      scroll-snap-type:x mandatory;
+    }
+    .report-nav-scroll a { scroll-snap-align:start; }
+    .report-nav a { font-size:12px; padding:8px 11px; }
+    .report-nav a.cta { padding:9px 14px; }
     .tcheck dl { grid-template-columns:1fr; gap:4px; }
-    .tcheck { overflow-x:auto; }
+    .tcheck { overflow:hidden; }
+    .tcheck dd { overflow-wrap:anywhere; }
+    .score-row { flex-direction:column; align-items:flex-start; }
+    .score-blur { white-space:normal; max-width:100%; min-width:0; }
+    .fixbox { overflow-x:auto; }
     .pricing-grid,.pricing-grid-2 { grid-template-columns:1fr; gap:14px; margin-top:20px; }
     .price-card { padding:22px 20px; }
     .tier-cta-form.save-form { flex-direction:column; }
@@ -362,7 +373,7 @@
     </div>
   </section>
 
-  <nav class="report-nav" aria-label="Report sections"><a href="#visibility">Snapshot</a><a href="#engines">Engines</a><a href="#sources">Sources</a>{% if tech %}<a href="#foundations">Foundations</a>{% endif %}<a href="#unlock">Unlocks</a><a href="#evidence">Evidence</a><a href="#upgrade" class="cta">Purchase report</a></nav>
+  <nav class="report-nav" aria-label="Report sections"><div class="report-nav-scroll"><a href="#visibility">Snapshot</a><a href="#engines">Engines</a><a href="#sources">Sources</a>{% if tech %}<a href="#foundations">Foundations</a>{% endif %}<a href="#unlock">Unlocks</a><a href="#evidence">Evidence</a></div><a href="#upgrade" class="cta">Purchase report</a></nav>
 
   <section class="section" id="visibility">
     <div class="takeaway">
