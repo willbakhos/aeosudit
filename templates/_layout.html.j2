@@ -163,36 +163,47 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   }
   .nav .dashboard-pill:hover { background: rgba(37,99,235,.14); color: #1d4ed8; }
 
-  /* Mobile hamburger + drawer. Hidden on desktop; the menu lives outside
-     .topbar so it can drop full-width without re-laying-out the brand row. */
+  /* Mobile hamburger + drawer — icon button matches the topbar's pill
+     aesthetic; drawer is a single compact card with tight rows. */
   .nav-burger {
     display: none; align-items: center; justify-content: center;
-    width: 40px; height: 40px; padding: 0; margin-left: 4px;
-    background: rgba(255,255,255,.78); border: 1px solid var(--line);
-    border-radius: 12px; cursor: pointer;
+    width: 36px; height: 36px; padding: 0;
+    background: transparent; border: 1px solid var(--line);
+    border-radius: 10px; color: var(--ink); cursor: pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .nav-burger span {
-    display: block; width: 18px; height: 2px; margin: 2px 0;
-    background: var(--ink); border-radius: 2px;
-    transition: transform .18s ease, opacity .18s ease;
+  .nav-burger:hover, .nav-burger:focus-visible {
+    background: rgba(37,99,235,.08); color: var(--blue);
+    border-color: rgba(37,99,235,.22); outline: none;
   }
-  .nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
-  .nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
-  .nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .nav-burger svg { display: block; }
+  .nav-burger .icon-close { display: none; }
+  .nav-burger[aria-expanded="true"] {
+    background: rgba(37,99,235,.10); color: var(--blue);
+    border-color: rgba(37,99,235,.22);
+  }
+  .nav-burger[aria-expanded="true"] .icon-open { display: none; }
+  .nav-burger[aria-expanded="true"] .icon-close { display: block; }
   .mobile-menu {
-    display: none; flex-direction: column; gap: 4px;
-    margin: 0 0 18px; padding: 12px;
-    border-radius: 18px; background: rgba(255,255,255,.96);
-    border: 1px solid var(--line); box-shadow: var(--shadow-soft);
-    backdrop-filter: blur(16px);
+    display: none; flex-direction: column;
+    margin: -8px 0 18px; padding: 6px;
+    border-radius: 14px; background: #fff;
+    border: 1px solid var(--line); box-shadow: 0 18px 38px rgba(15,23,42,.10);
   }
   .mobile-menu[hidden] { display: none; }
   .mobile-menu.open { display: flex; }
   .mobile-menu a {
-    padding: 12px 14px; border-radius: 12px;
-    color: var(--ink); text-decoration: none; font-weight: 700; font-size: 15px;
+    padding: 10px 12px; border-radius: 8px;
+    color: var(--ink); text-decoration: none; font-weight: 700; font-size: 14px;
+    line-height: 1.3;
   }
+  .mobile-menu a + a { margin-top: 1px; }
   .mobile-menu a:hover, .mobile-menu a.active { background: rgba(37,99,235,.08); color: var(--blue); }
+  .mobile-menu .group-label {
+    padding: 10px 12px 4px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--soft-muted);
+  }
+  .mobile-menu a.sub { padding-left: 22px; }
 
   .footer {
     margin-top: 64px; padding: 32px 0; border-top: 1px solid var(--line);
@@ -307,17 +318,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       {% endif %}
       <a href="/#preview" class="cta">Free preview →</a>
       <button type="button" class="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-        <span></span><span></span><span></span>
+        <svg class="icon-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        <svg class="icon-close" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
       </button>
     </nav>
   </header>
   <div class="mobile-menu" id="mobile-menu" hidden>
     <a href="/what-is-aeo"{% if active=='aeo' %} class="active"{% endif %}>What is AEO</a>
     <a href="/what-is-geo"{% if active=='geo' %} class="active"{% endif %}>What is GEO</a>
-    <a href="/product/audit"{% if active=='audit' %} class="active"{% endif %}>Product — Audit</a>
-    <a href="/product/monitoring"{% if active=='monitoring' %} class="active"{% endif %}>Product — Monitoring</a>
     <a href="/how-it-works"{% if active=='how' %} class="active"{% endif %}>How it works</a>
     <a href="/pricing"{% if active=='pricing' %} class="active"{% endif %}>Pricing</a>
+    <div class="group-label">Product</div>
+    <a href="/product/audit" class="sub{% if active=='audit' %} active{% endif %}">Audit</a>
+    <a href="/product/monitoring" class="sub{% if active=='monitoring' %} active{% endif %}">Monitoring</a>
     {% if not user %}<a href="/dashboard/login">Log in</a>{% endif %}
   </div>
 
