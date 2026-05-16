@@ -665,7 +665,7 @@
   }
 
   /* Belt-and-braces: never let inner content force a horizontal scrollbar. */
-  html, body { overflow-x: hidden; max-width: 100%; }
+  html, body { overflow-x: clip; max-width: 100%; }
   img, table, pre { max-width: 100%; }
 
   @media (max-width: 930px) {

@@ -271,7 +271,7 @@
 
   /* Belt-and-braces: stop any inner element from causing horizontal scroll
      on phones (was happening with wide tables + the sticky nav on Safari). */
-  html, body { overflow-x: hidden; max-width: 100%; }
+  html, body { overflow-x: clip; max-width: 100%; }
   img, table, pre { max-width: 100%; }
 
   /* Tablet: hero collapses + 4-card grid becomes 2-col + 2-card pricing
