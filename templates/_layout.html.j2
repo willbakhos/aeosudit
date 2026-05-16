@@ -156,6 +156,37 @@
   }
   .nav .dashboard-pill:hover { background: rgba(37,99,235,.14); color: #1d4ed8; }
 
+  /* Mobile hamburger + drawer. Hidden on desktop; the menu lives outside
+     .topbar so it can drop full-width without re-laying-out the brand row. */
+  .nav-burger {
+    display: none; align-items: center; justify-content: center;
+    width: 40px; height: 40px; padding: 0; margin-left: 4px;
+    background: rgba(255,255,255,.78); border: 1px solid var(--line);
+    border-radius: 12px; cursor: pointer;
+  }
+  .nav-burger span {
+    display: block; width: 18px; height: 2px; margin: 2px 0;
+    background: var(--ink); border-radius: 2px;
+    transition: transform .18s ease, opacity .18s ease;
+  }
+  .nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+  .nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .mobile-menu {
+    display: none; flex-direction: column; gap: 4px;
+    margin: 0 0 18px; padding: 12px;
+    border-radius: 18px; background: rgba(255,255,255,.96);
+    border: 1px solid var(--line); box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(16px);
+  }
+  .mobile-menu[hidden] { display: none; }
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a {
+    padding: 12px 14px; border-radius: 12px;
+    color: var(--ink); text-decoration: none; font-weight: 700; font-size: 15px;
+  }
+  .mobile-menu a:hover, .mobile-menu a.active { background: rgba(37,99,235,.08); color: var(--blue); }
+
   .footer {
     margin-top: 64px; padding: 32px 0; border-top: 1px solid var(--line);
     display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 26px;
@@ -227,10 +258,11 @@
     .topbar { gap: 10px; }
     .brand img.wordmark { height: 26px; }
     .grid-2, .grid-3, .grid-4, .footer { grid-template-columns: 1fr; }
-    .nav { gap: 10px; font-size: 13px; }
+    .nav { gap: 8px; font-size: 13px; }
     .nav .desktop-only { display: none; }
     .nav .cta { padding: 8px 14px; font-size: 13px; }
     .nav .dashboard-pill { padding: 7px 12px; font-size: 13px; }
+    .nav-burger { display: inline-flex; }
     h1.page-title { font-size: 32px; line-height: 1.1; }
     .footer { padding: 24px 0 16px; }
     .footer .legal { flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -263,8 +295,20 @@
         <a href="/dashboard/login" class="desktop-only">Log in</a>
       {% endif %}
       <a href="/#preview" class="cta">Free preview →</a>
+      <button type="button" class="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
     </nav>
   </header>
+  <div class="mobile-menu" id="mobile-menu" hidden>
+    <a href="/what-is-aeo"{% if active=='aeo' %} class="active"{% endif %}>What is AEO</a>
+    <a href="/what-is-geo"{% if active=='geo' %} class="active"{% endif %}>What is GEO</a>
+    <a href="/product/audit"{% if active=='audit' %} class="active"{% endif %}>Product — Audit</a>
+    <a href="/product/monitoring"{% if active=='monitoring' %} class="active"{% endif %}>Product — Monitoring</a>
+    <a href="/how-it-works"{% if active=='how' %} class="active"{% endif %}>How it works</a>
+    <a href="/pricing"{% if active=='pricing' %} class="active"{% endif %}>Pricing</a>
+    {% if not user %}<a href="/dashboard/login">Log in</a>{% endif %}
+  </div>
 
   {% block content %}{% endblock %}
 
@@ -307,6 +351,28 @@
     </div>
   </footer>
 </main>
+<script>
+  (function(){
+    var btn = document.querySelector('.nav-burger');
+    var menu = document.getElementById('mobile-menu');
+    if (!btn || !menu) return;
+    btn.addEventListener('click', function(){
+      var open = menu.classList.toggle('open');
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    });
+    // Close when a link is tapped so same-page anchors actually scroll.
+    menu.addEventListener('click', function(e){
+      if (e.target.tagName === 'A') {
+        menu.classList.remove('open');
+        menu.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Open menu');
+      }
+    });
+  })();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
