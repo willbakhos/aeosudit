@@ -198,7 +198,7 @@
   .mock-serp { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: var(--shadow-soft); }
   .mock-serp .browser { display: flex; align-items: center; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
   .mock-serp .browser .dot { width: 10px; height: 10px; border-radius: 999px; background: #e2e8f0; }
-  .mock-serp .browser .url { flex: 1; padding: 6px 12px; background: #f1f5f9; border-radius: 999px; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  .mock-serp .browser .url { flex: 1; min-width: 0; padding: 6px 12px; background: #f1f5f9; border-radius: 999px; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mock-serp .ai-block { padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #e0e7ff; margin-bottom: 12px; }
   .mock-serp .ai-block .label { font-size: 11px; font-weight: 800; color: var(--purple); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
   .mock-serp .ai-block p { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
@@ -209,9 +209,14 @@
   .mock-serp .organic { padding: 8px 0; font-size: 12px; color: var(--muted); }
   .mock-serp .organic strong { color: var(--blue); display: block; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
 
-  /* Stop any inner element from causing a horizontal scrollbar on phones. */
+  /* Stop any inner element from causing a horizontal scrollbar on phones.
+     touch-action blocks horizontal panning on iOS even when an oversized
+     child slips past overflow-x:clip (which isn't supported on older
+     Safari and silently degrades to visible). */
   html, body { overflow-x: clip; max-width: 100%; }
+  body { touch-action: pan-y; }
   img, table, pre { max-width: 100%; }
+  input, select, textarea { max-width: 100%; min-width: 0; box-sizing: border-box; }
 
   @media (max-width: 930px) {
     .grid-2, .grid-3, .grid-4, .footer { grid-template-columns: 1fr 1fr; }

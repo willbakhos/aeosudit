@@ -45,7 +45,9 @@
   .hero-lede { margin: 0; max-width: 520px; color: rgba(255,255,255,.82); font-size: 17px; }
   .hero-lede strong { color: white; }
 
-  .form-card { background: rgba(255,255,255,.96); color: var(--ink); border-radius: 24px; padding: 26px; box-shadow: 0 22px 56px rgba(0,0,0,.22); }
+  .form-card { background: rgba(255,255,255,.96); color: var(--ink); border-radius: 24px; padding: 26px; box-shadow: 0 22px 56px rgba(0,0,0,.22); min-width: 0; }
+  .form-card .field { min-width: 0; }
+  .form-card .field input, .form-card .field select { width: 100%; }
   .form-card h3 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
   .form-card p.sub { margin: 0 0 18px; font-size: 13px; color: var(--muted); }
   .field { display: grid; gap: 6px; margin-bottom: 14px; }
