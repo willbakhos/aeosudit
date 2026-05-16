@@ -664,6 +664,10 @@
     line-height: 1.5;
   }
 
+  /* Belt-and-braces: never let inner content force a horizontal scrollbar. */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  img, table, pre { max-width: 100%; }
+
   @media (max-width: 930px) {
     .report-hero { grid-template-columns: 1fr; }
     .hero-score-strip, .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -671,17 +675,23 @@
     th { position: static; }
   }
   @media (max-width: 620px) {
-    .shell { width: min(100% - 28px, 1180px); padding-top: 14px; }
-    .report-hero { padding: 24px; border-radius: 28px; }
-    h1 { font-size: 38px; }
-    h2 { margin-top: 48px; }
+    .shell { width: calc(100% - 24px); padding-top: 14px; padding-left: 0; padding-right: 0; }
+    .report-hero { padding: 22px 18px; border-radius: 24px; }
+    h1 { font-size: 30px; line-height: 1.06; }
+    h2 { margin-top: 40px; font-size: 22px; }
     .hero-score-strip, .cards { grid-template-columns: 1fr; }
     .bar-row { grid-template-columns: 1fr; gap: 8px; }
     .bar-row .num { text-align: left; }
     .tech-score { align-items: flex-start; flex-direction: column; }
     .tech-check dl, .ap-rec dl { grid-template-columns: 1fr; }
-    table { display: block; overflow-x: auto; }
-    .report-nav { position: static; }
+    table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .report-nav {
+      position: static;
+      padding: 8px; gap: 6px;
+      flex-wrap: nowrap; justify-content: flex-start;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .report-nav a { font-size: 12px; padding: 7px 10px; white-space: nowrap; }
   }
 
   @media print {

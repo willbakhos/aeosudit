@@ -269,10 +269,53 @@
   .pricing-grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:760px; margin-left:auto; margin-right:auto; }
   .footer-note { margin:26px 0 0; text-align:center; color:var(--muted); font-size:12px; }
 
-  /* Expiry banner */
+  /* Belt-and-braces: stop any inner element from causing horizontal scroll
+     on phones (was happening with wide tables + the sticky nav on Safari). */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  img, table, pre { max-width: 100%; }
 
-  @media (max-width:930px) { .hero-grid,.insight-grid,.engine-detail-grid,.engine-locked-grid { grid-template-columns:1fr; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .pricing-grid { grid-template-columns:1fr; } .price-card.featured { transform:none; } .hero,.section { padding:26px; } }
-  @media (max-width:620px) { .shell { width:min(100% - 24px,1180px); padding-top:16px; } .topbar,.section-header,.tech-banner { align-items:flex-start; flex-direction:column; } .cards,.mini-score,.engine-stats { grid-template-columns:1fr; } .bar-row { grid-template-columns:1fr; gap:8px; } .bar-row .num { text-align:left; } .takeaway { grid-template-columns:1fr; } .report-nav { border-radius:22px; } h1 { font-size:44px; } .tcheck dl { grid-template-columns:1fr; gap:4px; } .pricing-grid { margin-top:20px; } table { display:block; overflow-x:auto; } }
+  /* Tablet: hero collapses + 4-card grid becomes 2-col + 2-card pricing
+     becomes 2-col (the in-report grid is .pricing-grid-2 for monthly). */
+  @media (max-width:930px) {
+    .hero-grid,.insight-grid,.engine-detail-grid,.engine-locked-grid { grid-template-columns:1fr; }
+    .cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .pricing-grid { grid-template-columns:1fr 1fr; }
+    .pricing-grid-2 { grid-template-columns:1fr 1fr; }
+    .price-card.featured { transform:none; }
+    .hero,.section { padding:26px; }
+  }
+  /* Phone: everything stacks single-column, nav becomes a horizontal
+     swipe-strip with snap points, tables get a scroll-wrapper, headline
+     sizes down so it doesn't break to its own line absurdly. */
+  @media (max-width:620px) {
+    .shell { width:calc(100% - 24px); padding-top:16px; padding-left:0; padding-right:0; }
+    .topbar,.section-header,.tech-banner { align-items:flex-start; flex-direction:column; }
+    .cards,.mini-score,.engine-stats { grid-template-columns:1fr; }
+    .bar-row { grid-template-columns:1fr; gap:8px; }
+    .bar-row .num { text-align:left; }
+    .takeaway { grid-template-columns:1fr; }
+    .hero,.section,.cta-block { padding:22px 18px; border-radius:22px; }
+    h1 { font-size:34px; line-height:1.05; }
+    h2 { font-size:24px; }
+    .hero-lede { font-size:15px; }
+    .meta { gap:6px; }
+    .meta .chip { font-size:11px; padding:5px 9px; }
+    .report-nav {
+      border-radius:18px; padding:8px; gap:6px;
+      flex-wrap:nowrap; justify-content:flex-start;
+      scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+    }
+    .report-nav a { scroll-snap-align:start; font-size:12px; padding:8px 11px; }
+    .report-nav a.cta { padding:9px 14px; margin-left:4px; }
+    .tcheck dl { grid-template-columns:1fr; gap:4px; }
+    .tcheck { overflow-x:auto; }
+    .pricing-grid,.pricing-grid-2 { grid-template-columns:1fr; gap:14px; margin-top:20px; }
+    .price-card { padding:22px 20px; }
+    .tier-cta-form.save-form { flex-direction:column; }
+    .save-form .save-email, .save-form .save-cta-btn { width:100%; }
+    table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .footer-note { font-size:11px; }
+  }
   @media print { body { background:white; } .shell { width:100%; padding:0; } .report-nav,.cta-row,.btn { display:none; } .section,.hero,.cta-block { box-shadow:none; break-inside:avoid; } }
 </style>
 </head>
@@ -392,15 +435,15 @@
 
     <h3 class="tier-row-heading">One-off audit</h3>
     <div class="pricing-grid">
-      <div class="price-card current"><span class="badge current-badge">Current view</span><div class="tier-name">Free preview</div><div class="tier-price">Free</div><p class="tier-tagline">Save this preview to your dashboard — no card, no signup form.</p><ul><li>Google AI Overviews</li><li>8 buyer-facing queries</li><li>Visibility + citation rate</li><li><strong>Keep this report permanently</strong></li><li>Re-run any time from the dashboard</li></ul><form method="post" action="/dashboard/login" class="tier-cta-form save-form"><input type="hidden" name="claim" value="{{ run_id or '' }}"><input type="email" name="email" required placeholder="you@company.com" class="save-email"><button type="submit" class="tier-cta save-cta-btn">Email me a magic link →</button></form></div>
+      <div class="price-card current"><span class="badge current-badge">Current view</span><div class="tier-name">Free preview</div><div class="tier-price">Free</div><p class="tier-tagline"><strong>Sign up to get your free AEO report</strong> — saved to your dashboard, no card.</p><ul><li>Google AI Overviews</li><li>8 buyer-facing queries</li><li>Visibility + citation rate</li><li>Keep this report permanently</li><li>Re-run any time from the dashboard</li></ul><form method="post" action="/dashboard/login" class="tier-cta-form save-form"><input type="hidden" name="claim" value="{{ run_id or '' }}"><input type="email" name="email" required placeholder="you@company.com" class="save-email"><button type="submit" class="tier-cta save-cta-btn">Sign up &amp; save report →</button></form></div>
       <div class="price-card"><div class="tier-name">Two Engine Audit</div><div class="tier-price">$29<small>once</small></div><p class="tier-tagline">The two engines most buyers actually use.</p><ul><li><strong>Google AI Overviews + ChatGPT</strong></li><li>40 buyer-facing queries (80 AI answers)</li><li>Competitor share-of-voice (text + citations)</li><li>Engine heatmap by query type</li><li>Top cited sources (PR target list)</li><li>Hallucination flags + accuracy check</li><li>15-check technical GEO audit</li><li>Hosted report + PDF + CSV export</li><li>Dashboard access to save and re-open</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="two_engine"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Buy two-engine — $29</button></form></div>
-      <div class="price-card featured"><span class="badge">Most useful</span><div class="tier-name">Full audit</div><div class="tier-price">$79<small>once</small></div><p class="tier-tagline">Every AI engine your buyers might ask. The complete one-off diagnosis.</p><ul><li><strong>All 5 engines</strong> (ChatGPT, Claude, Perplexity, Gemini, Google AI)</li><li>40 queries × 5 engines = <strong>200 AI answers</strong></li><li>Competitor share-of-voice (text + citations)</li><li>Engine heatmap by query type</li><li>Top cited sources (PR target list)</li><li>Hallucination + accuracy second-pass scoring</li><li>15-check technical GEO audit</li><li><strong>Prioritised action plan</strong> (Claude-generated)</li><li>Sentiment analysis per engine</li><li>Hosted report + PDF + CSV export</li><li>Dashboard access to save and re-open</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="full_audit"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Buy full audit — $79</button></form></div>
+      <div class="price-card featured"><span class="badge">Most useful</span><div class="tier-name">Full audit</div><div class="tier-price">$79<small>once</small></div><p class="tier-tagline">Every AI engine your buyers might ask. The complete one-off diagnosis.</p><ul><li>ChatGPT, Claude, Perplexity, Gemini &amp; Google AI Overviews</li><li>40 queries × 5 engines = 200 AI answers</li><li>Competitor share-of-voice (text + citations)</li><li>Engine heatmap by query type</li><li>Top cited sources (PR target list)</li><li>Hallucination + accuracy second-pass scoring</li><li>Sentiment analysis per engine</li><li>15-check technical GEO audit</li><li>Prioritised action plan</li><li>Hosted report + PDF + CSV export</li><li>Dashboard access to save and re-open</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="full_audit"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Buy full audit — $79</button></form></div>
     </div>
 
     <h3 class="tier-row-heading" style="margin-top:34px;">Or track it monthly</h3>
     <div class="pricing-grid pricing-grid-2">
-      <div class="price-card outline"><div class="tier-name">Two Engine Monitoring</div><div class="tier-price">$35<small>/mo</small></div><p class="tier-tagline">Watch the two engines most buyers use, every month.</p><ul><li><strong>Includes the Two Engine Audit</strong></li><li>Google AI Overviews + ChatGPT</li><li>Automatic monthly re-runs (1st of each month)</li><li>Up to <strong>20 monitored buyer questions</strong> (edit anytime)</li><li>Trend chart: visibility · citations · sentiment · accuracy · hallucinations</li><li>Competitor share-of-voice tracked over time</li><li>1 extra manual run per month</li><li>Unlimited brands on the same account</li><li>Dashboard + email delivery</li><li>Cancel anytime</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="two_engine_monthly"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Start monitoring — $35/mo</button></form></div>
-      <div class="price-card outline"><div class="tier-name">Full monitoring</div><div class="tier-price">$95<small>/mo</small></div><p class="tier-tagline">Track every AI engine continuously.</p><ul><li><strong>Includes the Full Audit</strong></li><li>All 5 engines monitored monthly (200 AI answers/month)</li><li>Up to <strong>40 monitored buyer questions</strong> (edit anytime)</li><li>Per-engine trend charts (visibility · citation · sentiment · accuracy · hallucinations)</li><li>Competitor + source change tracking</li><li>Action plan refreshed every month</li><li>Hallucination + accuracy scoring on every run</li><li>1 extra manual run per month</li><li>Unlimited brands + team invites</li><li>Cancel anytime</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="full_monthly"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Start full monitoring — $95/mo</button></form></div>
+      <div class="price-card outline"><div class="tier-name">Two Engine Monitoring</div><div class="tier-price">$35<small>/mo</small></div><p class="tier-tagline">Watch the two engines most buyers use, every month.</p><ul><li>Includes the Two Engine Audit</li><li>Google AI Overviews + ChatGPT</li><li>Automatic monthly re-runs (1st of each month)</li><li>20 monitored buyer questions, editable any time</li><li>Trend chart: visibility · citations · sentiment · accuracy · hallucinations</li><li>Competitor share-of-voice tracked over time</li><li>1 extra manual run per month</li><li>Unlimited brands on the same account</li><li>Dashboard + email delivery</li><li>Cancel anytime</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="two_engine_monthly"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Start monitoring — $35/mo</button></form></div>
+      <div class="price-card outline"><div class="tier-name">Full monitoring</div><div class="tier-price">$95<small>/mo</small></div><p class="tier-tagline">Track every AI engine continuously.</p><ul><li>Includes the Full Audit</li><li>All 5 engines monitored monthly (200 AI answers/month)</li><li>40 monitored buyer questions, editable any time</li><li>Per-engine trend charts: visibility · citation · sentiment · accuracy · hallucinations</li><li>Competitor + source change tracking</li><li>Action plan refreshed every month</li><li>Hallucination + accuracy scoring on every run</li><li>1 extra manual run per month</li><li>Unlimited brands + team invites</li><li>Cancel anytime</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="full_monthly"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Start full monitoring — $95/mo</button></form></div>
     </div>
   </section>
 

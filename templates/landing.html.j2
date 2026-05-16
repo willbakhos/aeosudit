@@ -103,8 +103,31 @@
   .price-card .tier-cta { display: inline-flex; align-items: center; justify-content: center; margin-top: auto; padding: 12px 18px; border-radius: 999px; background: var(--ink); color: white; text-decoration: none; font-weight: 800; font-size: 14px; }
   .price-card.featured .tier-cta { background: white; color: #1d4ed8; box-shadow: 0 14px 28px rgba(0,0,0,.22); }
 
-  @media (max-width: 930px) { .hero-grid { grid-template-columns: 1fr; } .stats, .how, .engine-strip, .pricing-grid { grid-template-columns: 1fr 1fr; } .hero { padding: 36px 26px; } .price-card.featured { transform: none; } }
-  @media (max-width: 560px) { .stats, .how, .engine-strip, .pricing-grid { grid-template-columns: 1fr; } .hero h1 { font-size: 38px; } }
+  /* Belt-and-braces: never let inner content force a horizontal scroll. */
+  html, body { overflow-x: hidden; max-width: 100%; }
+
+  /* Hero collapses to single column much earlier so the form doesn't get
+     squeezed; pricing grid intermediate breakpoint so it isn't a 3-col
+     squeeze on tablets. */
+  @media (max-width: 930px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .stats, .how, .engine-strip { grid-template-columns: 1fr 1fr; }
+    .pricing-grid { grid-template-columns: 1fr 1fr; }
+    .hero { padding: 36px 26px; }
+    .price-card.featured { transform: none; }
+  }
+  @media (max-width: 620px) {
+    .hero { padding: 28px 22px; border-radius: 26px; }
+    .hero h1 { font-size: 32px; line-height: 1.08; }
+    .hero-lede { font-size: 15px; }
+    .form-card { padding: 22px 20px; border-radius: 22px; }
+    .field input, .field select { padding: 11px 13px; font-size: 15px; }
+    .form-card button { padding: 13px; font-size: 15px; }
+    .stats, .how, .engine-strip, .pricing-grid { grid-template-columns: 1fr; }
+    .price-card { padding: 22px 20px; }
+    /* Hide tagline keep-flex height that adds whitespace on phones. */
+    .price-card .tagline { min-height: 0; }
+  }
 {% endblock %}
 
 {% block content %}

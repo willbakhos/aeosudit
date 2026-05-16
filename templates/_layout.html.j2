@@ -209,14 +209,27 @@
   .mock-serp .organic { padding: 8px 0; font-size: 12px; color: var(--muted); }
   .mock-serp .organic strong { color: var(--blue); display: block; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
 
+  /* Stop any inner element from causing a horizontal scrollbar on phones. */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  img, table, pre { max-width: 100%; }
+
   @media (max-width: 930px) {
     .grid-2, .grid-3, .grid-4, .footer { grid-template-columns: 1fr 1fr; }
     .nav { gap: 14px; }
   }
   @media (max-width: 620px) {
+    .shell { width: calc(100% - 24px); padding: 16px 0 40px; }
+    .topbar { gap: 10px; }
+    .brand img.wordmark { height: 26px; }
     .grid-2, .grid-3, .grid-4, .footer { grid-template-columns: 1fr; }
+    .nav { gap: 10px; font-size: 13px; }
     .nav .desktop-only { display: none; }
-    h1.page-title { font-size: 36px; }
+    .nav .cta { padding: 8px 14px; font-size: 13px; }
+    .nav .dashboard-pill { padding: 7px 12px; font-size: 13px; }
+    h1.page-title { font-size: 32px; line-height: 1.1; }
+    .footer { padding: 24px 0 16px; }
+    .footer .legal { flex-direction: column; align-items: flex-start; gap: 8px; }
+    table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   }
   {% block extra_css %}{% endblock %}
 </style>
