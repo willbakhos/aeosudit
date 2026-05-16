@@ -1225,7 +1225,18 @@ EMBED_AWARE_HEAD = """
   html.embedded .report-nav,
   html.embedded nav.report-nav,
   html.embedded .report-floating-cta,
-  html.embedded .report-claim-bar { display: none !important; }
+  html.embedded .report-claim-bar,
+  html.embedded .save-form { display: none !important; }
+  /* When the report is in the dashboard the user is already signed in and
+     the report is already saved — swap the free-tier card's save form for a
+     confirmation pill. */
+  html.embedded .price-card.current::after {
+    content: "✓ Saved to your dashboard";
+    display: block; margin-top: auto; padding: 12px 18px;
+    border-radius: 999px; background: rgba(16,185,129,.18);
+    color: #6ee7b7; font-weight: 800; font-size: 13px; text-align: center;
+    border: 1px solid rgba(16,185,129,.30);
+  }
 </style>
 <script>
   (function () {
@@ -1484,3 +1495,159 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
         (run_dir / "delivery_error.log").write_text(
             f"{type(exc).__name__}: {exc}\n  to: {email}\n"
         )
+
+    # Auto-hydrate the customer's dashboard: ensure they have a Supabase
+    # auth user, create a TrackedBrand pointing at this audit, persist the
+    # AuditRunRecord, and trigger a magic-link sign-in email. After they
+    # click it they land in /dashboard with the brand + report already
+    # present — not an empty workspace.
+    _ensure_dashboard_for_paid_order(
+        email=email,
+        tier=tier,
+        site=site,
+        run_id=run_id,
+        rows=rows,
+    )
+
+
+def _ensure_dashboard_for_paid_order(
+    *,
+    email: str,
+    tier: str,
+    site: SiteConfig,
+    run_id: str,
+    rows: list[ScoredRow],
+) -> None:
+    """Auto-create the customer's dashboard footprint after a paid order.
+    Looks up or creates the Supabase auth user, creates a TrackedBrand
+    (re-using an existing one for the same user+domain), inserts an
+    AuditRunRecord pointing at the just-completed run, then sends a
+    magic-link so they can sign in immediately. Fail-soft — any error
+    is logged and the email/report still went out."""
+    if not email:
+        return
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    if not service_key or not supabase_url:
+        print("[fulfil] SUPABASE_SERVICE_ROLE_KEY not set — skipping dashboard hydration")
+        return
+    try:
+        from supabase import create_client  # type: ignore[import-not-found]
+        from src.db import get_session, TrackedBrand, AuditRunRecord
+        from sqlmodel import select as _select
+        from uuid import UUID as _UUID
+        admin = create_client(supabase_url, service_key)
+        email_lower = email.strip().lower()
+
+        # 1. Resolve / create the Supabase auth user.
+        user_id: str | None = None
+        try:
+            created = admin.auth.admin.create_user({
+                "email": email_lower,
+                "email_confirm": True,
+            })
+            if created and getattr(created, "user", None):
+                user_id = created.user.id
+        except Exception:  # noqa: BLE001 — usually "User already registered"
+            try:
+                page = 1
+                while user_id is None:
+                    listed = admin.auth.admin.list_users(page=page, per_page=200)
+                    items = getattr(listed, "users", None) or listed or []
+                    if not items:
+                        break
+                    for u in items:
+                        u_email = getattr(u, "email", "") or ""
+                        if u_email.lower() == email_lower:
+                            user_id = u.id
+                            break
+                    if len(items) < 200:
+                        break
+                    page += 1
+            except Exception as exc:  # noqa: BLE001
+                print(f"[fulfil] list_users failed: {type(exc).__name__}: {exc}")
+        if not user_id:
+            print(f"[fulfil] couldn't resolve Supabase user_id for {email_lower}")
+            return
+
+        # 2. Find / create the TrackedBrand. Monthly tiers seed the
+        #    scheduled-run cron; one-offs leave tier='' so cron doesn't
+        #    pick them up.
+        is_monthly = tier in ("two_engine_monthly", "full_monthly")
+        with get_session() as s:
+            existing_brand = s.exec(
+                _select(TrackedBrand)
+                .where(TrackedBrand.user_id == _UUID(user_id))
+                .where(TrackedBrand.domain == site.brand.domain)
+            ).first()
+            if existing_brand:
+                # Upgrade tier if customer just bought a recurring plan and
+                # the brand was previously free or one-off.
+                if is_monthly and not existing_brand.tier:
+                    existing_brand.tier = tier
+                    from src.dashboard import _compute_next_scheduled_run
+                    existing_brand.next_scheduled_run = _compute_next_scheduled_run()
+                    s.add(existing_brand)
+                    s.commit()
+                brand_id = existing_brand.id
+            else:
+                from src.dashboard import DEFAULT_ENGINES, _compute_next_scheduled_run
+                competitors_list = [
+                    {"name": c, "domain": ""}
+                    for c in (site.competitors or [])
+                    if c
+                ]
+                new_brand = TrackedBrand(
+                    user_id=_UUID(user_id),
+                    name=site.brand.name,
+                    domain=site.brand.domain,
+                    aliases=list(site.brand.aliases or []),
+                    competitors=competitors_list,
+                    ground_truth=list(site.ground_truth or []),
+                    engines=list(DEFAULT_ENGINES),
+                    locale_country=(site.locale.country or "US").upper(),
+                    locale_language=site.locale.language or "en",
+                    tier=tier if is_monthly else "",
+                    next_scheduled_run=_compute_next_scheduled_run() if is_monthly else None,
+                )
+                s.add(new_brand)
+                s.commit()
+                s.refresh(new_brand)
+                brand_id = new_brand.id
+
+            # 3. Insert the AuditRunRecord pointing at the just-completed run.
+            existing_run = s.exec(
+                _select(AuditRunRecord).where(AuditRunRecord.run_id == run_id)
+            ).first()
+            if not existing_run:
+                n = max(1, len(rows))
+                visibility = sum(1 for r in rows if r.deterministic.mentioned) / n
+                citation = sum(1 for r in rows if r.deterministic.cited_as_source) / n
+                sov: dict[str, int] = {}
+                for r in rows:
+                    for c in r.deterministic.competitors_mentioned:
+                        sov[c] = sov.get(c, 0) + 1
+                run_rec = AuditRunRecord(
+                    brand_id=brand_id,
+                    user_id=_UUID(user_id),
+                    run_id=run_id,
+                    status="complete",
+                    finished_at=datetime.utcnow(),
+                    queries_total=n,
+                    visibility_rate=visibility,
+                    citation_rate=citation,
+                    share_of_voice=sov,
+                )
+                s.add(run_rec)
+                s.commit()
+
+        # 4. Trigger a magic-link sign-in email so they can land in /dashboard
+        #    with everything already present.
+        try:
+            from src.auth import send_magic_link
+            send_magic_link(email_lower, f"{PUBLIC_BASE_URL}/dashboard/auth/callback")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[fulfil] send_magic_link failed for {email_lower}: {exc}")
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"[fulfil] dashboard hydration failed for {email}: {type(exc).__name__}: {exc}")

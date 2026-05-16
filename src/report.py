@@ -149,6 +149,10 @@ def write_html(
         "tech": tech,
         # ISO 8601 with Z so the JS countdown can `new Date(...)` it directly
         "generated_at": when.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        # output_dir.name is the run_id — used by the in-report Save-this-report
+        # email form to pass `claim` so /dashboard/login can hydrate the
+        # brand + run record after sign-in.
+        "run_id": output_dir.name,
     }
     html = template.render(**ctx)
     path = output_dir / "report.html"

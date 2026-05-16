@@ -125,7 +125,11 @@ def login_page(sent: int = 0, error: str = "", claim: str = "") -> HTMLResponse:
 
 
 @router.post("/login")
-def login_submit(request: Request, email: str = Form(...)) -> RedirectResponse:
+def login_submit(
+    request: Request,
+    email: str = Form(...),
+    claim: str = Form(""),
+) -> RedirectResponse:
     if not supabase_configured():
         return RedirectResponse(
             "/dashboard/login?error=supabase_not_configured", status_code=303
@@ -137,7 +141,18 @@ def login_submit(request: Request, email: str = Form(...)) -> RedirectResponse:
         return RedirectResponse(
             f"/dashboard/login?error={type(exc).__name__}", status_code=303
         )
-    return RedirectResponse("/dashboard/login?sent=1", status_code=303)
+    resp = RedirectResponse("/dashboard/login?sent=1", status_code=303)
+    # When the form came from the in-report "Save this report" widget it
+    # includes a claim=<run_id>. Stash it as a cookie so the post-magic-link
+    # /dashboard handler can hydrate the brand + run for the user.
+    if claim:
+        resp.set_cookie(
+            CLAIM_COOKIE, claim.strip(),
+            max_age=3600, samesite="lax",
+            secure=os.environ.get("COOKIE_SECURE", "1") == "1",
+            httponly=False, path="/",
+        )
+    return resp
 
 
 @router.get("/auth/callback", name="auth_callback", response_class=HTMLResponse)

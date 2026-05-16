@@ -1,39 +1,146 @@
 {% extends "dashboard/_layout.html.j2" %}
-{% block title %}Sign in · monitor-dashboard{% endblock %}
+{% block title %}Sign in · monitoraeo{% endblock %}
+{% block extra_css %}
+  .login-shell {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.05fr) minmax(320px, .95fr);
+    gap: 36px;
+    align-items: stretch;
+    margin: 32px auto;
+    max-width: 1040px;
+  }
+  .login-side {
+    padding: 40px 36px;
+    border-radius: 26px;
+    background: linear-gradient(135deg, rgba(15,23,42,.97), rgba(30,41,59,.96) 48%, rgba(30,64,175,.94) 100%);
+    color: white;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .login-side::before {
+    content: ""; position: absolute; inset: -2px;
+    background: radial-gradient(circle at 88% 16%, rgba(6,182,212,.30), transparent 22rem),
+                radial-gradient(circle at 4% 90%, rgba(124,58,237,.32), transparent 20rem);
+    pointer-events: none;
+  }
+  .login-side > * { position: relative; z-index: 1; }
+  .login-side .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16);
+    color: #bfdbfe; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .login-side h1 {
+    margin: 18px 0 10px; font-size: 32px; line-height: 1.08; letter-spacing: -.035em; font-weight: 950; color: white;
+  }
+  .login-side .lede { color: rgba(226,232,240,.86); font-size: 15px; line-height: 1.6; margin: 0 0 22px; }
+  .login-side ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  .login-side li {
+    display: flex; align-items: flex-start; gap: 10px;
+    color: rgba(226,232,240,.92); font-size: 14px; line-height: 1.55;
+  }
+  .login-side li svg { flex-shrink: 0; margin-top: 2px; color: #86efac; }
+  .login-side .engines {
+    margin-top: 26px; padding-top: 22px;
+    border-top: 1px solid rgba(255,255,255,.12);
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .login-side .engines span {
+    padding: 6px 11px; border-radius: 999px;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14);
+    color: rgba(226,232,240,.95); font-size: 12px; font-weight: 700;
+  }
+  .login-card { padding: 40px 36px; border-radius: 26px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow); display: flex; flex-direction: column; }
+  .login-card h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.025em; }
+  .login-card .lede { color: var(--muted); font-size: 14px; margin: 0 0 22px; line-height: 1.55; }
+  .login-card label { display: block; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+  .login-card input[type="email"] {
+    width: 100%; padding: 12px 14px;
+    border-radius: 12px; border: 1px solid var(--line); background: white;
+    font: inherit; font-size: 15px;
+  }
+  .login-card input[type="email"]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .login-card .footer { margin-top: auto; padding-top: 18px; color: var(--soft-muted); font-size: 12px; line-height: 1.55; }
+  .login-card .footer a { color: var(--blue); font-weight: 700; }
+  @media (max-width: 760px) { .login-shell { grid-template-columns: 1fr; } }
+{% endblock %}
 {% block content %}
-<div class="card" style="max-width:440px;margin:48px auto;">
-  <h1>Sign in</h1>
-  <p class="lede">Enter your email — we'll send you a magic link.</p>
-
-  {% if not configured %}
-    <div class="card" style="background:#fef9c3;border-color:#fcd34d;color:#713f12;margin-bottom:16px;">
-      <strong>Supabase isn't configured.</strong>
-      Set <code>SUPABASE_URL</code>, <code>SUPABASE_ANON_KEY</code> and
-      <code>SUPABASE_JWT_SECRET</code> in your environment to enable login.
+<div class="login-shell">
+  <aside class="login-side" aria-label="What you get with monitoraeo">
+    <span class="eyebrow"><span style="width:7px;height:7px;border-radius:50%;background:#bfdbfe;display:inline-block;"></span> One sign-in, every brand</span>
+    <h1>Track how AI engines describe your business — every month.</h1>
+    <p class="lede">Sign in with a magic link. No password to forget. Once you're in, every audit you've run lives in one place.</p>
+    <ul>
+      <li>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Save and re-open every report — no expiry, no losing the link.</span>
+      </li>
+      <li>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Track visibility, citations, sentiment, accuracy and hallucinations over time with per-engine trend charts.</span>
+      </li>
+      <li>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Add unlimited brands on one account — agencies and in-house teams alike.</span>
+      </li>
+      <li>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Edit your monitored buyer questions, competitors and location any time.</span>
+      </li>
+      <li>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Invite teammates by email — read-only access to your brands and reports.</span>
+      </li>
+    </ul>
+    <div class="engines" aria-label="Engines covered">
+      <span>Google AI Overviews</span>
+      <span>ChatGPT</span>
+      <span>Claude</span>
+      <span>Perplexity</span>
+      <span>Gemini</span>
     </div>
-  {% endif %}
+  </aside>
 
-  {% if sent %}
-    <div class="card" style="background:#dcfce7;border-color:#86efac;color:#14532d;margin-bottom:16px;">
-      Check your inbox — we sent you a link. It may take a minute to arrive.
-    </div>
-  {% endif %}
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p class="lede">Enter your email — we'll send you a one-time magic link. Works for both signup and sign-in.</p>
 
-  {% if error %}
-    <div class="card" style="background:#fee2e2;border-color:#fca5a5;color:#7f1d1d;margin-bottom:16px;">
-      Something went wrong: <code>{{ error }}</code>
-    </div>
-  {% endif %}
+    {% if not configured %}
+      <div class="card" style="background:#fef9c3;border-color:#fcd34d;color:#713f12;margin-bottom:16px;">
+        <strong>Supabase isn't configured.</strong>
+        Set <code>SUPABASE_URL</code>, <code>SUPABASE_ANON_KEY</code> and
+        <code>SUPABASE_JWT_SECRET</code> in your environment to enable login.
+      </div>
+    {% endif %}
 
-  <form method="post" action="/dashboard/login">
-    <label for="email">Email</label>
-    <input type="email" name="email" id="email" required autofocus
-           placeholder="you@company.com">
-    <div style="margin-top:16px;">
-      <button class="btn" type="submit" {% if not configured %}disabled{% endif %}>
-        Email me a magic link
-      </button>
-    </div>
-  </form>
+    {% if sent %}
+      <div class="card" style="background:#dcfce7;border-color:#86efac;color:#14532d;margin-bottom:16px;">
+        <strong>Check your inbox.</strong>
+        We just sent a magic link{% if claim %} — once you click it, the report you ran is auto-saved to your dashboard{% endif %}.
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="card" style="background:#fee2e2;border-color:#fca5a5;color:#7f1d1d;margin-bottom:16px;">
+        Something went wrong: <code>{{ error }}</code>
+      </div>
+    {% endif %}
+
+    <form method="post" action="/dashboard/login">
+      {% if claim %}<input type="hidden" name="claim" value="{{ claim }}">{% endif %}
+      <label for="email">Email</label>
+      <input type="email" name="email" id="email" required autofocus placeholder="you@company.com">
+      <div style="margin-top:16px;">
+        <button class="btn" type="submit" style="width:100%;" {% if not configured %}disabled{% endif %}>
+          {% if claim %}Save report &amp; sign in →{% else %}Email me a magic link{% endif %}
+        </button>
+      </div>
+    </form>
+
+    <p class="footer">
+      No password to remember. No card needed. Don't have a report yet? <a href="/">Run a free preview →</a>
+    </p>
+  </div>
 </div>
 {% endblock %}
