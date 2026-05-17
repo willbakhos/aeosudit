@@ -50,6 +50,41 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5SSKHFCC"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
+<script>
+  // GA4 ecommerce purchase event — fires once per Stripe session_id so a
+  // page refresh doesn't double-count. Reads tier + price baked in by the
+  // /checkout/success route.
+  (function(){
+    var sid = {{ session_id | tojson }};
+    var tier = {{ tier | tojson }};
+    var label = {{ tier_label | tojson }};
+    var price = {{ tier_price_usd | tojson }};
+    var isSub = {{ tier_is_subscription | tojson }};
+    if (!sid || !tier || !price) return;
+    try {
+      var key = 'gtm_purchase_' + sid;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch (e) { /* private mode — fire anyway, worst case is a dupe */ }
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null });
+    window.dataLayer.push({
+      event: 'purchase',
+      ecommerce: {
+        transaction_id: sid,
+        value: price,
+        currency: 'USD',
+        items: [{
+          item_id: tier,
+          item_name: label,
+          item_category: isSub ? 'subscription' : 'one_off',
+          price: price,
+          quantity: 1
+        }]
+      }
+    });
+  })();
+</script>
   <main class="shell">
     <div class="card">
       <span class="eyebrow">Payment received ✓</span>

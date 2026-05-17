@@ -1024,8 +1024,15 @@ def checkout_success(session_id: str | None = None) -> HTMLResponse:
     domain = meta.get("domain") or ""
     tier = meta.get("tier") or ""
     sid = session_id or ""
+    plan = TIER_PLANS.get(tier, {})
+    # Strip the "(... $29)" suffix so GA reports a clean item name.
+    raw_label = plan.get("label") or tier
+    tier_label = raw_label.split(" (")[0] if " (" in raw_label else raw_label
     return HTMLResponse(_jinja.get_template("checkout_setup.html.j2").render(
         brand=brand, domain=domain, tier=tier, session_id=sid,
+        tier_label=tier_label,
+        tier_price_usd=plan.get("price_usd") or 0,
+        tier_is_subscription=plan.get("stripe_mode") == "subscription",
     ))
 
 
