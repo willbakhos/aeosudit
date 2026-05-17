@@ -1018,19 +1018,36 @@ def buy_redirect(
     return RedirectResponse(session.url, status_code=303)
 
 
-def _meta_with_email(meta: dict[str, Any], session: dict | Any) -> dict[str, Any]:
+def _to_plain_dict(obj: Any) -> dict[str, Any]:
+    """Convert a stripe StripeObject (or anything mapping-shaped) to a plain
+    nested dict. stripe-python 8.0+ stopped inheriting StripeObject from
+    dict, so calling .get() on a Session/Invoice/Event raises
+    AttributeError: 'get'. Doing this conversion once at the boundary lets
+    the rest of the code use ordinary dict.get(...) safely."""
+    if obj is None:
+        return {}
+    if hasattr(obj, "to_dict_recursive"):
+        return obj.to_dict_recursive() or {}
+    if hasattr(obj, "to_dict"):
+        return obj.to_dict() or {}
+    try:
+        return dict(obj)
+    except (TypeError, ValueError):
+        return {}
+
+
+def _meta_with_email(meta: dict[str, Any], session: dict[str, Any]) -> dict[str, Any]:
     """Stripe-collected emails live on session.customer_email or
     session.customer_details.email — not in the metadata we set. Fold them
     into the meta dict so /checkout/success and _fulfil_order both work
-    when we don't pre-supply email at session-create time."""
+    when we don't pre-supply email at session-create time. Expects a plain
+    dict — call _to_plain_dict(stripe_session) first."""
     out = dict(meta or {})
     if not out.get("email"):
-        ce = ""
-        if hasattr(session, "get"):
-            ce = (session.get("customer_email") or "")
-            if not ce:
-                ce = ((session.get("customer_details") or {}).get("email") or "")
-        out["email"] = ce.strip()
+        ce = (session.get("customer_email") or "")
+        if not ce:
+            ce = ((session.get("customer_details") or {}).get("email") or "")
+        out["email"] = (ce or "").strip()
     return out
 
 
@@ -1045,8 +1062,8 @@ def checkout_success(session_id: str | None = None) -> HTMLResponse:
         meta = PENDING_ORDERS[session_id]
     elif session_id and stripe.api_key:
         try:
-            sess = stripe.checkout.Session.retrieve(session_id)
-            meta = _meta_with_email(sess.get("metadata") or {}, sess)
+            sess_dict = _to_plain_dict(stripe.checkout.Session.retrieve(session_id))
+            meta = _meta_with_email(sess_dict.get("metadata") or {}, sess_dict)
             PENDING_ORDERS[session_id] = meta
         except Exception:  # noqa: BLE001
             meta = {}
@@ -1083,10 +1100,10 @@ def orders_setup(
         if not session_id or not stripe.api_key:
             raise HTTPException(404, "Unknown session")
         try:
-            sess = stripe.checkout.Session.retrieve(session_id)
-            meta = sess.get("metadata") or {}
+            sess_dict = _to_plain_dict(stripe.checkout.Session.retrieve(session_id))
+            meta = sess_dict.get("metadata") or {}
         except Exception as exc:  # noqa: BLE001
-            raise HTTPException(404, f"Could not load session: {exc}")
+            raise HTTPException(404, f"Could not load session: {type(exc).__name__}: {exc}")
 
     competitors = [
         c.strip() for c in (competitor_1, competitor_2, competitor_3, competitor_4, competitor_5)
@@ -1124,8 +1141,8 @@ def checkout_cancel(session_id: str | None = None) -> RedirectResponse:
         meta: dict[str, Any] = PENDING_ORDERS.get(session_id) or {}
         if not meta and stripe.api_key:
             try:
-                sess = stripe.checkout.Session.retrieve(session_id)
-                meta = sess.get("metadata") or {}
+                sess_dict = _to_plain_dict(stripe.checkout.Session.retrieve(session_id))
+                meta = sess_dict.get("metadata") or {}
             except Exception:  # noqa: BLE001
                 meta = {}
         candidate = _safe_return_to((meta.get("return_to") or "").strip())
@@ -1185,16 +1202,17 @@ async def stripe_webhook(request: Request) -> JSONResponse:
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
     try:
-        event = stripe.Webhook.construct_event(
+        event_obj = stripe.Webhook.construct_event(
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except (ValueError, stripe.error.SignatureVerificationError) as exc:
         raise HTTPException(400, f"Webhook signature failed: {exc}")
 
+    event = _to_plain_dict(event_obj)
     event_id = event.get("id") or ""
 
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+    if event.get("type") == "checkout.session.completed":
+        session = (event.get("data") or {}).get("object") or {}
         sid = session.get("id") or ""
         # Fold Stripe-collected email into meta so the post-payment setup
         # page and _fulfil_order both have it (we don't pre-supply email
@@ -1219,11 +1237,11 @@ async def stripe_webhook(request: Request) -> JSONResponse:
             amount_usd=amount or float(plan.get("price_usd", 0)),
         )
 
-    elif event["type"] == "invoice.paid":
+    elif event.get("type") == "invoice.paid":
         # Subscription renewals — Stripe sends one of these per billing cycle
         # after the initial checkout. Skip the very first invoice (already
         # captured by checkout.session.completed) by checking billing_reason.
-        invoice = event["data"]["object"]
+        invoice = (event.get("data") or {}).get("object") or {}
         reason = invoice.get("billing_reason") or ""
         if reason in ("subscription_create",):
             # Initial sub charge — already recorded via checkout.session.completed.

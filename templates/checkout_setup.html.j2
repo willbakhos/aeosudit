@@ -29,6 +29,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .meta strong { color: var(--ink); }
   label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 800;
           color: var(--ink); text-transform: uppercase; letter-spacing: .06em; }
+  label .opt { color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
   input[type="text"] { width: 100%; padding: 12px 14px; border: 1px solid var(--line);
                        border-radius: 12px; font-size: 15px; font-family: inherit;
                        color: var(--ink); background: white; transition: border-color .15s; }
@@ -99,26 +100,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <input type="hidden" name="session_id" value="{{ session_id }}">
 
         <div class="field">
-          <label for="c1">Top competitor</label>
+          <label for="c1">Competitor 1 <span class="opt">— optional</span></label>
           <input id="c1" type="text" name="competitor_1" placeholder="e.g. Salesforce" autofocus>
         </div>
         <div class="field">
-          <label for="c2">Competitor 2</label>
+          <label for="c2">Competitor 2 <span class="opt">— optional</span></label>
           <input id="c2" type="text" name="competitor_2" placeholder="e.g. HubSpot">
         </div>
         <div class="field">
-          <label for="c3">Competitor 3</label>
+          <label for="c3">Competitor 3 <span class="opt">— optional</span></label>
           <input id="c3" type="text" name="competitor_3">
         </div>
         <div class="field">
-          <label for="c4">Competitor 4 <span style="color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0;">— optional</span></label>
+          <label for="c4">Competitor 4 <span class="opt">— optional</span></label>
           <input id="c4" type="text" name="competitor_4">
         </div>
         <div class="field">
-          <label for="c5">Competitor 5 <span style="color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0;">— optional</span></label>
+          <label for="c5">Competitor 5 <span class="opt">— optional</span></label>
           <input id="c5" type="text" name="competitor_5">
         </div>
-        <p class="help">Brand names work better than domains. We'll match on the name plus any obvious aliases.</p>
+        <p class="help">All fields optional — leave blank and hit Skip if you'd rather we don't track specific competitors. Brand names work better than domains.</p>
 
         <div class="btn-row">
           <button type="submit" class="btn-primary">Start my audit →</button>
