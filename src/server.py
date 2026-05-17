@@ -922,6 +922,29 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
     })
 
 
+def _safe_return_to(url: str) -> str:
+    """Only honour return_to URLs on the same site, to avoid /checkout/cancel
+    being abused as an open redirect. Falls back to '' (→ home) otherwise."""
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return ""
+    if not parsed.netloc:
+        # Path-only — safe to honour.
+        return url if url.startswith("/") else ""
+    # Allowed hosts: the configured public base plus its bare apex/www variants.
+    allowed = set()
+    base = urlparse(PUBLIC_BASE_URL)
+    if base.netloc:
+        allowed.add(base.netloc.lower())
+        bare = base.netloc.lower().removeprefix("www.")
+        allowed.add(bare)
+        allowed.add("www." + bare)
+    return url if parsed.netloc.lower() in allowed else ""
+
+
 @app.post("/checkout")
 def create_checkout(req: CheckoutRequest) -> JSONResponse:
     """Creates a Stripe Checkout Session for the chosen tier. Picks payment
@@ -944,7 +967,7 @@ def create_checkout(req: CheckoutRequest) -> JSONResponse:
         line_items=[{"price": price_id, "quantity": 1}],
         customer_email=req.email,
         success_url=f"{PUBLIC_BASE_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel",
+        cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}",
         metadata={
             "tier": req.tier,
             "brand_name": req.brand_name,
@@ -957,9 +980,11 @@ def create_checkout(req: CheckoutRequest) -> JSONResponse:
 
 @app.post("/buy")
 def buy_redirect(
+    request: Request,
     tier: str = Form(...),
     brand_name: str = Form(""),
     domain: str = Form(""),
+    return_to: str = Form(""),
 ):
     """Form-POST entry point used by the in-report tier cards. Creates a
     Stripe Checkout Session for the chosen tier and 303-redirects the
@@ -973,15 +998,19 @@ def buy_redirect(
         raise HTTPException(500, f"No {plan['stripe_env']} env var configured")
     if not stripe.api_key:
         raise HTTPException(500, "STRIPE_SECRET_KEY is not set")
+    # Track where the buyer came from so /checkout/cancel can bounce them
+    # back. Explicit hidden field wins; Referer is the fallback.
+    origin = (return_to or request.headers.get("referer") or "").strip()
     session = stripe.checkout.Session.create(
         mode=plan["stripe_mode"],
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=f"{PUBLIC_BASE_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel",
+        cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}",
         metadata={
             "tier": tier,
             "brand_name": brand_name.strip(),
             "domain": domain.strip(),
+            "return_to": _safe_return_to(origin),
         },
     )
     return RedirectResponse(session.url, status_code=303)
@@ -1082,9 +1111,25 @@ def orders_setup(
     """)
 
 
-@app.get("/checkout/cancel", response_class=HTMLResponse)
-def checkout_cancel() -> str:
-    return "<p>Checkout cancelled.</p>"
+@app.get("/checkout/cancel")
+def checkout_cancel(session_id: str | None = None) -> RedirectResponse:
+    """Stripe sends the buyer here when they hit Back / Close on the
+    Checkout page. We stashed return_to in the session metadata when we
+    created the Checkout Session — read it back and bounce them home to
+    the page they were on (the report, pricing, etc.)."""
+    target = "/"
+    if session_id:
+        meta: dict[str, Any] = PENDING_ORDERS.get(session_id) or {}
+        if not meta and stripe.api_key:
+            try:
+                sess = stripe.checkout.Session.retrieve(session_id)
+                meta = sess.get("metadata") or {}
+            except Exception:  # noqa: BLE001
+                meta = {}
+        candidate = _safe_return_to((meta.get("return_to") or "").strip())
+        if candidate:
+            target = candidate
+    return RedirectResponse(target, status_code=303)
 
 
 def _record_purchase(
