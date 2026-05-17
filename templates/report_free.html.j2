@@ -264,16 +264,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .price-card li::before { content:"✓"; color:#34d399; font-weight:950; flex-shrink:0; margin-top:1px; }
   .tier-cta-form { margin:auto 0 0; display:flex; }
   .tier-cta-form .tier-cta { width:100%; }
-  .tier-cta-form.save-form { flex-direction:column; gap:8px; }
-  .save-form .save-email { padding:11px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.10); color:white; font:inherit; font-size:14px; font-weight:600; }
-  .save-form .save-email::placeholder { color:rgba(255,255,255,.55); }
-  .save-form .save-email:focus { outline:none; border-color:rgba(255,255,255,.65); background:rgba(255,255,255,.16); }
-  .save-form .save-cta-btn { background:white; color:#1d4ed8; }
   .tier-cta { display:inline-flex; align-items:center; justify-content:center; margin-top:auto; padding:12px 18px; border-radius:999px; background:white; color:#1d4ed8; text-decoration:none; font-weight:900; font-size:14px; border:0; cursor:pointer; font-family:inherit; }
   .price-card.featured .tier-cta { background:linear-gradient(135deg,#f59e0b,#f97316); color:white; box-shadow:0 14px 28px rgba(249,115,22,.35); }
   .price-card.outline .tier-cta { background:transparent; color:white; border:1px solid rgba(255,255,255,.4); }
-  .price-card.current { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.16); }
-  .current-badge { background:linear-gradient(135deg,#10b981,#059669)!important; }
   .tier-row-heading { margin:20px 0 12px; color:rgba(255,255,255,.78); font-size:13px; font-weight:900; letter-spacing:.10em; text-transform:uppercase; text-align:left; }
   .pricing-grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:760px; margin-left:auto; margin-right:auto; }
   .footer-note { margin:26px 0 0; text-align:center; color:var(--muted); font-size:12px; }
@@ -329,8 +322,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .fixbox { overflow-x:auto; }
     .pricing-grid,.pricing-grid-2 { grid-template-columns:1fr; gap:14px; margin-top:20px; }
     .price-card { padding:22px 20px; }
-    .tier-cta-form.save-form { flex-direction:column; }
-    .save-form .save-email, .save-form .save-cta-btn { width:100%; }
     table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .footer-note { font-size:11px; }
   }
@@ -456,8 +447,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p>Go beyond the Google-only snapshot — see how the AI engines that actually matter to your buyers describe you, and get the action plan to fix it.</p>
 
     <h3 class="tier-row-heading">One-off audit</h3>
-    <div class="pricing-grid">
-      <div class="price-card current"><span class="badge current-badge">Current view</span><div class="tier-name">Free preview</div><div class="tier-price">Free</div><p class="tier-tagline"><strong>Sign up to get your free AEO report</strong> — saved to your dashboard, no card.</p><ul><li>Google AI Overviews</li><li>8 buyer-facing queries</li><li>Visibility + citation rate</li><li>Keep this report permanently</li><li>Re-run any time from the dashboard</li></ul><form method="post" action="/dashboard/login" class="tier-cta-form save-form"><input type="hidden" name="claim" value="{{ run_id or '' }}"><input type="email" name="email" required placeholder="you@company.com" class="save-email"><button type="submit" class="tier-cta save-cta-btn">Sign up &amp; save report →</button></form></div>
+    <div class="pricing-grid pricing-grid-2">
       <div class="price-card" id="upgrade" style="scroll-margin-top:96px;"><div class="tier-name">Two Engine Audit</div><div class="tier-price">$29<small>once</small></div><p class="tier-tagline">The two engines most buyers actually use.</p><ul><li><strong>Google AI Overviews + ChatGPT</strong></li><li>40 buyer-facing queries (80 AI answers)</li><li>Competitor share-of-voice (text + citations)</li><li>Engine heatmap by query type</li><li>Top cited sources (PR target list)</li><li>Hallucination flags + accuracy check</li><li>15-check technical GEO audit</li><li>Hosted report + PDF + CSV export</li><li>Dashboard access to save and re-open</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="two_engine"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Buy two-engine — $29</button></form></div>
       <div class="price-card featured"><span class="badge">Most useful</span><div class="tier-name">Full audit</div><div class="tier-price">$79<small>once</small></div><p class="tier-tagline">Every AI engine your buyers might ask. The complete one-off diagnosis.</p><ul><li>ChatGPT, Claude, Perplexity, Gemini &amp; Google AI Overviews</li><li>40 queries × 5 engines = 200 AI answers</li><li>Competitor share-of-voice (text + citations)</li><li>Engine heatmap by query type</li><li>Top cited sources (PR target list)</li><li>Hallucination + accuracy second-pass scoring</li><li>Sentiment analysis per engine</li><li>15-check technical GEO audit</li><li>Prioritised action plan</li><li>Hosted report + PDF + CSV export</li><li>Dashboard access to save and re-open</li></ul><form method="post" action="/buy" class="tier-cta-form"><input type="hidden" name="tier" value="full_audit"><input type="hidden" name="brand_name" value="{{ config.brand.name }}"><input type="hidden" name="domain" value="{{ config.brand.domain }}"><button type="submit" class="tier-cta">Buy full audit — $79</button></form></div>
     </div>
@@ -477,46 +467,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var key = tab.getAttribute('data-engine-tab');
       document.querySelectorAll('[data-engine-tab]').forEach(function(t){ t.classList.toggle('active', t === tab); });
       document.querySelectorAll('[data-engine-view]').forEach(function(view){ view.classList.toggle('active', view.getAttribute('data-engine-view') === key); });
-    });
-  });
-  // Inline-submit the "Sign up & save report" form so the user stays on the
-  // report. The /dashboard/login POST still sends the magic link and sets
-  // the claim cookie — we just don't follow the redirect.
-  document.querySelectorAll('form.save-form').forEach(function(form){
-    form.addEventListener('submit', function(e){
-      e.preventDefault();
-      var btn = form.querySelector('button[type="submit"]');
-      var emailInput = form.querySelector('input[type="email"]');
-      var email = (emailInput && emailInput.value || '').trim();
-      if (!email) return;
-      var originalLabel = btn ? btn.textContent : '';
-      if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
-      fetch(form.action, {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: new FormData(form),
-      }).then(function(r){
-        var ok = r.ok || (r.url && r.url.indexOf('sent=1') !== -1);
-        var msg = document.createElement('div');
-        msg.style.cssText = 'margin-top:12px;padding:14px 16px;border-radius:14px;font-size:13px;font-weight:700;text-align:center;';
-        if (ok) {
-          msg.style.background = 'rgba(16,185,129,.18)';
-          msg.style.color = '#065f46';
-          msg.style.border = '1px solid rgba(16,185,129,.35)';
-          msg.innerHTML = 'Check <strong>' + email.replace(/[<>&]/g,'') + '</strong> for a sign-in link. Your report will be waiting in the dashboard.';
-          form.replaceWith(msg);
-        } else {
-          msg.style.background = 'rgba(220,38,38,.14)';
-          msg.style.color = '#7f1d1d';
-          msg.style.border = '1px solid rgba(220,38,38,.32)';
-          msg.textContent = 'Something went wrong. Try again or email support@monitoraeo.com.';
-          form.appendChild(msg);
-          if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
-        }
-      }).catch(function(){
-        if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
-        alert('Network error — please try again.');
-      });
     });
   });
   (function() {
