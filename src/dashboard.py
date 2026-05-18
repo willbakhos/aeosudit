@@ -1069,6 +1069,137 @@ def admin_user_delete(request: Request, target_user_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Admin — re-fulfil an orphaned Stripe checkout session.
+# Used to manually recover paid orders whose post-payment flow failed
+# (e.g. the stripe-python 8+ StripeObject crash). Looks up the session
+# from Stripe, rebuilds the meta the way the live flow does, splices in
+# any competitors the admin typed, and kicks off _fulfil_order in a
+# background thread. Same idempotency as the live path — the audit
+# only re-runs if it wasn't completed before.
+# ---------------------------------------------------------------------------
+
+_REFULFIL_FORM = """<!doctype html>
+<html><head><meta charset="utf-8"><title>Refulfil — monitoraeo admin</title>
+<style>body{{font-family:-apple-system,Inter,sans-serif; max-width:640px;
+margin:60px auto; padding:0 24px; color:#0f172a;}}
+h1{{font-size:22px; margin:0 0 6px;}}
+p{{color:#475569; line-height:1.55;}}
+label{{display:block; font-size:12px; font-weight:800; text-transform:uppercase;
+letter-spacing:.06em; color:#334155; margin:18px 0 6px;}}
+input,textarea{{width:100%; padding:10px 12px; border:1px solid #e2e8f0;
+border-radius:8px; font:inherit; font-size:14px; box-sizing:border-box;}}
+button{{margin-top:18px; padding:12px 22px; border:0; border-radius:8px;
+background:#2563eb; color:#fff; font-weight:700; cursor:pointer;}}
+.flash{{padding:12px 14px; border-radius:8px; margin:18px 0; font-size:14px;
+line-height:1.5;}}
+.ok{{background:#dcfce7; color:#166534;}}
+.err{{background:#fee2e2; color:#991b1b;}}
+a{{color:#2563eb;}}
+</style></head><body>
+<p><a href="/dashboard/admin">← admin</a></p>
+<h1>Re-fulfil orphaned Stripe order</h1>
+<p>Paste a Stripe Checkout Session ID (the <code>cs_live_…</code> from the
+<code>/checkout/success?session_id=…</code> URL) and the competitor list the
+buyer would have typed. Kicks off the audit + creates the TrackedBrand and
+AuditRunRecord for the buyer's email.</p>
+{flash}
+<form method="post" action="/dashboard/admin/refulfil">
+  <label for="session_id">Stripe session ID</label>
+  <input id="session_id" name="session_id" required placeholder="cs_live_…" value="{session_id}">
+  <label for="competitors">Competitors (one per line, max 5)</label>
+  <textarea id="competitors" name="competitors" rows="5" placeholder="Salesforce&#10;HubSpot">{competitors}</textarea>
+  <button type="submit">Re-fulfil order</button>
+</form>
+</body></html>"""
+
+
+def _refulfil_flash(status: str, detail: str = "") -> str:
+    if status == "ok":
+        return f'<div class="flash ok">Re-fulfilment kicked off. {detail}</div>'
+    if status:
+        return f'<div class="flash err">Failed: {status}. {detail}</div>'
+    return ""
+
+
+@router.get("/admin/refulfil", response_class=HTMLResponse)
+def admin_refulfil_form(
+    request: Request,
+    session_id: str = "",
+    status: str = "",
+    detail: str = "",
+):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    return HTMLResponse(_REFULFIL_FORM.format(
+        flash=_refulfil_flash(status, detail),
+        session_id=session_id, competitors="",
+    ))
+
+
+@router.post("/admin/refulfil")
+def admin_refulfil_submit(
+    request: Request,
+    session_id: str = Form(...),
+    competitors: str = Form(""),
+):
+    import threading
+    import stripe as _stripe
+    from src.server import (
+        PENDING_ORDERS, _to_plain_dict, _meta_with_email, _fulfil_order,
+    )
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+
+    sid = (session_id or "").strip()
+    if not sid:
+        return RedirectResponse(
+            "/dashboard/admin/refulfil?status=missing_session_id",
+            status_code=303,
+        )
+    if not _stripe.api_key:
+        return RedirectResponse(
+            "/dashboard/admin/refulfil?status=stripe_key_missing",
+            status_code=303,
+        )
+    try:
+        sess_dict = _to_plain_dict(_stripe.checkout.Session.retrieve(sid))
+    except Exception as exc:  # noqa: BLE001
+        return RedirectResponse(
+            f"/dashboard/admin/refulfil?status=stripe_lookup_failed"
+            f"&detail={type(exc).__name__}&session_id={sid}",
+            status_code=303,
+        )
+
+    meta = _meta_with_email(sess_dict.get("metadata") or {}, sess_dict)
+    if not (meta.get("email") or "").strip():
+        return RedirectResponse(
+            f"/dashboard/admin/refulfil?status=no_email_on_session&session_id={sid}",
+            status_code=303,
+        )
+    if not (meta.get("tier") or "").strip():
+        return RedirectResponse(
+            f"/dashboard/admin/refulfil?status=no_tier_on_session&session_id={sid}",
+            status_code=303,
+        )
+
+    # Splice competitors typed by the admin into the meta — same shape
+    # /orders/setup uses.
+    comp_list = [c.strip() for c in competitors.splitlines() if c.strip()][:5]
+    meta["competitors"] = comp_list
+
+    threading.Thread(target=_fulfil_order, args=(meta,), daemon=True).start()
+    PENDING_ORDERS.pop(sid, None)
+
+    return RedirectResponse(
+        f"/dashboard/admin/refulfil?status=ok&session_id={sid}"
+        f"&detail=Audit+kicked+off+for+{meta.get('email','')}.",
+        status_code=303,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Settings — profile / billing / team
 # ---------------------------------------------------------------------------
 

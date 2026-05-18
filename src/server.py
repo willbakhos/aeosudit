@@ -810,15 +810,11 @@ def serve_teaser(filename: str):
     })
 
 
-@app.post("/api/teaser")
-def api_teaser(req: TeaserRequest) -> JSONResponse:
-    """Cold-email integration point. Runs ONE Apify query, extracts competitors
-    via Haiku, generates a hero image, and returns the asset URLs your email
-    sender can drop straight into the message body.
-
-    Cost: ~$0.0085 per call (1 Apify SERP + 1 Haiku extraction).
-    Returns: {teaser_image_url, click_url, brand_name, domain, visibility_pct, competitors}
-    """
+def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
+    """Shared implementation behind /api/teaser and /api/teaser/email.
+    Runs the Apify query, extracts competitors, captures the screenshot,
+    composes the hero image, and returns the JSON payload as a plain dict
+    so the email-copy endpoint can decorate it with subject + body."""
     import hashlib
     from urllib.parse import urlencode
 
@@ -910,7 +906,7 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
     except OSError:
         ver = 0
     click_qs = urlencode({"d": norm, "b": brand, "c": category} if category else {"d": norm, "b": brand})
-    return JSONResponse({
+    return {
         "brand_name": brand,
         "domain": norm,
         "visibility_pct": visibility_pct,
@@ -919,7 +915,88 @@ def api_teaser(req: TeaserRequest) -> JSONResponse:
         "click_url": f"{SITE_BASE_URL}/preview?{click_qs}",
         "teaser_query": teaser_query,
         "answered_in": ["text" if brand_in_text else None, "citations" if brand_in_citations else None],
-    })
+    }
+
+
+@app.post("/api/teaser")
+def api_teaser(req: TeaserRequest) -> JSONResponse:
+    """Cold-email integration point. Runs ONE Apify query, extracts competitors
+    via Haiku, generates a hero image, and returns the asset URLs your email
+    sender can drop straight into the message body.
+
+    Cost: ~$0.0085 per call (1 Apify SERP + 1 Haiku extraction).
+    Returns: {teaser_image_url, click_url, brand_name, domain, visibility_pct, competitors}
+    """
+    return JSONResponse(_build_teaser_payload(req))
+
+
+def _compose_outreach_subject(data: dict[str, Any]) -> str:
+    """Pick a cold-email subject line tailored to the teaser result.
+    Stays under 60 characters so the full line shows in most inbox previews."""
+    brand = data.get("brand_name") or "your brand"
+    competitors = data.get("competitors") or []
+    visible = bool(data.get("visibility_pct"))
+    top = competitors[0] if competitors else ""
+    second = competitors[1] if len(competitors) > 1 else ""
+    if not visible and top and second:
+        return f"Google AI is naming {top} and {second}, not {brand}"
+    if not visible and top:
+        return f"Google AI is naming {top}, not {brand}"
+    if not visible:
+        return f"Google AI doesn't mention {brand} when buyers ask"
+    if visible and top:
+        return f"{brand} shows up in Google AI — but so does {top}"
+    return f"{brand} is in Google AI — what about ChatGPT and Claude?"
+
+
+def _compose_outreach_body(data: dict[str, Any]) -> str:
+    """Plain-text cold-email body (~90 words) tailored to the teaser result.
+    No HTML; the caller pastes this straight into Instantly / Smartlead /
+    their own SMTP. Image URL is returned separately so the sender can
+    attach or inline it however they like."""
+    brand = data.get("brand_name") or "your brand"
+    query = data.get("teaser_query") or "questions in your category"
+    competitors = data.get("competitors") or []
+    visible = bool(data.get("visibility_pct"))
+    click_url = data.get("click_url") or ""
+
+    if visible:
+        visibility_line = f"It does mention {brand}."
+    else:
+        visibility_line = f"It didn't mention {brand} once."
+
+    top3 = competitors[:3]
+    if top3 and not visible:
+        comp_line = f"It pointed buyers at {', '.join(top3)} instead."
+    elif top3 and visible:
+        comp_line = f"But it also named {', '.join(top3)} in the same answer."
+    else:
+        comp_line = "The category's wide open — no clear competitors showed up."
+
+    return (
+        f"Hi,\n\n"
+        f"I asked Google AI Overviews \"{query}\" — the kind of question your "
+        f"buyers are typing — to see how it answers.\n\n"
+        f"{visibility_line} {comp_line}\n\n"
+        f"Full snapshot here:\n{click_url}\n\n"
+        f"If the AI isn't pointing buyers at {brand}, the monitoraeo audit "
+        f"(40 questions × 5 AI engines = 200 answers) shows you exactly which "
+        f"gaps to fix.\n\n"
+        f"— monitoraeo"
+    )
+
+
+@app.post("/api/teaser/email")
+def api_teaser_email(req: TeaserRequest) -> JSONResponse:
+    """Same as /api/teaser plus a tailored cold-email subject and plain-text
+    body. Drop {{subject}} and {{body}} straight into Instantly / Smartlead /
+    Apollo / your own SMTP. {{teaser_image_url}} and {{click_url}} are
+    returned alongside so the sender can attach / link the hero image and
+    track clicks separately."""
+    data = _build_teaser_payload(req)
+    data["subject"] = _compose_outreach_subject(data)
+    data["body"] = _compose_outreach_body(data)
+    return JSONResponse(data)
 
 
 def _safe_return_to(url: str) -> str:
