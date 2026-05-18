@@ -1092,9 +1092,11 @@ def orders_setup(
     competitor_3: str = Form(""),
     competitor_4: str = Form(""),
     competitor_5: str = Form(""),
-) -> HTMLResponse:
+) -> RedirectResponse:
     """Receive the post-payment setup form, attach competitors to the order
-    metadata, and fire the audit in the background."""
+    metadata, fire the audit in the background, and send the buyer straight
+    into the dashboard. The audit may still be pending when they arrive —
+    the report appears in the dashboard the moment it finishes."""
     meta = PENDING_ORDERS.get(session_id)
     if not meta:
         if not session_id or not stripe.api_key:
@@ -1116,18 +1118,7 @@ def orders_setup(
     threading.Thread(target=_fulfil_order, args=(meta,), daemon=True).start()
     PENDING_ORDERS.pop(session_id, None)
 
-    brand = meta.get("brand_name") or "your brand"
-    return HTMLResponse(f"""
-    <div style="font-family: system-ui; padding: 60px; text-align: center; max-width: 560px; margin: 0 auto;">
-      <h1>Audit started ✓</h1>
-      <p>We're auditing <strong>{brand}</strong> across the AI engines now. You'll get an email
-      with the full report and PDF in a few minutes.</p>
-      <p style="color: #64748b; font-size: 14px; margin-top: 24px;">
-        Tracking against {len(competitors)} competitor{'s' if len(competitors) != 1 else ''}:
-        {', '.join(competitors) if competitors else 'none specified'}
-      </p>
-    </div>
-    """)
+    return RedirectResponse("/dashboard", status_code=303)
 
 
 @app.get("/checkout/cancel")
@@ -1317,6 +1308,7 @@ RUN_ANOTHER_BAR = """
 # when the dashboard chrome and side-nav are already present. Standalone
 # (full-screen) views keep them.
 EMBED_AWARE_HEAD = """
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
 <style>
   html.embedded .report-nav,
   html.embedded nav.report-nav,
@@ -1547,13 +1539,6 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
         action_plan=action_plan,
         tech=tech,
     )
-    pdf_path: Path | None = None
-    try:
-        from src.pdf import render as render_pdf
-        pdf_path = render_pdf(run_dir)
-    except Exception:  # noqa: BLE001
-        pdf_path = None
-
     # Hero image embedded inline at the top of the delivery email.
     # Reuses the same composer the cold-email teaser uses; non-fatal on failure.
     hero_path: Path | None = run_dir / "email_hero.png"
@@ -1576,14 +1561,13 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
     except Exception:  # noqa: BLE001
         hero_path = None
 
-    report_url = f"{PUBLIC_BASE_URL}/report/{run_id}"
+    dashboard_url = f"{PUBLIC_BASE_URL}/dashboard"
     try:
         send_report(
             to_email=email,
             brand_name=site.brand.name,
             tier=tier,
-            report_url=report_url,
-            pdf_path=pdf_path,
+            dashboard_url=dashboard_url,
             hero_image_path=hero_path,
         )
     except Exception as exc:  # noqa: BLE001

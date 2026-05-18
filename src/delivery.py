@@ -1,4 +1,5 @@
-"""Email delivery via Resend. Sends a link to the hosted report + PDF attachment."""
+"""Email delivery via Resend. Sends the buyer a link into the dashboard
+when their report is ready, and a 'welcome' confirmation right after payment."""
 from __future__ import annotations
 
 import base64
@@ -16,8 +17,21 @@ TIER_LABELS = {
 }
 
 
-def _build_html(brand_name: str, tier: str, report_url: str, has_hero: bool) -> str:
-    """Email body. If has_hero is True, embed a CID-attached hero image at the top."""
+# Solid-background button — gradients are stripped by most email clients, so
+# the old gradient buttons rendered as transparent boxes with invisible text.
+# Square-ish radius + !important on color survives dark-mode auto-invert.
+def _button(href: str, label: str) -> str:
+    return (
+        f'<a href="{href}" style="'
+        'display:inline-block; padding:14px 28px; background-color:#2563eb;'
+        'color:#ffffff !important; text-decoration:none; font-weight:700;'
+        'font-size:15px; line-height:1; border-radius:8px;'
+        'font-family:-apple-system,Inter,sans-serif;'
+        f'">{label}</a>'
+    )
+
+
+def _build_html(brand_name: str, tier: str, dashboard_url: str, has_hero: bool) -> str:
     tier_label = TIER_LABELS.get(tier, tier)
     hero_block = (
         '<img src="cid:report_hero" alt="" '
@@ -26,25 +40,20 @@ def _build_html(brand_name: str, tier: str, report_url: str, has_hero: bool) -> 
         if has_hero else ""
     )
     return f"""
-    <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
+    <div style="font-family:-apple-system,Inter,sans-serif; max-width:560px; margin:0 auto; color:#0f172a;">
       {hero_block}
-      <h2 style="font-size: 22px; margin: 0 0 12px;">Your {brand_name} AEO audit is ready</h2>
-      <p style="color: #475569; line-height: 1.55;">
+      <h2 style="font-size:22px; margin:0 0 12px;">Your {brand_name} AEO audit is ready</h2>
+      <p style="color:#475569; line-height:1.55;">
         Tier: <strong>{tier_label}</strong>
       </p>
-      <p style="color: #475569; line-height: 1.55;">
+      <p style="color:#475569; line-height:1.55;">
         We tested how AI answer engines describe, cite and compare {brand_name}.
-        The full report is attached as a PDF and is also available online:
+        Sign in to your dashboard to open the full report.
       </p>
-      <p style="margin: 24px 0;">
-        <a href="{report_url}"
-           style="display: inline-block; padding: 12px 22px; border-radius: 999px;
-                  background: linear-gradient(135deg, #2563eb, #7c3aed);
-                  color: white; text-decoration: none; font-weight: 700;">
-          Open online report →
-        </a>
+      <p style="margin:24px 0;">
+        {_button(dashboard_url, "Open my dashboard →")}
       </p>
-      <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
+      <p style="color:#94a3b8; font-size:12px; line-height:1.5;">
         Questions? Just reply to this email.
       </p>
     </div>
@@ -56,11 +65,10 @@ def send_report(
     to_email: str,
     brand_name: str,
     tier: str,
-    report_url: str,
-    pdf_path: Path | None = None,
+    dashboard_url: str,
     hero_image_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Send the audit report email. Returns the Resend response dict.
+    """Send the 'your audit is ready' email. Returns the Resend response dict.
     Raises if RESEND_API_KEY is missing.
 
     hero_image_path: optional 1200x630 PNG (from src.teaser_image.generate)
@@ -73,7 +81,7 @@ def send_report(
     from_addr = os.environ.get("REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>")
     subject = f"Your {brand_name} AEO audit is ready"
     has_hero = bool(hero_image_path and hero_image_path.exists())
-    html = _build_html(brand_name, tier, report_url, has_hero=has_hero)
+    html = _build_html(brand_name, tier, dashboard_url, has_hero=has_hero)
 
     attachments: list[dict[str, Any]] = []
     if has_hero:
@@ -82,11 +90,6 @@ def send_report(
             "content": base64.b64encode(hero_image_path.read_bytes()).decode("ascii"),
             "content_id": "report_hero",
             "disposition": "inline",
-        })
-    if pdf_path and pdf_path.exists():
-        attachments.append({
-            "filename": pdf_path.name,
-            "content": base64.b64encode(pdf_path.read_bytes()).decode("ascii"),
         })
 
     params: dict[str, Any] = {
@@ -105,17 +108,15 @@ def _build_welcome_html(
     *, brand_name: str, tier: str, is_subscription: bool, dashboard_url: str
 ) -> str:
     tier_label = TIER_LABELS.get(tier, tier)
-    brand_line = (
-        f"<strong>{brand_name}</strong>" if brand_name else "your brand"
-    )
+    brand_line = f"<strong>{brand_name}</strong>" if brand_name else "your brand"
     recurring_block = (
         f"""
       <h3 style="font-size:14px; text-transform:uppercase; letter-spacing:.06em;
                  color:#475569; margin:28px 0 8px;">Recurring billing</h3>
       <p style="color:#475569; line-height:1.55; margin:0;">
         You're now subscribed on the <strong>{tier_label}</strong> plan. We'll re-run
-        the audit on the 1st of each month and email you the results. Cancel
-        any time from your dashboard.
+        the audit on the 1st of each month and surface the results in your
+        dashboard. Cancel any time from there.
       </p>
         """
         if is_subscription else ""
@@ -131,23 +132,18 @@ def _build_welcome_html(
       <h3 style="font-size:14px; text-transform:uppercase; letter-spacing:.06em;
                  color:#475569; margin:28px 0 8px;">Your audit is running</h3>
       <p style="color:#475569; line-height:1.55; margin:0;">
-        We're querying the AI engines now. Your full report (hosted HTML + PDF + CSV)
-        will land in this inbox in 5–15 minutes.
+        We're querying the AI engines now. Your report will appear in your
+        dashboard in 5–15 minutes and you'll get an email when it's ready.
       </p>
 
       <h3 style="font-size:14px; text-transform:uppercase; letter-spacing:.06em;
                  color:#475569; margin:28px 0 8px;">Your dashboard</h3>
       <p style="color:#475569; line-height:1.55; margin:0 0 16px;">
-        Sign in any time to re-open this report, re-run the audit, edit the
+        Sign in any time to view this report, re-run the audit, edit the
         monitored brand and competitor list, and manage billing.
       </p>
       <p style="margin:0 0 8px;">
-        <a href="{dashboard_url}"
-           style="display:inline-block; padding:12px 22px; border-radius:999px;
-                  background:linear-gradient(135deg,#2563eb,#7c3aed);
-                  color:white; text-decoration:none; font-weight:700;">
-          Open my dashboard →
-        </a>
+        {_button(dashboard_url, "Open my dashboard →")}
       </p>
       <p style="color:#94a3b8; font-size:13px; line-height:1.55; margin:6px 0 0;">
         You'll be asked for this email so we can send you a one-tap sign-in link.
