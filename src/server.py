@@ -1162,12 +1162,15 @@ def _record_purchase(
     stripe_invoice_id: str = "",
     kind: str = "one_off",
     amount_usd: float | None = None,
-) -> None:
+) -> bool:
     """Persist a Purchase row idempotently. Skips if a row with the same
     stripe_event_id already exists, so re-delivered webhooks don't double-count.
-    Pulls amount from TIER_PLANS when the caller doesn't pass an explicit one."""
+    Pulls amount from TIER_PLANS when the caller doesn't pass an explicit one.
+    Returns True if a new row was inserted, False if duplicate / skipped /
+    failed — callers use this to gate one-shot side effects (welcome email
+    etc.) so webhook redeliveries don't re-trigger them."""
     if not email or not tier:
-        return
+        return False
     if amount_usd is None:
         amount_usd = float(TIER_PLANS.get(tier, {}).get("price_usd", 0))
     try:
@@ -1179,7 +1182,7 @@ def _record_purchase(
                     _select(Purchase).where(Purchase.stripe_event_id == stripe_event_id)
                 ).first()
                 if existing:
-                    return
+                    return False
             row = Purchase(
                 email=email.strip().lower(),
                 tier=tier,
@@ -1193,8 +1196,10 @@ def _record_purchase(
             )
             s.add(row)
             s.commit()
+            return True
     except Exception as exc:  # noqa: BLE001
         print(f"[purchase] persist failed: {type(exc).__name__}: {exc}")
+        return False
 
 
 @app.post("/webhooks/stripe")
@@ -1226,16 +1231,35 @@ async def stripe_webhook(request: Request) -> JSONResponse:
         tier = (meta.get("tier") or "").strip()
         plan = TIER_PLANS.get(tier, {})
         amount = (session.get("amount_total") or 0) / 100.0
-        _record_purchase(
-            email=(session.get("customer_email") or meta.get("email") or "").strip(),
+        buyer_email = (session.get("customer_email") or meta.get("email") or "").strip()
+        is_subscription = plan.get("stripe_mode") == "subscription"
+        is_new = _record_purchase(
+            email=buyer_email,
             tier=tier,
             brand_name=meta.get("brand_name") or "",
             domain=meta.get("domain") or "",
             stripe_event_id=event_id,
             stripe_session_id=sid,
-            kind=("subscription_initial" if plan.get("stripe_mode") == "subscription" else "one_off"),
+            kind=("subscription_initial" if is_subscription else "one_off"),
             amount_usd=amount or float(plan.get("price_usd", 0)),
         )
+        # Send the "thanks for signing up" welcome email once per purchase.
+        # Gated on _record_purchase returning True so Stripe webhook
+        # redeliveries don't re-send it. Wrapped in try/except so a Resend
+        # outage can't make the webhook 500 and trigger retries.
+        if is_new and buyer_email and tier:
+            try:
+                from src.delivery import send_welcome
+                send_welcome(
+                    to_email=buyer_email,
+                    brand_name=(meta.get("brand_name") or "").strip(),
+                    tier=tier,
+                    is_subscription=is_subscription,
+                    dashboard_url=f"{PUBLIC_BASE_URL}/dashboard",
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[welcome-email] send failed for {buyer_email}: "
+                      f"{type(exc).__name__}: {exc}")
 
     elif event.get("type") == "invoice.paid":
         # Subscription renewals — Stripe sends one of these per billing cycle
