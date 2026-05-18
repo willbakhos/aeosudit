@@ -784,6 +784,24 @@ def preview_status(run_id: str) -> JSONResponse:
 # Cold-email teaser API
 # ---------------------------------------------------------------------------
 
+def _require_teaser_token(request: Request) -> None:
+    """Bearer-token gate for the /api/teaser* endpoints. Reads the expected
+    secret from TEASER_API_TOKEN. Compares with secrets.compare_digest so
+    short-circuit timing doesn't leak the secret. Returns 503 when the env
+    var isn't set on the server (so a forgotten config doesn't silently
+    leave the endpoint open) and 401 when the caller sends the wrong /
+    missing token."""
+    expected = os.environ.get("TEASER_API_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(503, "TEASER_API_TOKEN is not configured on the server")
+    header = request.headers.get("authorization", "").strip()
+    presented = ""
+    if header.lower().startswith("bearer "):
+        presented = header[7:].strip()
+    if not presented or not secrets.compare_digest(presented, expected):
+        raise HTTPException(401, "Invalid or missing bearer token")
+
+
 class TeaserRequest(BaseModel):
     domain: str
     brand: str
@@ -919,14 +937,16 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
 
 
 @app.post("/api/teaser")
-def api_teaser(req: TeaserRequest) -> JSONResponse:
+def api_teaser(req: TeaserRequest, request: Request) -> JSONResponse:
     """Cold-email integration point. Runs ONE Apify query, extracts competitors
     via Haiku, generates a hero image, and returns the asset URLs your email
     sender can drop straight into the message body.
 
+    Auth: requires `Authorization: Bearer <TEASER_API_TOKEN>` header.
     Cost: ~$0.0085 per call (1 Apify SERP + 1 Haiku extraction).
     Returns: {teaser_image_url, click_url, brand_name, domain, visibility_pct, competitors}
     """
+    _require_teaser_token(request)
     return JSONResponse(_build_teaser_payload(req))
 
 
@@ -987,12 +1007,15 @@ def _compose_outreach_body(data: dict[str, Any]) -> str:
 
 
 @app.post("/api/teaser/email")
-def api_teaser_email(req: TeaserRequest) -> JSONResponse:
+def api_teaser_email(req: TeaserRequest, request: Request) -> JSONResponse:
     """Same as /api/teaser plus a tailored cold-email subject and plain-text
     body. Drop {{subject}} and {{body}} straight into Instantly / Smartlead /
     Apollo / your own SMTP. {{teaser_image_url}} and {{click_url}} are
     returned alongside so the sender can attach / link the hero image and
-    track clicks separately."""
+    track clicks separately.
+
+    Auth: requires `Authorization: Bearer <TEASER_API_TOKEN>` header."""
+    _require_teaser_token(request)
     data = _build_teaser_payload(req)
     data["subject"] = _compose_outreach_subject(data)
     data["body"] = _compose_outreach_body(data)
