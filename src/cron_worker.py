@@ -27,6 +27,7 @@ import threading
 import time
 import traceback
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
 # How often the worker wakes up to check for due brands.
@@ -39,6 +40,15 @@ BATCH_SIZE = int(os.environ.get("CRON_BATCH_SIZE", "20"))
 
 # Set to "0" to disable the cron worker entirely (useful during early debugging).
 ENABLED = os.environ.get("CRON_ENABLED", "1") == "1"
+
+# Teaser-image pruning. At 100k/month outreach volume, the teasers/ directory
+# would accumulate ~50GB+ over a year without cleanup. We delete teaser PNGs
+# + cached screenshots that haven't been touched in TEASER_PRUNE_DAYS days.
+# Default 30d is conservative — covers any in-flight email-open delay while
+# keeping storage flat at ~15GB.
+TEASER_PRUNE_DAYS = int(os.environ.get("TEASER_PRUNE_DAYS", "30"))
+_last_teaser_prune: float = 0.0
+_TEASER_PRUNE_INTERVAL_SEC = 24 * 3600  # once a day
 
 
 _started = False
@@ -73,7 +83,48 @@ def _loop() -> None:
         except Exception:  # noqa: BLE001
             print("[cron] tick failed:")
             traceback.print_exc()
+        try:
+            _maybe_prune_teasers()
+        except Exception:  # noqa: BLE001
+            print("[cron] teaser prune failed:")
+            traceback.print_exc()
         time.sleep(CHECK_INTERVAL)
+
+
+def _maybe_prune_teasers() -> None:
+    """Once per day, walk OUTPUT_ROOT/teasers/ and delete teaser PNGs +
+    cached site screenshots that haven't been modified in TEASER_PRUNE_DAYS
+    days. Cheap (just stat + unlink); skipped on most ticks via the
+    _last_teaser_prune throttle."""
+    global _last_teaser_prune
+    now = time.time()
+    if now - _last_teaser_prune < _TEASER_PRUNE_INTERVAL_SEC:
+        return
+    _last_teaser_prune = now
+
+    output_root = Path(os.environ.get("OUTPUT_ROOT", "output"))
+    teasers_dir = output_root / "teasers"
+    if not teasers_dir.exists():
+        return
+
+    cutoff = now - (TEASER_PRUNE_DAYS * 24 * 3600)
+    removed = 0
+    bytes_freed = 0
+    # Top-level teaser PNGs + cached screenshots in _screenshots/.
+    for path in list(teasers_dir.rglob("*.png")):
+        try:
+            mtime = path.stat().st_mtime
+            if mtime < cutoff:
+                size = path.stat().st_size
+                path.unlink()
+                removed += 1
+                bytes_freed += size
+        except OSError:
+            continue
+    if removed:
+        print(f"[cron] teaser prune: removed {removed} file(s) "
+              f"({bytes_freed // (1024 * 1024)} MB) older than "
+              f"{TEASER_PRUNE_DAYS}d")
 
 
 def _tick() -> None:
