@@ -745,6 +745,27 @@ def submit_preview(
     return HTMLResponse(html)
 
 
+def _resolve_teaser_shortlink(d_param: str) -> tuple[str, str, str] | None:
+    """If `d` looks like a TeaserShortlink id (pure digits), look it up and
+    return (domain, brand, category). Returns None when it's not numeric
+    or the row is missing — caller falls back to treating `d` as a literal
+    domain (the old long-URL behaviour)."""
+    if not d_param or not d_param.isdigit():
+        return None
+    try:
+        from sqlmodel import select as _select
+        from src.db import TeaserShortlink, get_session
+        with get_session() as s:
+            row = s.exec(
+                _select(TeaserShortlink).where(TeaserShortlink.id == int(d_param))
+            ).first()
+            if row:
+                return row.domain, row.brand, (row.category or "")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[teaser-shortlink] lookup failed: {type(exc).__name__}: {exc}")
+    return None
+
+
 @app.get("/preview", response_class=HTMLResponse)
 def submit_preview_get(
     d: str = "",
@@ -756,11 +777,27 @@ def submit_preview_get(
     category: str = "",
     country: str = "",
 ) -> HTMLResponse:
-    """Cold-email entry point. Either short (`d`/`b`/`c`/`co`) or long
-    (`domain`/`brand`/`category`/`country`) query params work — short keeps
-    email URLs compact."""
+    """Cold-email entry point. Accepts:
+      - `d=<short-id>` → resolves to the full domain via TeaserShortlink, and
+        if the caller didn't pass `b`/`c` we hydrate brand + category from
+        the same row (so a recipient can click a stripped-down `?d=42` link).
+      - `d=<domain>` or `domain=…` → legacy long form, still supported.
+      - `b`/`brand`, `c`/`category`, `co`/`country` → short or long aliases."""
+    resolved_domain = d
+    resolved_brand = b
+    resolved_category = c
+    looked_up = _resolve_teaser_shortlink(d)
+    if looked_up is not None:
+        resolved_domain = looked_up[0]
+        # Query-string values still win when supplied — lets the same shortlink
+        # be reused with a different brand label if you ever need to.
+        resolved_brand = b or looked_up[1]
+        resolved_category = c or looked_up[2]
     run_id, norm, real_brand, resolved_country = _start_preview(
-        d or domain, b or brand, c or category, co or country,
+        resolved_domain or domain,
+        resolved_brand or brand,
+        resolved_category or category,
+        co or country,
     )
     html = _jinja.get_template("loading.html.j2").render(
         run_id=run_id,
@@ -923,14 +960,42 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
         ver = int(img_path.stat().st_mtime)
     except OSError:
         ver = 0
-    click_qs = urlencode({"d": norm, "b": brand, "c": category} if category else {"d": norm, "b": brand})
+
+    # Mint a short-link so the cold-email URL is /preview?d=42&b=… instead of
+    # repeating the full domain in the query string. Fail-soft: if the DB
+    # isn't reachable we fall back to the legacy long form so the endpoint
+    # still works in dev / when Postgres is down.
+    short_id: int | None = None
+    try:
+        from src.db import TeaserShortlink, get_session
+        with get_session() as s:
+            row = TeaserShortlink(domain=norm, brand=brand, category=category or None)
+            s.add(row)
+            s.commit()
+            s.refresh(row)
+            short_id = row.id
+    except Exception as exc:  # noqa: BLE001
+        print(f"[teaser-shortlink] mint failed, falling back to long URL: "
+              f"{type(exc).__name__}: {exc}")
+
+    if short_id is not None:
+        # Keep the brand in the URL so the recipient hovering the link sees
+        # something readable ("...?d=42&b=Famous+Hollywood+Dental+Care").
+        click_qs = urlencode({"d": str(short_id), "b": brand})
+    else:
+        click_qs = urlencode(
+            {"d": norm, "b": brand, "c": category} if category
+            else {"d": norm, "b": brand}
+        )
+    click_url = f"{SITE_BASE_URL}/preview?{click_qs}"
+
     return {
         "brand_name": brand,
         "domain": norm,
         "visibility_pct": visibility_pct,
         "competitors": competitors,
         "teaser_image_url": f"{SITE_BASE_URL}/teasers/{img_filename}?v={ver}",
-        "click_url": f"{SITE_BASE_URL}/preview?{click_qs}",
+        "click_url": click_url,
         "teaser_query": teaser_query,
         "answered_in": ["text" if brand_in_text else None, "citations" if brand_in_citations else None],
     }
@@ -969,56 +1034,93 @@ def _compose_outreach_subject(data: dict[str, Any]) -> str:
     return f"{brand} is in Google AI — what about ChatGPT and Claude?"
 
 
-def _compose_outreach_body(data: dict[str, Any]) -> str:
-    """Plain-text cold-email body (~90 words) tailored to the teaser result.
-    No HTML; the caller pastes this straight into Instantly / Smartlead /
-    their own SMTP. Image URL is returned separately so the sender can
-    attach or inline it however they like."""
+def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
+    """Build the structured email blocks the outreach tool composes the
+    message from. Each block is plain text — drop them into your template in
+    this order:
+
+        {{hook}}
+        [image: {{image_url}}]
+        {{proof}}
+        [button: {{cta_text}} → {{cta_url}}]
+        {{signature}}
+
+    The legacy `body` field is also returned (assembled from these blocks)
+    so existing callers keep working."""
     brand = data.get("brand_name") or "your brand"
     query = data.get("teaser_query") or "questions in your category"
     competitors = data.get("competitors") or []
     visible = bool(data.get("visibility_pct"))
     click_url = data.get("click_url") or ""
+    image_url = data.get("teaser_image_url") or ""
 
+    top3 = competitors[:3]
     if visible:
         visibility_line = f"It does mention {brand}."
     else:
         visibility_line = f"It didn't mention {brand} once."
-
-    top3 = competitors[:3]
     if top3 and not visible:
         comp_line = f"It pointed buyers at {', '.join(top3)} instead."
     elif top3 and visible:
         comp_line = f"But it also named {', '.join(top3)} in the same answer."
     else:
-        comp_line = "The category's wide open — no clear competitors showed up."
+        comp_line = "The category looks wide open — no clear competitors showed up."
 
-    return (
+    hook = (
         f"Hi,\n\n"
-        f"I asked Google AI Overviews \"{query}\" — the kind of question your "
-        f"buyers are typing — to see how it answers.\n\n"
-        f"{visibility_line} {comp_line}\n\n"
-        f"Full snapshot here:\n{click_url}\n\n"
-        f"If the AI isn't pointing buyers at {brand}, the monitoraeo audit "
-        f"(40 questions × 5 AI engines = 200 answers) shows you exactly which "
-        f"gaps to fix.\n\n"
-        f"— monitoraeo"
+        f"I asked Google AI Overviews \"{query}\" — the kind of question "
+        f"your buyers are typing — to see how it answers."
     )
+    proof = f"{visibility_line} {comp_line}"
+    cta_text = "See the full snapshot"
+    cta_url = click_url
+    signature = "— monitoraeo"
+
+    # Legacy single-string body for backwards compatibility with callers
+    # already built against `body`.
+    body = (
+        f"{hook}\n\n"
+        f"{proof}\n\n"
+        f"Full snapshot here:\n{cta_url}\n\n"
+        f"If the AI isn't pointing buyers at {brand}, the monitoraeo audit "
+        f"(40 questions × 5 AI engines = 200 answers) shows you exactly "
+        f"which gaps to fix.\n\n"
+        f"{signature}"
+    )
+
+    return {
+        "hook": hook,
+        "image_url": image_url,
+        "proof": proof,
+        "cta_url": cta_url,
+        "cta_text": cta_text,
+        "signature": signature,
+        "body": body,
+    }
 
 
 @app.post("/api/teaser/email")
 def api_teaser_email(req: TeaserRequest, request: Request) -> JSONResponse:
-    """Same as /api/teaser plus a tailored cold-email subject and plain-text
-    body. Drop {{subject}} and {{body}} straight into Instantly / Smartlead /
-    Apollo / your own SMTP. {{teaser_image_url}} and {{click_url}} are
-    returned alongside so the sender can attach / link the hero image and
-    track clicks separately.
+    """Same as /api/teaser plus a tailored cold-email subject and structured
+    body blocks (hook / image_url / proof / cta_url / cta_text / signature).
+    Compose the message in your outreach tool like:
+
+        Subject: {{subject}}
+
+        {{hook}}
+        <img src="{{image_url}}">
+        {{proof}}
+        <a href="{{cta_url}}">{{cta_text}}</a>
+        {{signature}}
+
+    The legacy `body` string is still returned so existing integrations
+    keep working.
 
     Auth: requires `Authorization: Bearer <TEASER_API_TOKEN>` header."""
     _require_teaser_token(request)
     data = _build_teaser_payload(req)
     data["subject"] = _compose_outreach_subject(data)
-    data["body"] = _compose_outreach_body(data)
+    data.update(_compose_outreach_blocks(data))
     return JSONResponse(data)
 
 

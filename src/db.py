@@ -150,6 +150,21 @@ class TeamInvite(SQLModel, table=True):
     accepted_at: datetime | None = None
 
 
+class TeaserShortlink(SQLModel, table=True):
+    """Short-link backing for /api/teaser/email-generated URLs. We hand the
+    cold-email recipient a `/preview?d=<integer-id>` link instead of stuffing
+    the full domain into the query string — shorter to scan and harder to
+    enumerate. The serial id is the public token; the domain + brand +
+    category live on the row and are resolved by /preview at click time."""
+    __tablename__ = "monitor_teaser_shortlink"
+
+    id: int | None = Field(default=None, primary_key=True)
+    domain: str = Field(index=True)
+    brand: str
+    category: str | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class AuditRunRecord(SQLModel, table=True):
     """One audit execution against a tracked brand. Headline metrics are
     denormalised onto the row so the trend chart can render from a single
