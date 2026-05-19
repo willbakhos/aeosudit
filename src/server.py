@@ -782,10 +782,17 @@ def submit_preview_get(
         if the caller didn't pass `b`/`c` we hydrate brand + category from
         the same row (so a recipient can click a stripped-down `?d=42` link).
       - `d=<domain>` or `domain=…` → legacy long form, still supported.
-      - `b`/`brand`, `c`/`category`, `co`/`country` → short or long aliases."""
+      - `b`/`brand`, `c`/`category`, `co`/`country` → short or long aliases.
+
+    Whenever the visitor came via a teaser shortlink (`d` was numeric and
+    resolved) we tag the response with attribution context: a JS dataLayer
+    push that GTM forwards to GA4 as a campaign-attributed event, and a
+    `mo_traffic` cookie so subsequent pageviews in the same session (e.g.
+    /buy → /checkout/success) inherit the same source/medium."""
     resolved_domain = d
     resolved_brand = b
     resolved_category = c
+    came_via_shortlink = False
     looked_up = _resolve_teaser_shortlink(d)
     if looked_up is not None:
         resolved_domain = looked_up[0]
@@ -793,6 +800,7 @@ def submit_preview_get(
         # be reused with a different brand label if you ever need to.
         resolved_brand = b or looked_up[1]
         resolved_category = c or looked_up[2]
+        came_via_shortlink = True
     run_id, norm, real_brand, resolved_country = _start_preview(
         resolved_domain or domain,
         resolved_brand or brand,
@@ -805,8 +813,22 @@ def submit_preview_get(
         domain=norm,
         country_code=resolved_country,
         country_name=SUPPORTED_COUNTRIES.get(resolved_country, resolved_country),
+        traffic_source=("email" if came_via_shortlink else None),
+        traffic_medium=("outreach" if came_via_shortlink else None),
+        traffic_campaign=("teaser_outreach" if came_via_shortlink else None),
     )
-    return HTMLResponse(html)
+    response = HTMLResponse(html)
+    if came_via_shortlink:
+        # 30-day attribution cookie — GA4's default session window is 30 min
+        # but this longer cookie lets us re-fire the dataLayer push on any
+        # later same-domain navigation so multi-step funnels stay attributed.
+        response.set_cookie(
+            "mo_traffic", "email|outreach|teaser_outreach",
+            max_age=30 * 24 * 3600, samesite="lax",
+            secure=os.environ.get("COOKIE_SECURE", "1") == "1",
+            httponly=False, path="/",
+        )
+    return response
 
 
 @app.get("/preview/{run_id}/status")

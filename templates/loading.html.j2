@@ -2,6 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+{% if traffic_source %}
+<!-- Campaign attribution — pushed before GTM loads so tag triggers see it -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    'event': 'campaign_attribution',
+    'traffic_source': {{ traffic_source | tojson }},
+    'traffic_medium': {{ traffic_medium | tojson }},
+    'campaign_name': {{ traffic_campaign | tojson }}
+  });
+</script>
+{% endif %}
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],

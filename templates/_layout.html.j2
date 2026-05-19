@@ -2,6 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Rehydrate campaign attribution from mo_traffic cookie set on /preview
+     entry. Lets a multi-step funnel (preview → landing → checkout) keep the
+     original source/medium even though only /preview saw the shortlink. -->
+<script>
+  (function(){
+    var m = document.cookie.match(/(?:^|;\s*)mo_traffic=([^;]+)/);
+    if (!m) return;
+    var parts = decodeURIComponent(m[1]).split('|');
+    if (parts.length < 2) return;
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      'event': 'campaign_attribution',
+      'traffic_source': parts[0],
+      'traffic_medium': parts[1],
+      'campaign_name': parts[2] || ''
+    });
+  })();
+</script>
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
