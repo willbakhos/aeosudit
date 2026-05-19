@@ -786,9 +786,10 @@ def submit_preview_get(
 
     Whenever the visitor came via a teaser shortlink (`d` was numeric and
     resolved) we tag the response with attribution context: a JS dataLayer
-    push that GTM forwards to GA4 as a campaign-attributed event, and a
-    `mo_traffic` cookie so subsequent pageviews in the same session (e.g.
-    /buy → /checkout/success) inherit the same source/medium."""
+    push that GTM forwards to GA4 as a campaign-attributed event. The
+    attribution ONLY fires on this initial /preview hit — normal landing
+    visits, manual /preview submissions and direct navigation are never
+    attributed to email/outreach."""
     resolved_domain = d
     resolved_brand = b
     resolved_category = c
@@ -817,18 +818,7 @@ def submit_preview_get(
         traffic_medium=("outreach" if came_via_shortlink else None),
         traffic_campaign=("teaser_outreach" if came_via_shortlink else None),
     )
-    response = HTMLResponse(html)
-    if came_via_shortlink:
-        # 30-day attribution cookie — GA4's default session window is 30 min
-        # but this longer cookie lets us re-fire the dataLayer push on any
-        # later same-domain navigation so multi-step funnels stay attributed.
-        response.set_cookie(
-            "mo_traffic", "email|outreach|teaser_outreach",
-            max_age=30 * 24 * 3600, samesite="lax",
-            secure=os.environ.get("COOKIE_SECURE", "1") == "1",
-            httponly=False, path="/",
-        )
-    return response
+    return HTMLResponse(html)
 
 
 @app.get("/preview/{run_id}/status")
