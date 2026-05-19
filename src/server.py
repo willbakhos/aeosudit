@@ -814,8 +814,11 @@ def submit_preview_get(
         domain=norm,
         country_code=resolved_country,
         country_name=SUPPORTED_COUNTRIES.get(resolved_country, resolved_country),
+        # GA4 auto-buckets medium='email' into the default Email channel; if
+        # we ever want to distinguish outreach from nurture/transactional we
+        # can split via campaign_name without changing medium.
         traffic_source=("email" if came_via_shortlink else None),
-        traffic_medium=("outreach" if came_via_shortlink else None),
+        traffic_medium=("email" if came_via_shortlink else None),
         traffic_campaign=("teaser_outreach" if came_via_shortlink else None),
     )
     return HTMLResponse(html)
