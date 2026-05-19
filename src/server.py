@@ -1074,7 +1074,7 @@ def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
     proof = f"{visibility_line} {comp_line}"
     cta_text = "See the full snapshot"
     cta_url = click_url
-    signature = "— monitoraeo"
+    signature = "Liam Carter\nCustomer Lead, monitoraeo.com"
 
     # Legacy single-string body for backwards compatibility with callers
     # already built against `body`.
