@@ -862,6 +862,15 @@ class TeaserRequest(BaseModel):
     # regenerating. Use this after deploying a teaser-design change or
     # after rotating SCREENSHOTAPI_TOKEN. Idempotent + safe.
     force: bool = False
+    # "static" (default): skip Apify + Haiku entirely, hardcode the image
+    # labels to VISIBILITY=POOR / COMPETITORS=YES, use generic curiosity
+    # copy. ~10x cheaper per call (~$0.001 vs ~$0.0085). Designed for
+    # 100k+/month cold-outreach volume where we'd burn ~$850/mo on Apify
+    # otherwise.
+    # "live": run the real Apify + Haiku query, render per-prospect labels,
+    # compose body with specific competitor claims. Use for low-volume
+    # hand-curated sends where accuracy matters more than cost.
+    mode: str = "static"
 
 
 @app.get("/teasers/{filename}")
@@ -895,33 +904,43 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
     if not brand:
         raise HTTPException(400, "brand is required")
     category = (req.category or "").strip()
+    is_static = (req.mode or "static").lower() != "live"
 
-    # Single Apify query — "best {category}" surfaces competitors most directly.
-    # Falls back to "What is {brand}?" when no category is supplied.
-    teaser_query = f"best {category}" if category else f"What is {brand}?"
-    query_type = "category" if category else "brand"
-
-    apify = ApifyEngine(
-        label=FREE_TIER_ENGINE,
-        country_code="US",
-        language_code="en",
+    teaser_query = (
+        f"questions about {brand}" if is_static
+        else (f"best {category}" if category else f"What is {brand}?")
     )
-    response = asyncio.run(apify.query(teaser_query, query_type))
 
-    # Did the brand appear in the response?
-    text_lower = (response.response_text or "").lower()
-    brand_lower = brand.lower()
-    brand_in_text = brand_lower in text_lower
-    brand_in_citations = any(
-        norm.lower() in (c.domain or "").lower() for c in response.citations
-    )
-    visibility_pct = 100.0 if (brand_in_text or brand_in_citations) else 0.0
-
-    # Extract competitors from the single response
-    try:
-        competitors = asyncio.run(extract_competitors([response], brand))
-    except Exception:  # noqa: BLE001
+    if is_static:
+        # Static mode: no Apify, no Haiku. Image gets hardcoded "POOR" / "YES"
+        # labels regardless of actual visibility, body uses generic curiosity
+        # copy (no false-claim risk because nothing specific is asserted).
+        visibility_pct = 0.0
         competitors = []
+        brand_in_text = False
+        brand_in_citations = False
+    else:
+        apify = ApifyEngine(
+            label=FREE_TIER_ENGINE,
+            country_code="US",
+            language_code="en",
+        )
+        response = asyncio.run(apify.query(teaser_query, "category" if category else "brand"))
+
+        # Did the brand appear in the response?
+        text_lower = (response.response_text or "").lower()
+        brand_lower = brand.lower()
+        brand_in_text = brand_lower in text_lower
+        brand_in_citations = any(
+            norm.lower() in (c.domain or "").lower() for c in response.citations
+        )
+        visibility_pct = 100.0 if (brand_in_text or brand_in_citations) else 0.0
+
+        # Extract competitors from the single response
+        try:
+            competitors = asyncio.run(extract_competitors([response], brand))
+        except Exception:  # noqa: BLE001
+            competitors = []
 
     # Site screenshot — best effort, non-fatal
     teasers_dir = OUTPUT_ROOT / "teasers"
@@ -945,29 +964,35 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             site_screenshot = None
 
-    # Compose the teaser image
+    # Compose the teaser image. Hash includes mode so a domain teased in
+    # both 'live' and 'static' caches to separate files.
     from src.teaser_image import generate as generate_teaser
+    brand_key = brand.strip().lower()
     img_hash = hashlib.md5(
-        f"{norm}|{brand}|{visibility_pct}|{','.join(competitors[:3])}".encode()
+        f"{norm}|{brand_key}|{'static' if is_static else 'live'}|"
+        f"{visibility_pct}|{','.join(competitors[:3])}".encode()
     ).hexdigest()[:16]
     img_filename = f"{img_hash}.png"
     img_path = teasers_dir / img_filename
-    # generate_teaser always overwrites, so disk content is always fresh.
-    # We only need to delete the file under force=True if we wanted to ensure
-    # next-tick consistency — but the overwrite is atomic on the same FS so
-    # we just regenerate unconditionally.
-    try:
-        generate_teaser(
-            brand_name=brand,
-            domain=norm,
-            visibility_pct=visibility_pct,
-            competitors=competitors,
-            site_screenshot=site_screenshot if (site_screenshot and site_screenshot.exists()) else None,
-            output_path=img_path,
-            category=category or None,
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(500, f"Teaser image generation failed: {exc}")
+    # Cache hit: identical (domain, brand, mode, data) → reuse existing file.
+    # Important at 100k+/month volume — a re-send to the same prospect or
+    # the same domain in static mode costs zero CPU + zero API.
+    if img_path.exists() and not req.force:
+        pass
+    else:
+        try:
+            generate_teaser(
+                brand_name=brand,
+                domain=norm,
+                visibility_pct=visibility_pct,
+                competitors=competitors,
+                site_screenshot=site_screenshot if (site_screenshot and site_screenshot.exists()) else None,
+                output_path=img_path,
+                category=category or None,
+                static_mode=is_static,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(500, f"Teaser image generation failed: {exc}")
 
     # mtime-based cache-buster so email clients + browsers fetch the new
     # image after each regen, even though the path is content-hashed.
@@ -977,18 +1002,33 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
         ver = 0
 
     # Mint a short-link so the cold-email URL is /preview?d=42&b=… instead of
-    # repeating the full domain in the query string. Fail-soft: if the DB
-    # isn't reachable we fall back to the legacy long form so the endpoint
-    # still works in dev / when Postgres is down.
+    # repeating the full domain in the query string. Reuses an existing row
+    # for the same (domain, brand, category) so a re-send to the same
+    # prospect doesn't bloat the table — at 100k+/month volume a unique row
+    # per send would mean ~1.2M rows/year for the same handful of brands.
+    # Fail-soft: if the DB isn't reachable we fall back to the legacy long
+    # form so the endpoint still works in dev / when Postgres is down.
     short_id: int | None = None
     try:
+        from sqlmodel import select as _select
         from src.db import TeaserShortlink, get_session
         with get_session() as s:
-            row = TeaserShortlink(domain=norm, brand=brand, category=category or None)
-            s.add(row)
-            s.commit()
-            s.refresh(row)
-            short_id = row.id
+            existing = s.exec(
+                _select(TeaserShortlink)
+                .where(TeaserShortlink.domain == norm)
+                .where(TeaserShortlink.brand == brand)
+                .where(TeaserShortlink.category == (category or None))
+            ).first()
+            if existing:
+                short_id = existing.id
+            else:
+                row = TeaserShortlink(
+                    domain=norm, brand=brand, category=category or None,
+                )
+                s.add(row)
+                s.commit()
+                s.refresh(row)
+                short_id = row.id
     except Exception as exc:  # noqa: BLE001
         print(f"[teaser-shortlink] mint failed, falling back to long URL: "
               f"{type(exc).__name__}: {exc}")
@@ -1005,6 +1045,8 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
     click_url = f"{SITE_BASE_URL}/preview?{click_qs}"
 
     return {
+        "mode": "static" if is_static else "live",
+        "category": category,
         "brand_name": brand,
         "domain": norm,
         "visibility_pct": visibility_pct,
@@ -1032,8 +1074,17 @@ def api_teaser(req: TeaserRequest, request: Request) -> JSONResponse:
 
 def _compose_outreach_subject(data: dict[str, Any]) -> str:
     """Pick a cold-email subject line tailored to the teaser result.
-    Stays under 60 characters so the full line shows in most inbox previews."""
+    Stays under 60 characters so the full line shows in most inbox previews.
+
+    Static mode: question form, no specific claims (we didn't actually run
+    the query so we can't truthfully assert anything about findings).
+    Live mode: specific competitor-naming or visibility hooks."""
     brand = data.get("brand_name") or "your brand"
+    if data.get("mode") == "static":
+        category = (data.get("category") or "").strip()
+        if category:
+            return f"Is {brand} showing up when buyers ask about {category}?"
+        return f"Is {brand} appearing in Google AI Overviews?"
     competitors = data.get("competitors") or []
     visible = bool(data.get("visibility_pct"))
     top = competitors[0] if competitors else ""
@@ -1061,19 +1112,56 @@ def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
         {{signature}}
 
     The legacy `body` field is also returned (assembled from these blocks)
-    so existing callers keep working."""
+    so existing callers keep working.
+
+    Static mode emits generic curiosity copy with no specific findings
+    claimed (because we never ran the query). Live mode references the
+    actual visibility/competitor data."""
     brand = data.get("brand_name") or "your brand"
+    click_url = data.get("click_url") or ""
+    image_url = data.get("teaser_image_url") or ""
+    signature = "Liam Carter\nCustomer Lead, monitoraeo.com"
+    cta_text = "See the full snapshot"
+
+    if data.get("mode") == "static":
+        category = (data.get("category") or "").strip()
+        about_cat = f" about {category}" if category else " your buyers are asking"
+        hook = (
+            f"Hi,\n\n"
+            f"I ran a quick AI visibility check on {brand} to see how "
+            f"Google's AI answers questions{about_cat}."
+        )
+        proof = (
+            "The snapshot below shows what's happening — including which "
+            "competitors are getting named alongside you."
+        )
+        body = (
+            f"{hook}\n\n"
+            f"{proof}\n\n"
+            f"Full snapshot here:\n{click_url}\n\n"
+            f"The monitoraeo audit (40 questions × 5 AI engines = 200 "
+            f"answers) shows you exactly which gaps to fix.\n\n"
+            f"{signature}"
+        )
+        return {
+            "hook": hook,
+            "image_url": image_url,
+            "proof": proof,
+            "cta_url": click_url,
+            "cta_text": cta_text,
+            "signature": signature,
+            "body": body,
+        }
+
+    # Live mode — reference real findings.
     query = data.get("teaser_query") or "questions in your category"
     competitors = data.get("competitors") or []
     visible = bool(data.get("visibility_pct"))
-    click_url = data.get("click_url") or ""
-    image_url = data.get("teaser_image_url") or ""
-
     top3 = competitors[:3]
-    if visible:
-        visibility_line = f"It does mention {brand}."
-    else:
-        visibility_line = f"It didn't mention {brand} once."
+    visibility_line = (
+        f"It does mention {brand}." if visible
+        else f"It didn't mention {brand} once."
+    )
     if top3 and not visible:
         comp_line = f"It pointed buyers at {', '.join(top3)} instead."
     elif top3 and visible:
@@ -1087,16 +1175,10 @@ def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
         f"your buyers are typing — to see how it answers."
     )
     proof = f"{visibility_line} {comp_line}"
-    cta_text = "See the full snapshot"
-    cta_url = click_url
-    signature = "Liam Carter\nCustomer Lead, monitoraeo.com"
-
-    # Legacy single-string body for backwards compatibility with callers
-    # already built against `body`.
     body = (
         f"{hook}\n\n"
         f"{proof}\n\n"
-        f"Full snapshot here:\n{cta_url}\n\n"
+        f"Full snapshot here:\n{click_url}\n\n"
         f"If the AI isn't pointing buyers at {brand}, the monitoraeo audit "
         f"(40 questions × 5 AI engines = 200 answers) shows you exactly "
         f"which gaps to fix.\n\n"
@@ -1107,7 +1189,7 @@ def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
         "hook": hook,
         "image_url": image_url,
         "proof": proof,
-        "cta_url": cta_url,
+        "cta_url": click_url,
         "cta_text": cta_text,
         "signature": signature,
         "body": body,

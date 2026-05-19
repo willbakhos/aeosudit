@@ -313,6 +313,7 @@ def _draw_audit_panel(
     competitor_count: int,
     citation_pct: float | None,
     category: str | None,
+    static_mode: bool = False,
 ) -> None:
     """Frosted audit-subject panel — eyebrow + title + description + two metric tiles + footer line."""
     x0, y0, x1, y1 = box
@@ -369,39 +370,54 @@ def _draw_audit_panel(
         cy += 22
     cy += 16
 
-    # Two metric tiles — labelled as SAMPLE results so the recipient
-    # understands they're based on the one teaser query, not the full
-    # 8-query preview they'll see when they click through. The tiles in the
-    # preview/report use proper averaged percentages; mixing both formats
-    # under the same label ("VISIBILITY") made the email and the preview
-    # disagree (e.g. teaser said 100%, preview said 50%).
+    # Two metric tiles. Static mode renders the same dramatic labels on
+    # every image (no Apify call was made) so the recipient gets a "your
+    # AI visibility looks bad — click to find out exactly how bad"
+    # impression that the full preview then quantifies. Live mode shows
+    # binary sample-based labels honestly derived from the one Apify query.
     tile_gap = 14
     tile_w = (w - pad * 2 - tile_gap) // 2
     tile_h = 112
-    found = visibility_pct >= 50  # single-query result is always 0 or 100
-    _draw_panel_tile(
-        cd,
-        (pad, cy, pad + tile_w, cy + tile_h),
-        "GOOGLE AI MENTION",
-        "YES" if found else "NO",
-        GREEN_300 if found else RED_300,
-    )
-    if citation_pct is not None:
+    if static_mode:
+        _draw_panel_tile(
+            cd,
+            (pad, cy, pad + tile_w, cy + tile_h),
+            "VISIBILITY",
+            "POOR",
+            RED_300,
+        )
         _draw_panel_tile(
             cd,
             (pad + tile_w + tile_gap, cy, pad + 2 * tile_w + tile_gap, cy + tile_h),
-            "CITED IN SAMPLE",
-            "YES" if citation_pct >= 50 else "NO",
-            GREEN_300 if citation_pct >= 50 else RED_300,
+            "COMPETITORS",
+            "YES",
+            AMBER_300,
         )
     else:
+        found = visibility_pct >= 50  # single-query result is always 0 or 100
         _draw_panel_tile(
             cd,
-            (pad + tile_w + tile_gap, cy, pad + 2 * tile_w + tile_gap, cy + tile_h),
-            "COMPETITORS IN SAMPLE",
-            str(competitor_count),
-            WHITE,
+            (pad, cy, pad + tile_w, cy + tile_h),
+            "GOOGLE AI MENTION",
+            "YES" if found else "NO",
+            GREEN_300 if found else RED_300,
         )
+        if citation_pct is not None:
+            _draw_panel_tile(
+                cd,
+                (pad + tile_w + tile_gap, cy, pad + 2 * tile_w + tile_gap, cy + tile_h),
+                "CITED IN SAMPLE",
+                "YES" if citation_pct >= 50 else "NO",
+                GREEN_300 if citation_pct >= 50 else RED_300,
+            )
+        else:
+            _draw_panel_tile(
+                cd,
+                (pad + tile_w + tile_gap, cy, pad + 2 * tile_w + tile_gap, cy + tile_h),
+                "COMPETITORS IN SAMPLE",
+                str(competitor_count),
+                WHITE,
+            )
     cy += tile_h + 18
 
     # Footer line
@@ -431,6 +447,7 @@ def generate(
     output_path: Path,
     citation_pct: float | None = None,
     category: str | None = None,
+    static_mode: bool = False,
 ) -> Path:
     """Compose the audit-hero card and write it to output_path."""
     # Diagonal gradient background — slate-900 → indigo-900.
@@ -490,6 +507,7 @@ def generate(
         competitor_count=len(competitors),
         citation_pct=citation_pct,
         category=category,
+        static_mode=static_mode,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
