@@ -369,30 +369,36 @@ def _draw_audit_panel(
         cy += 22
     cy += 16
 
-    # Two metric tiles — VISIBILITY + (CITATION RATE or COMPETITORS NAMED)
+    # Two metric tiles — labelled as SAMPLE results so the recipient
+    # understands they're based on the one teaser query, not the full
+    # 8-query preview they'll see when they click through. The tiles in the
+    # preview/report use proper averaged percentages; mixing both formats
+    # under the same label ("VISIBILITY") made the email and the preview
+    # disagree (e.g. teaser said 100%, preview said 50%).
     tile_gap = 14
     tile_w = (w - pad * 2 - tile_gap) // 2
     tile_h = 112
+    found = visibility_pct >= 50  # single-query result is always 0 or 100
     _draw_panel_tile(
         cd,
         (pad, cy, pad + tile_w, cy + tile_h),
-        "VISIBILITY",
-        f"{visibility_pct:.0f}%",
-        _vis_accent(visibility_pct),
+        "GOOGLE AI MENTION",
+        "YES" if found else "NO",
+        GREEN_300 if found else RED_300,
     )
     if citation_pct is not None:
         _draw_panel_tile(
             cd,
             (pad + tile_w + tile_gap, cy, pad + 2 * tile_w + tile_gap, cy + tile_h),
-            "CITATION RATE",
-            f"{citation_pct:.0f}%",
-            _vis_accent(citation_pct),
+            "CITED IN SAMPLE",
+            "YES" if citation_pct >= 50 else "NO",
+            GREEN_300 if citation_pct >= 50 else RED_300,
         )
     else:
         _draw_panel_tile(
             cd,
             (pad + tile_w + tile_gap, cy, pad + 2 * tile_w + tile_gap, cy + tile_h),
-            "COMPETITORS NAMED",
+            "COMPETITORS IN SAMPLE",
             str(competitor_count),
             WHITE,
         )
