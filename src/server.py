@@ -697,6 +697,20 @@ def _run_preview_job(
         }
 
 
+def _smart_titlecase(text: str) -> str:
+    """Title-case a brand name ONLY when the user gave it to us all
+    lowercase. Preserves intentionally-styled brands ('JB Hi-Fi', 'iPhone',
+    'L'Oréal', 'monitoraeo') which carry at least one uppercase letter as a
+    signal that the casing was deliberate.
+
+    Handles apostrophes correctly (re.sub on word-boundary letters), unlike
+    str.title() which would turn 'john's dental' into 'John'S Dental'."""
+    text = (text or "").strip()
+    if not text or any(c.isupper() for c in text):
+        return text
+    return re.sub(r"\b\w", lambda m: m.group().upper(), text)
+
+
 def _start_preview(
     domain: str, brand: str, category: str | None, country: str | None = None
 ) -> tuple[str, str, str, str]:
@@ -706,7 +720,7 @@ def _start_preview(
     norm = _normalise_domain(domain)
     if not norm or "." not in norm:
         raise HTTPException(400, "Please enter a valid domain (e.g. capify.com.au)")
-    brand = (brand or "").strip()
+    brand = _smart_titlecase(brand)
     if not brand:
         raise HTTPException(
             400,
@@ -900,7 +914,7 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
     norm = _normalise_domain(req.domain)
     if not norm or "." not in norm:
         raise HTTPException(400, "Invalid domain")
-    brand = (req.brand or "").strip()
+    brand = _smart_titlecase(req.brand)
     if not brand:
         raise HTTPException(400, "brand is required")
     category = (req.category or "").strip()
