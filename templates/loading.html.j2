@@ -3,15 +3,22 @@
 <head>
 <meta charset="utf-8">
 {% if traffic_source %}
-<!-- Campaign attribution — pushed before GTM loads so tag triggers see it -->
+<!-- Campaign attribution. TWO pushes on purpose:
+     1. First push has NO `event` key, so the values are merged into GTM's
+        data-layer model immediately and are available to any DLV the
+        moment GTM's Initialization tags evaluate. This is what gets the
+        campaign_source/medium/name onto the page_view hit.
+     2. Second push fires a custom event so callers can ALSO trigger a
+        dedicated GA4 Event tag if they want one — but session-level
+        attribution doesn't depend on this second push. -->
 <script>
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
-    'event': 'campaign_attribution',
     'traffic_source': {{ traffic_source | tojson }},
     'traffic_medium': {{ traffic_medium | tojson }},
     'campaign_name': {{ traffic_campaign | tojson }}
   });
+  window.dataLayer.push({ 'event': 'campaign_attribution' });
 </script>
 {% endif %}
 <!-- Google Tag Manager -->
