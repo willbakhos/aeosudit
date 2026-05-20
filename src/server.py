@@ -83,7 +83,7 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "stripe_env": "STRIPE_PRICE_TWO_ENGINE",
         "engines": ["Google AI Overviews", CHATGPT_LABEL],
         "llm_scoring": True,
-        "action_plan": False,
+        "action_plan": True,
         "monitored_query_limit": 0,  # one-shot tier — n/a
     },
     "full_audit": {
@@ -93,7 +93,7 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "stripe_env": "STRIPE_PRICE_FULL_AUDIT",
         "engines": "all",
         "llm_scoring": True,
-        "action_plan": False,
+        "action_plan": True,
         "monitored_query_limit": 0,
     },
     "two_engine_monthly": {
