@@ -979,11 +979,15 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
             site_screenshot = None
 
     # Compose the teaser image. Hash includes mode so a domain teased in
-    # both 'live' and 'static' caches to separate files.
+    # both 'live' and 'static' caches to separate files. The leading 'v3'
+    # is a cache-bust prefix — bump it whenever the rendered image format
+    # changes (tile labels, layout, etc.) so any stale files on disk get
+    # bypassed instead of served. v1 = original % tiles, v2 = YES/NO
+    # binary, v3 = static POOR/YES tiles.
     from src.teaser_image import generate as generate_teaser
     brand_key = brand.strip().lower()
     img_hash = hashlib.md5(
-        f"{norm}|{brand_key}|{'static' if is_static else 'live'}|"
+        f"v3|{norm}|{brand_key}|{'static' if is_static else 'live'}|"
         f"{visibility_pct}|{','.join(competitors[:3])}".encode()
     ).hexdigest()[:16]
     img_filename = f"{img_hash}.png"
@@ -1086,9 +1090,17 @@ def api_teaser(req: TeaserRequest, request: Request) -> JSONResponse:
     return JSONResponse(_build_teaser_payload(req))
 
 
+def _ensure_leading_capital(s: str) -> str:
+    """Guarantee the first character is uppercase. Safer than str.capitalize()
+    which would lowercase the rest (and mangle 'Google AI' → 'Google ai')."""
+    return (s[0].upper() + s[1:]) if s else s
+
+
 def _compose_outreach_subject(data: dict[str, Any]) -> str:
     """Pick a cold-email subject line tailored to the teaser result.
     Stays under 60 characters so the full line shows in most inbox previews.
+    Always returns a string starting with a capital letter — defensive
+    against brand names that slipped through without _smart_titlecase.
 
     Static mode: question form, no specific claims (we didn't actually run
     the query so we can't truthfully assert anything about findings).
@@ -1097,21 +1109,25 @@ def _compose_outreach_subject(data: dict[str, Any]) -> str:
     if data.get("mode") == "static":
         category = (data.get("category") or "").strip()
         if category:
-            return f"Is {brand} showing up when buyers ask about {category}?"
-        return f"Is {brand} appearing in Google AI Overviews?"
+            return _ensure_leading_capital(
+                f"Is {brand} showing up when buyers ask about {category}?"
+            )
+        return _ensure_leading_capital(f"Is {brand} appearing in Google AI Overviews?")
     competitors = data.get("competitors") or []
     visible = bool(data.get("visibility_pct"))
     top = competitors[0] if competitors else ""
     second = competitors[1] if len(competitors) > 1 else ""
     if not visible and top and second:
-        return f"Google AI is naming {top} and {second}, not {brand}"
-    if not visible and top:
-        return f"Google AI is naming {top}, not {brand}"
-    if not visible:
-        return f"Google AI doesn't mention {brand} when buyers ask"
-    if visible and top:
-        return f"{brand} shows up in Google AI — but so does {top}"
-    return f"{brand} is in Google AI — what about ChatGPT and Claude?"
+        out = f"Google AI is naming {top} and {second}, not {brand}"
+    elif not visible and top:
+        out = f"Google AI is naming {top}, not {brand}"
+    elif not visible:
+        out = f"Google AI doesn't mention {brand} when buyers ask"
+    elif visible and top:
+        out = f"{brand} shows up in Google AI — but so does {top}"
+    else:
+        out = f"{brand} is in Google AI — what about ChatGPT and Claude?"
+    return _ensure_leading_capital(out)
 
 
 def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
