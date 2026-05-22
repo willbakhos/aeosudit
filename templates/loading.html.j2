@@ -179,7 +179,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <div class="info-card info-fade" id="infoCard" aria-live="polite">
     <span class="info-label" id="infoLabel">Did you know</span>
-    <p class="info-body" id="infoBody">Less than 2% of websites have an <code>llms.txt</code> file — the AI-era equivalent of robots.txt.</p>
+    <p class="info-body" id="infoBody">Less than 2% of websites have an <code>llms.txt</code> file — the AI-era equivalent of ignoring Google.</p>
   </div>
 <script>
   const runId = "{{ run_id }}";
@@ -200,14 +200,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // of the queue the first time they arrive, so users see real audit signal
   // before generic stats keep cycling.
   const STATS = [
-    "Less than 2% of websites have an <code>llms.txt</code> file — the AI-era equivalent of robots.txt.",
+    "Less than 2% of websites have an <code>llms.txt</code> file — the AI-era equivalent of ignoring Google.",
     "Google AI Overviews now answer over a billion queries a month, often summarising answers without sending the click.",
     "ChatGPT reached 100 million users in two months — the fastest consumer product launch in history.",
-    "AI engines typically cite 5–8 sources per answer, but only name 1–2 brands in the prose. Being named matters more than being cited.",
-    "Perplexity, ChatGPT Search and Claude all lean heavily on Bing's index — your Bing footprint quietly matters again.",
-    "FAQ schema and Organization JSON-LD are the two markup types AI engines lean on most when deciding who to cite.",
-    "AI Overviews can take 60–80% of the mobile screen, pushing the first organic result well below the fold.",
-    "When AI engines disagree about a brand, the citation graph almost always favours the brand with more structured Q&A content."
+    "AI engines typically cite 5–8 sources per answer, but only name 1–2 brands.",
+    "FAQ schema and Organization JSON-LD are what AI engines lean on most when deciding who to cite.",
+    "AI Overviews can take 60–80% of the mobile screen, pushing the first organic result towards the bottom of Google's search page.",
+    "Position 1 in Google's organic listing is now towards the bottom of the page. AI answers are at the very top. Where do you want to be?"
   ];
   const infoCard  = document.getElementById("infoCard");
   const infoLabel = document.getElementById("infoLabel");
