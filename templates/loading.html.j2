@@ -104,6 +104,38 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   }
   .err a { color: #991b1b; font-weight: 800; }
 
+  /* Rotating "Did you know" / live-finding card. Sits below the main progress
+     card so swapping content never causes the progress UI to reflow. */
+  .info-card {
+    width: min(620px, 100%);
+    margin-top: 18px;
+    padding: 22px 24px;
+    background: rgba(255,255,255,.72);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: 0 12px 36px rgba(15,23,42,.06);
+    min-height: 118px;
+    display: flex; flex-direction: column; justify-content: center;
+    transition: background .35s ease, border-color .35s ease;
+  }
+  .info-card.finding {
+    background: linear-gradient(135deg, rgba(37,99,235,.08), rgba(124,58,237,.05));
+    border-color: rgba(37,99,235,.20);
+  }
+  .info-label {
+    font-size: 10.5px; font-weight: 900; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .info-card.finding .info-label { color: #1d4ed8; }
+  .info-body {
+    margin: 0; font-size: 15.5px; line-height: 1.5;
+    color: var(--ink); font-weight: 500;
+  }
+  .info-body strong { font-weight: 800; }
+  .info-fade { transition: opacity .32s ease; }
+  .info-fade.out { opacity: 0; }
+
   @media (max-width: 620px) {
     body { padding: 14px; padding-top: 80px; align-items: flex-start; }
     .topbar { top: 18px; left: 18px; }
@@ -112,6 +144,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     h1 { font-size: 24px; line-height: 1.18; }
     .lede { font-size: 14px; }
     .meta { flex-wrap: wrap; }
+    .info-card { padding: 18px 18px; border-radius: 18px; min-height: 130px; }
+    .info-body { font-size: 14.5px; }
   }
 </style>
 </head>
@@ -142,6 +176,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div class="err" id="err" style="display:none;"></div>
   </div>
+
+  <div class="info-card info-fade" id="infoCard" aria-live="polite">
+    <span class="info-label" id="infoLabel">Did you know</span>
+    <p class="info-body" id="infoBody">Less than 2% of websites have an <code>llms.txt</code> file — the AI-era equivalent of robots.txt.</p>
+  </div>
 <script>
   const runId = "{{ run_id }}";
   const bar = document.getElementById("bar");
@@ -155,6 +194,70 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const s = Math.floor((Date.now() - startedAt) / 1000);
     elapsedEl.textContent = s + "s";
   }
+
+  // Rotating info card — curated stats + live findings pushed by the server.
+  // Findings get a different label + visual treatment and jump to the front
+  // of the queue the first time they arrive, so users see real audit signal
+  // before generic stats keep cycling.
+  const STATS = [
+    "Less than 2% of websites have an <code>llms.txt</code> file — the AI-era equivalent of robots.txt.",
+    "Google AI Overviews now answer over a billion queries a month, often summarising answers without sending the click.",
+    "ChatGPT reached 100 million users in two months — the fastest consumer product launch in history.",
+    "AI engines typically cite 5–8 sources per answer, but only name 1–2 brands in the prose. Being named matters more than being cited.",
+    "Perplexity, ChatGPT Search and Claude all lean heavily on Bing's index — your Bing footprint quietly matters again.",
+    "FAQ schema and Organization JSON-LD are the two markup types AI engines lean on most when deciding who to cite.",
+    "AI Overviews can take 60–80% of the mobile screen, pushing the first organic result well below the fold.",
+    "When AI engines disagree about a brand, the citation graph almost always favours the brand with more structured Q&A content."
+  ];
+  const infoCard  = document.getElementById("infoCard");
+  const infoLabel = document.getElementById("infoLabel");
+  const infoBody  = document.getElementById("infoBody");
+
+  const seenFindings = new Set();
+  let queue = STATS.map(s => ({ label: "Did you know", body: s, finding: false }));
+  let cursor = 0;
+
+  function renderInfo(item) {
+    infoCard.classList.add("out");
+    setTimeout(() => {
+      infoLabel.textContent = item.label;
+      infoBody.innerHTML = item.body;
+      infoCard.classList.toggle("finding", !!item.finding);
+      infoCard.classList.remove("out");
+    }, 320);
+  }
+
+  function nextItem() {
+    if (!queue.length) return null;
+    const item = queue[cursor % queue.length];
+    cursor += 1;
+    return item;
+  }
+
+  function mergeFindings(findings) {
+    if (!Array.isArray(findings)) return;
+    let newOnes = [];
+    for (const f of findings) {
+      if (!f || seenFindings.has(f)) continue;
+      seenFindings.add(f);
+      newOnes.push({ label: "From your audit", body: f, finding: true });
+    }
+    if (!newOnes.length) return;
+    // Splice new findings right after the currently-visible item so the next
+    // rotation surfaces them immediately, but stats still get airtime.
+    queue.splice(cursor, 0, ...newOnes);
+    // Show the first new finding straight away (don't wait the full interval)
+    renderInfo(newOnes[0]);
+    cursor += 1;
+  }
+
+  // First card is the placeholder we rendered server-side; start the rotation
+  // a beat later so users have time to read it.
+  setTimeout(function tick() {
+    const item = nextItem();
+    if (item) renderInfo(item);
+    setTimeout(tick, 6000);
+  }, 6000);
 
   async function poll() {
     try {
@@ -181,6 +284,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const ms = Date.now() - startedAt;
         bar.style.width = Math.min(90, 5 + (ms / 60000) * 85) + "%";
       }
+      if (data.findings) mergeFindings(data.findings);
       fmtElapsed();
       setTimeout(poll, tickEvery);
     } catch (e) {

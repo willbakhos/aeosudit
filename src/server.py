@@ -613,6 +613,20 @@ def _set_step(run_id: str, step: str, pct: int | None = None) -> None:
     PREVIEW_JOBS[run_id] = job
 
 
+def _add_finding(run_id: str, finding: str) -> None:
+    """Append a live finding (e.g. 'Found 3 competitors in AI answers') to the
+    job blob. The loading page polls /preview/{id}/status and splices new
+    findings into its rotating info card so users see real audit signal as it
+    emerges, not just generic stats."""
+    job = PREVIEW_JOBS.get(run_id, {})
+    findings = list(job.get("findings") or [])
+    finding = finding.strip()
+    if finding and finding not in findings:
+        findings.append(finding)
+        job["findings"] = findings
+        PREVIEW_JOBS[run_id] = job
+
+
 def _run_preview_job(
     run_id: str, domain: str, brand_name: str, category: str | None, country: str = "US"
 ) -> None:
@@ -658,6 +672,21 @@ def _run_preview_job(
             )
 
         responses, tech = asyncio.run(_gather())
+
+        # Surface a couple of tech-audit findings to the loading page so the
+        # user sees real signal while the rest of the audit finishes. Keyed by
+        # the stable .id field — title strings are user-facing and may move.
+        try:
+            checks = {c.id: c for c in (tech.checks if tech else [])}
+            llms = checks.get("t1_llms_txt")
+            if llms and llms.status == "fail":
+                _add_finding(run_id, "Your site doesn't have an llms.txt file — fewer than 2% of websites do.")
+            org = checks.get("t2_org_schema")
+            if org and org.status == "fail":
+                _add_finding(run_id, "We didn't find Organization JSON-LD on your homepage — AI engines lean on it to identify who you are.")
+        except Exception:  # noqa: BLE001
+            pass
+
         _set_step(run_id, "Identifying competitors named in the answers…", 70)
 
         # Auto-extract competitors from the responses via Haiku, then inject
@@ -670,6 +699,19 @@ def _run_preview_job(
         except Exception:  # noqa: BLE001
             site.competitors = []
 
+        if site.competitors:
+            top = [c.name for c in site.competitors[:3] if c.name]
+            if len(top) >= 2:
+                _add_finding(
+                    run_id,
+                    f"Google AI is naming {', '.join(top[:-1])} and {top[-1]} when answering buyer questions in your category.",
+                )
+            elif top:
+                _add_finding(
+                    run_id,
+                    f"Google AI is naming {top[0]} as a competitor in your category.",
+                )
+
         _set_step(run_id, "Compiling visibility and citation scores…", 85)
         rows = [
             ScoredRow(
@@ -680,6 +722,20 @@ def _run_preview_job(
             for r in responses
         ]
         write_csv(rows, run_dir)
+
+        # Final visibility finding — surfaces the "headline" number before the
+        # report opens, so the user already has a hook in their head.
+        try:
+            total = len(rows)
+            mentioned = sum(1 for r in rows if r.deterministic.mentioned)
+            if total:
+                if mentioned == 0:
+                    _add_finding(run_id, f"Google AI didn't mention {brand_name} once across {total} buyer questions.")
+                else:
+                    _add_finding(run_id, f"Google AI mentioned {brand_name} in {mentioned} of {total} buyer questions.")
+        except Exception:  # noqa: BLE001
+            pass
+
         _set_step(run_id, "Assembling your report…", 95)
         write_html(
             rows,
