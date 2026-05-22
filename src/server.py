@@ -700,7 +700,7 @@ def _run_preview_job(
             site.competitors = []
 
         if site.competitors:
-            top = [c.name for c in site.competitors[:3] if c.name]
+            top = [c for c in site.competitors[:3] if c]
             if len(top) >= 2:
                 _add_finding(
                     run_id,
