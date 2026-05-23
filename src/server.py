@@ -1206,7 +1206,7 @@ def _compose_outreach_blocks(data: dict[str, Any]) -> dict[str, str]:
     brand = data.get("brand_name") or "your brand"
     click_url = data.get("click_url") or ""
     image_url = data.get("teaser_image_url") or ""
-    signature = "Liam Carter\nCustomer Lead, monitoraeo.com"
+    signature = "Liam Carter\nAEO Specialist\nmonitoraeo.com"
     cta_text = "See the full snapshot"
 
     if data.get("mode") == "static":
