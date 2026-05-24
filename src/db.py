@@ -59,6 +59,7 @@ def init_db() -> None:
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_this_month INTEGER DEFAULT 0",
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_month_anchor TIMESTAMP",
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS monitored_queries JSONB DEFAULT '[]'::jsonb",
+        "ALTER TABLE monitor_audit_run ADD COLUMN IF NOT EXISTS trigger_type VARCHAR DEFAULT 'manual'",
     ]
     with eng.begin() as conn:
         for sql in migrations:
@@ -188,3 +189,8 @@ class AuditRunRecord(SQLModel, table=True):
     share_of_voice: dict[str, int] = Field(
         default_factory=dict, sa_column=Column(JSONB)
     )
+    # How this run was triggered. "scheduled" = monthly cron auto-fire;
+    # "manual" = any user-initiated run (dashboard re-run, master override,
+    # post-purchase fulfilment). Used by the trend chart to colour-code
+    # manual interventions distinctly from the scheduled baseline.
+    trigger_type: str = "manual"

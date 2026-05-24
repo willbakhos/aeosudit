@@ -167,6 +167,7 @@ def _tick() -> None:
                     user_id=brand.user_id,
                     run_id=_make_run_id(brand.name),
                     status="running",
+                    trigger_type="scheduled",
                 )
                 s.add(run_rec)
                 # Advance the schedule BEFORE spawning so a slow run can't

@@ -30,16 +30,16 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
           <a class="btn ghost" href="/dashboard/brands/{{ b.id }}/queries">Edit monitored questions</a>
           {% if user and user.is_master %}
-            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" class="run-group" style="margin:0;">
-              <span class="run-group-label">Run as</span>
-              <button type="submit" name="engine_set" value="google_only" class="run-seg">Google AI</button>
-              <button type="submit" name="engine_set" value="two_engine" class="run-seg">2 engines</button>
-              <button type="submit" name="engine_set" value="full" class="run-seg primary">All 5</button>
+            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" class="run-group" style="margin:0;" onsubmit="return confirmRerun(event)">
+              <span class="run-group-label">Re-run audit with</span>
+              <button type="submit" name="engine_set" value="google_only" class="run-seg" data-engines="Google AI only">Google AI</button>
+              <button type="submit" name="engine_set" value="two_engine" class="run-seg" data-engines="Google AI + ChatGPT (2 engines)">2 engines</button>
+              <button type="submit" name="engine_set" value="full" class="run-seg primary" data-engines="all 5 engines">All 5</button>
             </form>
           {% else %}
-            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0;">
+            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0;" onsubmit="return confirm('Trigger a new audit run now? This will use one of your monthly runs.')">
               <button class="btn ghost" type="submit" {% if b.tier and row.runs_left == 0 %}disabled title="Monthly quota reached"{% endif %}>
-                Run audit now
+                Re-run audit now
               </button>
             </form>
           {% endif %}
@@ -63,10 +63,16 @@
             {% if b.tier %}
               {{ row.next_scheduled.strftime('%Y-%m-%d %H:%M') }} UTC
             {% else %}
-              <span style="color:var(--muted);">—</span>
+              <span style="color:var(--muted);">Not scheduled</span>
             {% endif %}
           </div>
-          <div class="sub">{% if b.tier %}1st of next month{% else %}Subscribe to enable auto-runs{% endif %}</div>
+          <div class="sub">
+            {% if b.tier %}
+              1st of next month
+            {% else %}
+              Auto-runs require a monitoring subscription — <a href="/pricing" style="color:var(--blue); font-weight:700;">upgrade</a> to schedule monthly
+            {% endif %}
+          </div>
         </div>
         <div class="metric" style="background:#f8fafc; border:1px solid var(--line); border-radius:12px;">
           <div class="label">Runs this month</div>
@@ -88,7 +94,17 @@
           <button type="button" class="metric-tab" data-metric="hallucinations">Hallucinations</button>
           <button type="button" class="metric-tab" data-metric="sov">Share of Voice</button>
         </div>
-        <div style="position:relative; height:280px; margin-top:12px; background:white; border:1px solid var(--line); border-radius:14px; padding:14px;">
+        <div class="chart-legend" style="display:flex; gap:14px; align-items:center; margin-top:10px; font-size:12px; color:var(--muted); font-weight:600;">
+          <span style="display:inline-flex; align-items:center; gap:6px;">
+            <span style="width:10px; height:10px; border-radius:50%; background:#2563eb; display:inline-block;"></span>
+            Scheduled run
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:6px;">
+            <span style="width:10px; height:10px; border-radius:50%; background:#f59e0b; display:inline-block; box-shadow:0 0 0 2px rgba(245,158,11,.18);"></span>
+            Manual run
+          </span>
+        </div>
+        <div style="position:relative; height:280px; margin-top:8px; background:white; border:1px solid var(--line); border-radius:14px; padding:14px;">
           <canvas id="chart-{{ b.id }}" data-trend='{{ row.trend_json|safe }}'></canvas>
         </div>
       {% else %}
@@ -127,6 +143,14 @@
 
     function lineConfig(data, metric) {
       var m = METRICS[metric];
+      var triggers = data.triggers || [];
+      var MANUAL = '#f59e0b';
+      var pointColors = (data.labels || []).map(function (_, i) {
+        return triggers[i] === 'manual' ? MANUAL : m.color;
+      });
+      var pointRadii = (data.labels || []).map(function (_, i) {
+        return triggers[i] === 'manual' ? 6 : 4;
+      });
       return {
         type: 'line',
         data: {
@@ -140,9 +164,11 @@
             tension: 0.35,
             fill: true,
             spanGaps: true,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            pointBackgroundColor: m.color,
+            pointRadius: pointRadii,
+            pointHoverRadius: 7,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointBorderWidth: 2,
           }],
         },
         options: {
@@ -160,6 +186,10 @@
                 label: function (ctx) {
                   if (ctx.parsed.y === null) return m.label + ': —';
                   return m.label + ': ' + ctx.parsed.y + m.suffix;
+                },
+                afterLabel: function (ctx) {
+                  var t = triggers[ctx.dataIndex];
+                  return t === 'manual' ? 'Manual re-run' : 'Scheduled run';
                 },
               },
             },
@@ -237,12 +267,25 @@
           var entry = charts[targetId];
           if (!entry) return;
           entry.instance.destroy();
+          var metric = btn.getAttribute('data-metric');
           var canvas = document.getElementById(targetId);
-          entry.instance = new Chart(canvas, buildConfig(entry.data, btn.getAttribute('data-metric')));
+          entry.instance = new Chart(canvas, buildConfig(entry.data, metric));
+          // Hide the run-type legend on Share of Voice (single-snapshot bar chart).
+          var card = canvas.closest('.card');
+          var legend = card && card.querySelector('.chart-legend');
+          if (legend) legend.style.display = (metric === 'sov') ? 'none' : '';
         });
       });
     });
   })();
+
+  // Confirm before kicking off a re-run from any of the segmented engine buttons.
+  // Reads the clicked button's data-engines for a clearer prompt.
+  function confirmRerun(event) {
+    var btn = event.submitter || document.activeElement;
+    var label = (btn && btn.getAttribute('data-engines')) || 'the selected engines';
+    return confirm('Trigger a new audit run now using ' + label + '? This will create a new entry on the trend chart.');
+  }
 </script>
 
 <div class="card" style="margin-top:32px; background:#f0f9ff; border-color:rgba(37,99,235,.18);">

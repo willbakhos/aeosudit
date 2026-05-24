@@ -793,6 +793,7 @@ def monitoring(request: Request):
             chart_payload = {
                 "labels": [r.started_at.strftime("%b %d") for r in runs],
                 "run_ids": [r.run_id for r in runs],
+                "triggers": [(r.trigger_type or "manual") for r in runs],
                 "visibility": _series("visibility_rate"),
                 "citation": _series("citation_rate"),
                 "sentiment": _series("sentiment_avg"),
