@@ -1,0 +1,187 @@
+<!-- Re-run audit modal. Included from monitoring.html.j2 and brand_detail.html.j2.
+     Any element with [data-rerun-trigger] + data-brand-id / data-brand-name /
+     data-tier / data-quota / data-used / data-is-master opens it. -->
+<div id="rerun-modal" class="m-overlay" role="dialog" aria-modal="true" aria-labelledby="rerun-title">
+  <div class="m-dialog">
+    <button type="button" class="m-close" data-close aria-label="Close">&times;</button>
+    <h3 id="rerun-title" data-modal-title>Re-run audit</h3>
+    <p class="m-quota"><span class="dot"></span><span data-modal-quota></span></p>
+    <form method="post" action="">
+      <div data-engine-group class="m-engine-group">
+        <span class="m-label">Engines</span>
+        <label class="m-radio"><input type="radio" name="engine_set" value="google_only"> Google AI only</label>
+        <label class="m-radio"><input type="radio" name="engine_set" value="two_engine"> Google AI + ChatGPT</label>
+        <label class="m-radio"><input type="radio" name="engine_set" value="full" checked> All 5 engines</label>
+      </div>
+      <p data-quota-warning class="m-warn"></p>
+      <label data-master-override class="m-master">
+        <input type="checkbox" name="force" value="1"> Master: override quota
+      </label>
+      <div class="m-actions">
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button type="submit" class="btn primary" data-submit>Run audit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .m-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(15,23,42,.55); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .m-overlay.open { display: flex; }
+  .m-dialog {
+    position: relative;
+    width: min(460px, 100%);
+    background: white; border-radius: 18px;
+    padding: 28px 26px 22px;
+    box-shadow: 0 24px 60px rgba(15,23,42,.30);
+    border: 1px solid var(--line);
+    animation: m-pop .18s ease-out;
+  }
+  @keyframes m-pop {
+    from { transform: scale(.96); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  .m-close {
+    position: absolute; top: 12px; right: 14px;
+    background: transparent; border: 0; cursor: pointer;
+    font-size: 26px; line-height: 1; color: var(--muted);
+    width: 32px; height: 32px; border-radius: 8px;
+  }
+  .m-close:hover { background: rgba(15,23,42,.06); color: var(--ink); }
+  #rerun-title { margin: 0 0 6px; font-size: 19px; letter-spacing: -.01em; }
+  .m-quota {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 18px; color: var(--muted); font-size: 13px; font-weight: 700;
+  }
+  .m-quota .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--blue);
+  }
+  .m-engine-group {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: #f8fafc; margin-bottom: 14px;
+  }
+  .m-label {
+    font-size: 11px; font-weight: 900; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+  .m-radio {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 14px; color: var(--ink); cursor: pointer;
+    padding: 4px 0;
+  }
+  .m-radio input { accent-color: var(--blue); }
+  .m-warn {
+    margin: 0 0 14px; padding: 10px 12px;
+    background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+    border-radius: 10px; font-size: 13px; line-height: 1.45; font-weight: 600;
+    display: none;
+  }
+  .m-master {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 14px; font-size: 13px; color: var(--muted); font-weight: 700;
+  }
+  .m-master input { accent-color: var(--blue); }
+  .m-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    padding-top: 12px; border-top: 1px solid var(--line);
+  }
+  .m-actions .btn { padding: 9px 18px; }
+  .m-actions .btn[disabled] { opacity: .55; cursor: not-allowed; }
+</style>
+
+<script>
+  (function () {
+    var modal = document.getElementById('rerun-modal');
+    if (!modal) return;
+    var form = modal.querySelector('form');
+    var titleEl = modal.querySelector('[data-modal-title]');
+    var quotaEl = modal.querySelector('[data-modal-quota]');
+    var engineGroup = modal.querySelector('[data-engine-group]');
+    var overrideRow = modal.querySelector('[data-master-override]');
+    var overrideCheckbox = modal.querySelector('input[name="force"]');
+    var submitBtn = modal.querySelector('[data-submit]');
+    var quotaWarn = modal.querySelector('[data-quota-warning]');
+    var currentTrigger = null;
+
+    function open(trigger) {
+      currentTrigger = trigger;
+      var brandId   = trigger.getAttribute('data-brand-id');
+      var brandName = trigger.getAttribute('data-brand-name');
+      var tier      = trigger.getAttribute('data-tier');
+      var quota     = parseInt(trigger.getAttribute('data-quota'), 10) || 1;
+      var used      = parseInt(trigger.getAttribute('data-used'), 10) || 0;
+      var isMaster  = trigger.getAttribute('data-is-master') === '1';
+      var atQuota   = used >= quota;
+
+      form.action = '/dashboard/brands/' + brandId + '/runs';
+      titleEl.textContent = 'Re-run audit for ' + brandName;
+      quotaEl.textContent = used + ' of ' + quota + ' monthly run' + (quota === 1 ? '' : 's') + ' used';
+      engineGroup.style.display = isMaster ? '' : 'none';
+      overrideRow.style.display = (isMaster && atQuota) ? '' : 'none';
+      overrideCheckbox.checked = false;
+
+      if (atQuota) {
+        quotaWarn.style.display = '';
+        quotaWarn.textContent = tier
+          ? 'Monthly quota reached. Next scheduled run fires on the 1st.'
+          : "You've used your free monthly run. Upgrade to a monitoring plan for additional runs.";
+      } else {
+        quotaWarn.style.display = 'none';
+      }
+      updateSubmitState(atQuota, isMaster);
+
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function close() {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+      currentTrigger = null;
+    }
+
+    function updateSubmitState(atQuota, isMaster) {
+      var canRun = !atQuota || (isMaster && overrideCheckbox.checked);
+      submitBtn.disabled = !canRun;
+      submitBtn.textContent = canRun ? 'Run audit' : 'Quota reached';
+    }
+
+    document.querySelectorAll('[data-rerun-trigger]').forEach(function (btn) {
+      btn.addEventListener('click', function () { open(btn); });
+    });
+    modal.querySelectorAll('[data-close]').forEach(function (el) {
+      el.addEventListener('click', close);
+    });
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) close();
+    });
+    if (overrideCheckbox) {
+      overrideCheckbox.addEventListener('change', function () {
+        if (!currentTrigger) return;
+        var quota = parseInt(currentTrigger.getAttribute('data-quota'), 10) || 1;
+        var used  = parseInt(currentTrigger.getAttribute('data-used'), 10) || 0;
+        updateSubmitState(used >= quota, true);
+      });
+    }
+  })();
+
+  // Quota-reached toast (server redirects with ?quota_reached=<brand_id> when it blocks).
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (!params.get('quota_reached')) return;
+    var toast = document.createElement('div');
+    toast.textContent = 'Monthly quota reached for that brand — no new run was started.';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:700;box-shadow:0 12px 28px rgba(15,23,42,.30);z-index:1001;';
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.remove(); }, 4500);
+  })();
+</script>

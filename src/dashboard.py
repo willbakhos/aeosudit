@@ -47,8 +47,17 @@ _jinja = Environment(
 DEFAULT_ENGINES = ["Google AI Overviews"]
 CHATGPT_LABEL = "ChatGPT"
 
-# Subscribers get N runs per calendar month (cron + manual combined).
-MONTHLY_RUN_QUOTA = 2
+# Per-tier run quota (scheduled cron + manual reruns, combined).
+# Paid subscribers: 1 scheduled + 1 manual = 2/month.
+# Free dashboard brands: no scheduled run, 1 manual/month.
+MONTHLY_RUN_QUOTA = 2  # legacy alias for the paid quota; prefer _monthly_run_quota()
+
+
+def _monthly_run_quota(tier: str | None) -> int:
+    """Total run cap for a tracked brand per calendar month, including the
+    scheduled monthly cron + any manual reruns the user triggers from the
+    dashboard. Free brands get 1 manual; paid get 1 scheduled + 1 manual."""
+    return 2 if (tier or "").strip() else 1
 
 
 def _engines_for_brand(brand: TrackedBrand) -> set[str] | None:
@@ -423,6 +432,8 @@ def brand_detail(request: Request, brand_id: str):
         (r for r in reversed(runs) if r.status == "complete"), None
     )
 
+    quota = _monthly_run_quota(brand.tier)
+    used = brand.runs_this_month or 0
     return _render(
         "brand_detail.html.j2",
         user=user,
@@ -430,6 +441,9 @@ def brand_detail(request: Request, brand_id: str):
         runs=list(reversed(runs)),  # newest first in the table
         trend_json=json.dumps(trend),
         latest=latest_complete,
+        monthly_quota=quota,
+        runs_used=used,
+        runs_left=max(0, quota - used),
         active_tab="brands",
     )
 
@@ -514,7 +528,12 @@ ENGINE_SETS: dict[str, set[str] | None] = {
 
 
 @router.post("/brands/{brand_id}/runs")
-def brand_run(request: Request, brand_id: str, engine_set: str = Form("")):
+def brand_run(
+    request: Request,
+    brand_id: str,
+    engine_set: str = Form(""),
+    force: str = Form(""),
+):
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
@@ -527,10 +546,22 @@ def brand_run(request: Request, brand_id: str, engine_set: str = Form("")):
     override: set[str] | None | str = "_no_override"
     if user.get("is_master") and engine_set in ENGINE_SETS:
         override = ENGINE_SETS[engine_set]
+    # Only masters can bypass the monthly quota — and only by explicitly
+    # ticking the override box (so it's a deliberate action, not silent).
+    force_override = bool(force) and user.get("is_master")
     with get_session() as s:
         brand = s.get(TrackedBrand, bid)
         if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
             raise HTTPException(404, "Brand not found")
+        _reset_monthly_counter_if_needed(brand)
+        quota = _monthly_run_quota(brand.tier)
+        used = brand.runs_this_month or 0
+        if used >= quota and not force_override:
+            # Friendly redirect with a flash-style query param the UI can render.
+            return RedirectResponse(
+                f"/dashboard/monitoring?quota_reached={brand_id}",
+                status_code=303,
+            )
         from src.server import _make_run_id
         run_rec = AuditRunRecord(
             brand_id=brand.id,
@@ -802,13 +833,16 @@ def monitoring(request: Request):
                 "sov_labels": [c for c, _ in latest_sov],
                 "sov_counts": [n for _, n in latest_sov],
             }
+            quota = _monthly_run_quota(b.tier)
+            used = b.runs_this_month or 0
             rows.append({
                 "brand": b,
                 "trend_runs": runs,
                 "trend_json": json.dumps(chart_payload),
                 "next_scheduled": b.next_scheduled_run or _compute_next_scheduled_run(),
-                "monthly_quota": MONTHLY_RUN_QUOTA,
-                "runs_left": max(0, MONTHLY_RUN_QUOTA - (b.runs_this_month or 0)),
+                "monthly_quota": quota,
+                "runs_used": used,
+                "runs_left": max(0, quota - used),
             })
     return _render("monitoring.html.j2", user=user, rows=rows, active_tab="monitoring")
 

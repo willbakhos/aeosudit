@@ -14,25 +14,15 @@
   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/edit">Edit brand</a>
     <a class="btn ghost" href="/dashboard/brands/{{ brand.id }}/queries">Edit monitored questions</a>
-    {% if user and user.is_master %}
-      <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" class="run-group" style="margin:0;" onsubmit="return confirmRerun(event)">
-        <span class="run-group-label">Re-run audit with</span>
-        <button type="submit" name="engine_set" value="google_only" class="run-seg" data-engines="Google AI only">Google AI</button>
-        <button type="submit" name="engine_set" value="two_engine" class="run-seg" data-engines="Google AI + ChatGPT (2 engines)">2 engines</button>
-        <button type="submit" name="engine_set" value="full" class="run-seg primary" data-engines="all 5 engines">All 5</button>
-      </form>
-    {% else %}
-      <form method="post" action="/dashboard/brands/{{ brand.id }}/runs" style="margin:0;" onsubmit="return confirm('Trigger a new audit run now?')">
-        <button class="btn" type="submit">Re-run audit now</button>
-      </form>
-    {% endif %}
-    <script>
-      function confirmRerun(event) {
-        var btn = event.submitter || document.activeElement;
-        var label = (btn && btn.getAttribute('data-engines')) || 'the selected engines';
-        return confirm('Trigger a new audit run now using ' + label + '?');
-      }
-    </script>
+    <button type="button" class="btn primary" data-rerun-trigger
+            data-brand-id="{{ brand.id }}"
+            data-brand-name="{{ brand.name }}"
+            data-tier="{{ brand.tier or '' }}"
+            data-quota="{{ monthly_quota }}"
+            data-used="{{ runs_used }}"
+            data-is-master="{{ '1' if user and user.is_master else '' }}">
+      Re-run audit
+    </button>
   </div>
 </div>
 
@@ -170,4 +160,6 @@
     });
   }
 </script>
+
+{% include "dashboard/_rerun_modal.html.j2" %}
 {% endblock %}

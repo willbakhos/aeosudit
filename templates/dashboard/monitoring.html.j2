@@ -29,20 +29,15 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
           <a class="btn ghost" href="/dashboard/brands/{{ b.id }}/queries">Edit monitored questions</a>
-          {% if user and user.is_master %}
-            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" class="run-group" style="margin:0;" onsubmit="return confirmRerun(event)">
-              <span class="run-group-label">Re-run audit with</span>
-              <button type="submit" name="engine_set" value="google_only" class="run-seg" data-engines="Google AI only">Google AI</button>
-              <button type="submit" name="engine_set" value="two_engine" class="run-seg" data-engines="Google AI + ChatGPT (2 engines)">2 engines</button>
-              <button type="submit" name="engine_set" value="full" class="run-seg primary" data-engines="all 5 engines">All 5</button>
-            </form>
-          {% else %}
-            <form method="post" action="/dashboard/brands/{{ b.id }}/runs" style="margin:0;" onsubmit="return confirm('Trigger a new audit run now? This will use one of your monthly runs.')">
-              <button class="btn ghost" type="submit" {% if b.tier and row.runs_left == 0 %}disabled title="Monthly quota reached"{% endif %}>
-                Re-run audit now
-              </button>
-            </form>
-          {% endif %}
+          <button type="button" class="btn primary" data-rerun-trigger
+                  data-brand-id="{{ b.id }}"
+                  data-brand-name="{{ b.name }}"
+                  data-tier="{{ b.tier or '' }}"
+                  data-quota="{{ row.monthly_quota }}"
+                  data-used="{{ row.runs_used }}"
+                  data-is-master="{{ '1' if user and user.is_master else '' }}">
+            Re-run audit
+          </button>
         </div>
       </div>
 
@@ -279,14 +274,9 @@
     });
   })();
 
-  // Confirm before kicking off a re-run from any of the segmented engine buttons.
-  // Reads the clicked button's data-engines for a clearer prompt.
-  function confirmRerun(event) {
-    var btn = event.submitter || document.activeElement;
-    var label = (btn && btn.getAttribute('data-engines')) || 'the selected engines';
-    return confirm('Trigger a new audit run now using ' + label + '? This will create a new entry on the trend chart.');
-  }
 </script>
+
+{% include "dashboard/_rerun_modal.html.j2" %}
 
 <div class="card" style="margin-top:32px; background:#f0f9ff; border-color:rgba(37,99,235,.18);">
   <h3 style="margin-top:0;">How monitoring works</h3>
