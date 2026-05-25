@@ -15,11 +15,17 @@
       </div>
       <p data-quota-warning class="m-warn"></p>
       <div data-extra-section class="m-extra" style="display:none;">
-        <p class="m-extra-copy">Need another run this month? Add one without changing your plan.</p>
+        <p class="m-extra-copy">
+          Need another run this month? Add one matching your subscription —
+          <strong data-extra-engines>Google AI + ChatGPT</strong>.
+        </p>
         <button type="button" class="btn primary m-extra-btn" data-buy-extra>
-          Buy extra run — $<span data-extra-price>10</span>
+          <span data-extra-label>Buy extra 2-engine run</span> — $<span data-extra-price>10</span>
         </button>
         <p class="m-extra-status" data-extra-status></p>
+        <p class="m-extra-upgrade" data-extra-upgrade style="display:none;">
+          Want all 5 engines per extra run? <a href="/pricing">Upgrade to Full Monitoring</a> ($95/mo, $25 per extra).
+        </p>
       </div>
       <label data-master-override class="m-master">
         <input type="checkbox" name="force" value="1"> Master: override quota
@@ -110,6 +116,12 @@
   }
   .m-extra-status.error { color: #b91c1c; }
   .m-extra-status.success { color: #15803d; }
+  .m-extra-upgrade {
+    margin: 10px 0 0; padding-top: 10px;
+    border-top: 1px dashed rgba(37,99,235,.20);
+    font-size: 12px; color: var(--muted);
+  }
+  .m-extra-upgrade a { color: var(--blue); font-weight: 800; }
   .m-actions {
     display: flex; gap: 8px; justify-content: flex-end;
     padding-top: 12px; border-top: 1px solid var(--line);
@@ -133,13 +145,28 @@
     var extraSection = modal.querySelector('[data-extra-section]');
     var extraBtn = modal.querySelector('[data-buy-extra]');
     var extraPrice = modal.querySelector('[data-extra-price]');
+    var extraLabel = modal.querySelector('[data-extra-label]');
+    var extraEngines = modal.querySelector('[data-extra-engines]');
     var extraStatus = modal.querySelector('[data-extra-status]');
+    var extraUpgrade = modal.querySelector('[data-extra-upgrade]');
     var currentTrigger = null;
 
-    // Add-on pricing — must mirror EXTRA_RUN_PRICE_USD on the server.
-    var EXTRA_PRICE = {
-      two_engine_monthly: 10,
-      full_monthly: 25,
+    // Per-tier add-on spec — must mirror EXTRA_RUN_PRICE_USD on the server.
+    // The engine list is locked to the subscription so a $35 subscriber can
+    // never get a 5-engine extra run; they'd have to upgrade their plan first.
+    var EXTRA_SPEC = {
+      two_engine_monthly: {
+        price: 10,
+        label: 'Buy extra 2-engine run',
+        engines: 'Google AI + ChatGPT',
+        canUpgrade: true,
+      },
+      full_monthly: {
+        price: 25,
+        label: 'Buy extra 5-engine run',
+        engines: 'all 5 engines (ChatGPT, Claude, Perplexity, Gemini, Google AI)',
+        canUpgrade: false,
+      },
     };
 
     function open(trigger) {
@@ -151,7 +178,8 @@
       var used      = parseInt(trigger.getAttribute('data-used'), 10) || 0;
       var isMaster  = trigger.getAttribute('data-is-master') === '1';
       var atQuota   = used >= quota;
-      var extraOk   = atQuota && EXTRA_PRICE[tier] != null;
+      var spec      = EXTRA_SPEC[tier];
+      var extraOk   = atQuota && spec != null;
 
       form.action = '/dashboard/brands/' + brandId + '/runs';
       titleEl.textContent = 'Re-run audit for ' + brandName;
@@ -171,7 +199,14 @@
 
       if (extraOk) {
         extraSection.style.display = '';
-        extraPrice.textContent = EXTRA_PRICE[tier];
+        // Re-query the spans every open in case a previous failure path
+        // re-wrote the button's innerHTML and detached the cached refs.
+        extraLabel = extraBtn.querySelector('[data-extra-label]');
+        extraPrice = extraBtn.querySelector('[data-extra-price]');
+        extraPrice.textContent = spec.price;
+        extraLabel.textContent = spec.label;
+        extraEngines.textContent = spec.engines;
+        extraUpgrade.style.display = spec.canUpgrade ? '' : 'none';
         extraStatus.textContent = '';
         extraStatus.className = 'm-extra-status';
         extraBtn.disabled = false;
@@ -252,12 +287,14 @@
           extraStatus.className = 'm-extra-status error';
           extraStatus.textContent = data.error || 'Payment failed. Please try again or update your card.';
           extraBtn.disabled = false;
-          extraBtn.innerHTML = 'Buy extra run — $<span data-extra-price>' + extraPrice.textContent + '</span>';
+          extraBtn.innerHTML = '<span data-extra-label>' + extraLabel.textContent +
+            '</span> — $<span data-extra-price>' + extraPrice.textContent + '</span>';
         } catch (e) {
           extraStatus.className = 'm-extra-status error';
           extraStatus.textContent = 'Network error. Please try again.';
           extraBtn.disabled = false;
-          extraBtn.innerHTML = 'Buy extra run — $<span data-extra-price>' + extraPrice.textContent + '</span>';
+          extraBtn.innerHTML = '<span data-extra-label>' + extraLabel.textContent +
+            '</span> — $<span data-extra-price>' + extraPrice.textContent + '</span>';
         }
       });
     }
