@@ -14,6 +14,13 @@
         <label class="m-radio"><input type="radio" name="engine_set" value="full" checked> All 5 engines</label>
       </div>
       <p data-quota-warning class="m-warn"></p>
+      <div data-extra-section class="m-extra" style="display:none;">
+        <p class="m-extra-copy">Need another run this month? Add one without changing your plan.</p>
+        <button type="button" class="btn primary m-extra-btn" data-buy-extra>
+          Buy extra run — $<span data-extra-price>10</span>
+        </button>
+        <p class="m-extra-status" data-extra-status></p>
+      </div>
       <label data-master-override class="m-master">
         <input type="checkbox" name="force" value="1"> Master: override quota
       </label>
@@ -87,6 +94,22 @@
     margin: 0 0 14px; font-size: 13px; color: var(--muted); font-weight: 700;
   }
   .m-master input { accent-color: var(--blue); }
+  .m-extra {
+    margin: 0 0 14px; padding: 14px;
+    background: linear-gradient(135deg, rgba(37,99,235,.06), rgba(124,58,237,.04));
+    border: 1px solid rgba(37,99,235,.18);
+    border-radius: 12px;
+  }
+  .m-extra-copy {
+    margin: 0 0 10px; font-size: 13px; color: var(--ink); font-weight: 600;
+  }
+  .m-extra-btn { width: 100%; padding: 10px; }
+  .m-extra-btn[disabled] { opacity: .6; cursor: progress; }
+  .m-extra-status {
+    margin: 8px 0 0; font-size: 12px; color: var(--muted); min-height: 16px;
+  }
+  .m-extra-status.error { color: #b91c1c; }
+  .m-extra-status.success { color: #15803d; }
   .m-actions {
     display: flex; gap: 8px; justify-content: flex-end;
     padding-top: 12px; border-top: 1px solid var(--line);
@@ -107,7 +130,17 @@
     var overrideCheckbox = modal.querySelector('input[name="force"]');
     var submitBtn = modal.querySelector('[data-submit]');
     var quotaWarn = modal.querySelector('[data-quota-warning]');
+    var extraSection = modal.querySelector('[data-extra-section]');
+    var extraBtn = modal.querySelector('[data-buy-extra]');
+    var extraPrice = modal.querySelector('[data-extra-price]');
+    var extraStatus = modal.querySelector('[data-extra-status]');
     var currentTrigger = null;
+
+    // Add-on pricing — must mirror EXTRA_RUN_PRICE_USD on the server.
+    var EXTRA_PRICE = {
+      two_engine_monthly: 10,
+      full_monthly: 25,
+    };
 
     function open(trigger) {
       currentTrigger = trigger;
@@ -118,6 +151,7 @@
       var used      = parseInt(trigger.getAttribute('data-used'), 10) || 0;
       var isMaster  = trigger.getAttribute('data-is-master') === '1';
       var atQuota   = used >= quota;
+      var extraOk   = atQuota && EXTRA_PRICE[tier] != null;
 
       form.action = '/dashboard/brands/' + brandId + '/runs';
       titleEl.textContent = 'Re-run audit for ' + brandName;
@@ -134,8 +168,19 @@
       } else {
         quotaWarn.style.display = 'none';
       }
-      updateSubmitState(atQuota, isMaster);
 
+      if (extraOk) {
+        extraSection.style.display = '';
+        extraPrice.textContent = EXTRA_PRICE[tier];
+        extraStatus.textContent = '';
+        extraStatus.className = 'm-extra-status';
+        extraBtn.disabled = false;
+        extraBtn.dataset.brandId = brandId;
+      } else {
+        extraSection.style.display = 'none';
+      }
+
+      updateSubmitState(atQuota, isMaster);
       modal.classList.add('open');
       document.body.style.overflow = 'hidden';
     }
@@ -172,15 +217,69 @@
         updateSubmitState(used >= quota, true);
       });
     }
+
+    if (extraBtn) {
+      extraBtn.addEventListener('click', async function () {
+        var brandId = extraBtn.dataset.brandId;
+        if (!brandId) return;
+        extraBtn.disabled = true;
+        extraBtn.textContent = 'Charging your card…';
+        extraStatus.className = 'm-extra-status';
+        extraStatus.textContent = '';
+        try {
+          var resp = await fetch('/dashboard/brands/' + brandId + '/runs/buy-extra', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'accept': 'application/json' },
+          });
+          var data = await resp.json().catch(function () { return {}; });
+          if (resp.ok && data.ok) {
+            extraStatus.className = 'm-extra-status success';
+            extraStatus.textContent = 'Payment confirmed. Audit is running — redirecting…';
+            setTimeout(function () {
+              window.location.href = '/dashboard/brands/' + brandId + '?extra_paid=1';
+            }, 900);
+            return;
+          }
+          if (resp.status === 402 && data.needs_auth && data.checkout_url) {
+            // 3DS required — open Stripe-hosted confirmation page in a new tab.
+            window.open(data.checkout_url, '_blank', 'noopener');
+            extraStatus.className = 'm-extra-status';
+            extraStatus.textContent = 'Your card needs verification. Complete it in the new tab — the audit will start automatically.';
+            extraBtn.textContent = 'Waiting for verification…';
+            return;
+          }
+          extraStatus.className = 'm-extra-status error';
+          extraStatus.textContent = data.error || 'Payment failed. Please try again or update your card.';
+          extraBtn.disabled = false;
+          extraBtn.innerHTML = 'Buy extra run — $<span data-extra-price>' + extraPrice.textContent + '</span>';
+        } catch (e) {
+          extraStatus.className = 'm-extra-status error';
+          extraStatus.textContent = 'Network error. Please try again.';
+          extraBtn.disabled = false;
+          extraBtn.innerHTML = 'Buy extra run — $<span data-extra-price>' + extraPrice.textContent + '</span>';
+        }
+      });
+    }
   })();
 
-  // Quota-reached toast (server redirects with ?quota_reached=<brand_id> when it blocks).
+  // Flash toasts driven by query params the server sets on redirect.
   (function () {
     var params = new URLSearchParams(window.location.search);
-    if (!params.get('quota_reached')) return;
+    var msg = null, bg = '#0f172a';
+    if (params.get('quota_reached')) {
+      msg = 'Monthly quota reached for that brand — no new run was started.';
+    } else if (params.get('extra_paid')) {
+      msg = '✓ Payment confirmed — your extra audit run is now in progress.';
+      bg = '#15803d';
+    } else if (params.get('extra_failed')) {
+      msg = 'Payment didn’t complete — no extra run was added. Please try again.';
+      bg = '#b91c1c';
+    }
+    if (!msg) return;
     var toast = document.createElement('div');
-    toast.textContent = 'Monthly quota reached for that brand — no new run was started.';
-    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:700;box-shadow:0 12px 28px rgba(15,23,42,.30);z-index:1001;';
+    toast.textContent = msg;
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + bg + ';color:white;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:700;box-shadow:0 12px 28px rgba(15,23,42,.30);z-index:1001;max-width:90vw;text-align:center;';
     document.body.appendChild(toast);
     setTimeout(function () { toast.remove(); }, 4500);
   })();

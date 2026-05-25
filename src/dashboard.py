@@ -526,6 +526,33 @@ ENGINE_SETS: dict[str, set[str] | None] = {
     "full": None,  # None means "no filter / all configured engines"
 }
 
+# Add-on run pricing per subscription tier. USD, charged off-session to the
+# customer's saved card via PaymentIntent. None means "tier can't buy extras".
+EXTRA_RUN_PRICE_USD: dict[str, int] = {
+    "two_engine_monthly": 10,
+    "full_monthly": 25,
+}
+
+
+def _backfill_stripe_customer(brand: TrackedBrand, email: str, session) -> str | None:
+    """Look up the brand owner's Stripe customer by email and cache the ID
+    on the brand row. Returns None if Stripe isn't configured, the email
+    has no matching customer, or the lookup fails."""
+    import stripe
+    if not stripe.api_key or not email:
+        return None
+    try:
+        result = stripe.Customer.list(email=email, limit=1)
+        if result.data:
+            cid = result.data[0].id
+            brand.stripe_customer_id = cid
+            session.add(brand)
+            session.commit()
+            return cid
+    except Exception as exc:  # noqa: BLE001
+        print(f"[buy-extra] customer lookup failed: {type(exc).__name__}: {exc}")
+    return None
+
 
 @router.post("/brands/{brand_id}/runs")
 def brand_run(
@@ -585,6 +612,184 @@ def brand_run(
         daemon=True,
     ).start()
     return RedirectResponse(f"/dashboard/brands/{brand_id}", status_code=303)
+
+
+@router.post("/brands/{brand_id}/runs/buy-extra")
+def buy_extra_run(request: Request, brand_id: str):
+    """Charge the brand owner's saved card for an extra audit run, then kick
+    the audit off immediately. Off-session PaymentIntent — no Stripe redirect
+    on the happy path. If the card needs 3DS authentication, falls back to a
+    Stripe Checkout Session URL the client opens in a new tab."""
+    import stripe
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        raise HTTPException(401, "Sign in required")
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    if not stripe.api_key:
+        return JSONResponse({"error": "Payment processing is not configured."}, status_code=503)
+
+    from src.server import _make_run_id, PUBLIC_BASE_URL
+
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
+            raise HTTPException(404, "Brand not found")
+        price_usd = EXTRA_RUN_PRICE_USD.get(brand.tier or "")
+        if not price_usd:
+            return JSONResponse(
+                {"error": "Extra runs are only available on monitoring subscriptions."},
+                status_code=400,
+            )
+        # Resolve the Stripe customer (cached on brand, or look up by email).
+        customer_id = brand.stripe_customer_id or _backfill_stripe_customer(brand, user["email"], s)
+        if not customer_id:
+            return JSONResponse(
+                {"error": "We couldn't find your payment method on file. Update your card in the billing portal and try again."},
+                status_code=400,
+            )
+        # Find the customer's default payment method (or first attached card).
+        try:
+            customer = stripe.Customer.retrieve(customer_id)
+            inv = customer.get("invoice_settings") if isinstance(customer, dict) else customer.invoice_settings
+            pm_id = (inv or {}).get("default_payment_method") if isinstance(inv, dict) else getattr(inv, "default_payment_method", None)
+            if not pm_id:
+                pms = stripe.PaymentMethod.list(customer=customer_id, type="card", limit=1)
+                if pms.data:
+                    pm_id = pms.data[0].id
+        except Exception as exc:  # noqa: BLE001
+            return JSONResponse({"error": f"Could not access saved card: {exc}"}, status_code=400)
+        if not pm_id:
+            return JSONResponse(
+                {"error": "No saved card found on your account. Add one in the billing portal."},
+                status_code=400,
+            )
+
+        # Attempt the off-session charge.
+        amount_cents = int(price_usd) * 100
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency="usd",
+                customer=customer_id,
+                payment_method=pm_id,
+                off_session=True,
+                confirm=True,
+                description=f"Extra monitoring run — {brand.name}",
+                metadata={
+                    "brand_id": str(brand.id),
+                    "tier": brand.tier or "",
+                    "type": "extra_run",
+                },
+            )
+            paid_ok = (intent.status == "succeeded")
+        except stripe.error.CardError as exc:
+            # 3DS / authentication_required path — fall back to a hosted
+            # Checkout Session so the user can authenticate in a new tab.
+            code = getattr(exc.error, "code", "") or ""
+            if code == "authentication_required":
+                try:
+                    sess = stripe.checkout.Session.create(
+                        mode="payment",
+                        customer=customer_id,
+                        line_items=[{
+                            "price_data": {
+                                "currency": "usd",
+                                "unit_amount": amount_cents,
+                                "product_data": {"name": f"Extra audit run — {brand.name}"},
+                            },
+                            "quantity": 1,
+                        }],
+                        metadata={"brand_id": str(brand.id), "type": "extra_run"},
+                        success_url=f"{PUBLIC_BASE_URL}/dashboard/brands/{brand.id}/runs/buy-extra/confirm?session_id={{CHECKOUT_SESSION_ID}}",
+                        cancel_url=f"{PUBLIC_BASE_URL}/dashboard/monitoring",
+                    )
+                    return JSONResponse(
+                        {"needs_auth": True, "checkout_url": sess.url},
+                        status_code=402,
+                    )
+                except Exception as inner:  # noqa: BLE001
+                    return JSONResponse({"error": f"Card needs verification ({inner})"}, status_code=402)
+            return JSONResponse(
+                {"error": getattr(exc.error, "message", str(exc))},
+                status_code=402,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return JSONResponse({"error": str(exc)}, status_code=500)
+
+        if not paid_ok:
+            return JSONResponse(
+                {"error": f"Payment did not complete (status: {intent.status})."},
+                status_code=402,
+            )
+
+        # Charge succeeded — create the run record and spawn the audit.
+        run_rec = AuditRunRecord(
+            brand_id=brand.id,
+            user_id=brand.user_id,
+            run_id=_make_run_id(brand.name),
+            status="running",
+        )
+        s.add(run_rec)
+        s.commit()
+        s.refresh(run_rec)
+        run_record_id = str(run_rec.id)
+
+    threading.Thread(
+        target=_run_audit_for_brand,
+        args=(str(bid), run_record_id),
+        daemon=True,
+    ).start()
+    return JSONResponse({"ok": True, "brand_id": str(bid), "run_record_id": run_record_id})
+
+
+@router.get("/brands/{brand_id}/runs/buy-extra/confirm")
+def buy_extra_run_confirm(request: Request, brand_id: str, session_id: str = ""):
+    """Stripe Checkout Session success URL for the 3DS fallback. Verifies the
+    session was paid, then spawns the audit run and bounces the user back to
+    the brand detail page."""
+    import stripe
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        bid = UUID(brand_id)
+    except ValueError:
+        raise HTTPException(404, "Brand not found")
+    if not session_id or not stripe.api_key:
+        return RedirectResponse(f"/dashboard/monitoring?extra_failed=1", status_code=303)
+    try:
+        sess = stripe.checkout.Session.retrieve(session_id)
+    except Exception:  # noqa: BLE001
+        return RedirectResponse(f"/dashboard/monitoring?extra_failed=1", status_code=303)
+    paid = (getattr(sess, "payment_status", "") == "paid")
+    if not paid:
+        return RedirectResponse(f"/dashboard/monitoring?extra_failed=1", status_code=303)
+
+    from src.server import _make_run_id
+    with get_session() as s:
+        brand = s.get(TrackedBrand, bid)
+        if not brand or (str(brand.user_id) != user["id"] and not user.get("is_master")):
+            raise HTTPException(404, "Brand not found")
+        run_rec = AuditRunRecord(
+            brand_id=brand.id,
+            user_id=brand.user_id,
+            run_id=_make_run_id(brand.name),
+            status="running",
+        )
+        s.add(run_rec)
+        s.commit()
+        s.refresh(run_rec)
+        run_record_id = str(run_rec.id)
+
+    threading.Thread(
+        target=_run_audit_for_brand,
+        args=(str(bid), run_record_id),
+        daemon=True,
+    ).start()
+    return RedirectResponse(f"/dashboard/brands/{brand_id}?extra_paid=1", status_code=303)
 
 
 # ---------------------------------------------------------------------------

@@ -60,6 +60,7 @@ def init_db() -> None:
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS runs_month_anchor TIMESTAMP",
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS monitored_queries JSONB DEFAULT '[]'::jsonb",
         "ALTER TABLE monitor_audit_run ADD COLUMN IF NOT EXISTS trigger_type VARCHAR DEFAULT 'manual'",
+        "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR",
     ]
     with eng.begin() as conn:
         for sql in migrations:
@@ -103,6 +104,11 @@ class TrackedBrand(SQLModel, table=True):
     next_scheduled_run: datetime | None = None
     runs_this_month: int = 0
     runs_month_anchor: datetime | None = None
+
+    # Stripe customer ID for the brand owner. Captured on subscription
+    # checkout; lazily backfilled by email lookup when the owner first buys
+    # an add-on run. Required for off-session PaymentIntent charging.
+    stripe_customer_id: str | None = None
 
     # The list of buyer-question strings to run each monitoring cycle. Empty
     # means "use the generic 8 templated brand questions" (lazy fallback) —
