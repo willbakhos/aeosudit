@@ -204,9 +204,12 @@
         extraLabel = extraBtn.querySelector('[data-extra-label]');
         extraPrice = extraBtn.querySelector('[data-extra-price]');
         extraPrice.textContent = spec.price;
-        extraLabel.textContent = spec.label;
+        extraLabel.textContent = isMaster
+          ? spec.label + ' (master test, no charge)'
+          : spec.label;
         extraEngines.textContent = spec.engines;
-        extraUpgrade.style.display = spec.canUpgrade ? '' : 'none';
+        // Upgrade nudge is irrelevant for masters (they're internal, not paying).
+        extraUpgrade.style.display = (spec.canUpgrade && !isMaster) ? '' : 'none';
         extraStatus.textContent = '';
         extraStatus.className = 'm-extra-status';
         extraBtn.disabled = false;
@@ -257,8 +260,9 @@
       extraBtn.addEventListener('click', async function () {
         var brandId = extraBtn.dataset.brandId;
         if (!brandId) return;
+        var isMaster = currentTrigger && currentTrigger.getAttribute('data-is-master') === '1';
         extraBtn.disabled = true;
-        extraBtn.textContent = 'Charging your card…';
+        extraBtn.textContent = isMaster ? 'Spinning up master test…' : 'Charging your card…';
         extraStatus.className = 'm-extra-status';
         extraStatus.textContent = '';
         try {
@@ -270,10 +274,13 @@
           var data = await resp.json().catch(function () { return {}; });
           if (resp.ok && data.ok) {
             extraStatus.className = 'm-extra-status success';
-            extraStatus.textContent = 'Payment confirmed. Audit is running — redirecting…';
+            extraStatus.textContent = data.master_test
+              ? '✓ Master test — extra run added (no card charged). Audit is running — redirecting…'
+              : '✓ Payment confirmed. Audit is running — redirecting…';
             setTimeout(function () {
-              window.location.href = '/dashboard/brands/' + brandId + '?extra_paid=1';
-            }, 900);
+              var qs = data.master_test ? '?extra_paid=1&master=1' : '?extra_paid=1';
+              window.location.href = '/dashboard/brands/' + brandId + qs;
+            }, 1100);
             return;
           }
           if (resp.status === 402 && data.needs_auth && data.checkout_url) {
@@ -307,7 +314,9 @@
     if (params.get('quota_reached')) {
       msg = 'Monthly quota reached for that brand — no new run was started.';
     } else if (params.get('extra_paid')) {
-      msg = '✓ Payment confirmed — your extra audit run is now in progress.';
+      msg = params.get('master')
+        ? '✓ Master test — extra run added (no card charged). Audit in progress.'
+        : '✓ Payment confirmed — your extra audit run is now in progress.';
       bg = '#15803d';
     } else if (params.get('extra_failed')) {
       msg = 'Payment didn’t complete — no extra run was added. Please try again.';

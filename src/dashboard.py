@@ -605,6 +605,8 @@ def brand_run(
     thread_kwargs: dict = {}
     if override != "_no_override":
         thread_kwargs["engines_override"] = override
+    if user.get("is_master"):
+        thread_kwargs["force_full_report"] = True
     threading.Thread(
         target=_run_audit_for_brand,
         args=thread_args,
@@ -643,6 +645,36 @@ def buy_extra_run(request: Request, brand_id: str):
                 {"error": "Extra runs are only available on monitoring subscriptions."},
                 status_code=400,
             )
+
+        # Master bypass — skip Stripe entirely so internal testing of the
+        # buy-extra flow doesn't actually charge a card. The same modal +
+        # success path still fires; the client surfaces a 'no card charged'
+        # note. force_full_report=True so the test report has the action
+        # plan + tech audit a paying subscriber would see.
+        if user.get("is_master"):
+            run_rec = AuditRunRecord(
+                brand_id=brand.id,
+                user_id=brand.user_id,
+                run_id=_make_run_id(brand.name),
+                status="running",
+            )
+            s.add(run_rec)
+            s.commit()
+            s.refresh(run_rec)
+            run_record_id_master = str(run_rec.id)
+            threading.Thread(
+                target=_run_audit_for_brand,
+                args=(str(bid), run_record_id_master),
+                kwargs={"force_full_report": True},
+                daemon=True,
+            ).start()
+            return JSONResponse({
+                "ok": True,
+                "master_test": True,
+                "brand_id": str(bid),
+                "run_record_id": run_record_id_master,
+            })
+
         # Resolve the Stripe customer (cached on brand, or look up by email).
         customer_id = brand.stripe_customer_id or _backfill_stripe_customer(brand, user["email"], s)
         if not customer_id:
@@ -1713,12 +1745,16 @@ def _run_audit_for_brand(
     run_record_id: str,
     *,
     engines_override: set[str] | None | str = "_no_override",
+    force_full_report: bool = False,
 ) -> None:
     """Background worker. Loads the brand, runs the existing audit pipeline,
     persists headline metrics back to the AuditRunRecord row.
     `engines_override` lets master-account callers pick an engine set ad-hoc
     (None means "all engines", a set picks specific labels). The sentinel
-    "_no_override" means fall back to the brand's tier."""
+    "_no_override" means fall back to the brand's tier.
+    `force_full_report` flips LLM scoring + action plan on regardless of the
+    brand's tier — used for master accounts so testing on a free brand still
+    produces the same report a paying subscriber would see."""
     # Imports inside the function so importing src.dashboard at server startup
     # doesn't pay the audit-pipeline import cost until a run actually fires.
     from src.engines.apify import ApifyEngine
@@ -1836,16 +1872,35 @@ def _run_audit_for_brand(
         except Exception as exc:  # noqa: BLE001
             print(f"[audit] screenshot capture failed: {type(exc).__name__}: {exc}")
             screenshot_path = None
-        responses = asyncio.run(run_audit(engine_objs, queries, run_dir))
+        # Run the AI-engine queries and the 15-check technical audit in
+        # parallel. Tech audit is HTTP-only ($0) so we always include it —
+        # this also closes the long-standing gap where monitoring re-runs
+        # produced reports without the Technical foundations section.
+        from src.tech_audit import run_for_domain_async as run_tech_audit_async
 
-        # Tier may enable LLM scoring (sentiment / accuracy / hallucination
-        # flags). Run it now so the rows we score and persist have the full
-        # picture — without this, the second-pass metrics stay None and the
-        # trend chart can only plot visibility + citation.
+        async def _gather():
+            return await asyncio.gather(
+                run_audit(engine_objs, queries, run_dir),
+                run_tech_audit_async(brand_snapshot["domain"]),
+            )
+
+        try:
+            responses, tech = asyncio.run(_gather())
+        except Exception:
+            # If the parallel gather fails, fall back to engines-only so the
+            # core report still ships.
+            responses = asyncio.run(run_audit(engine_objs, queries, run_dir))
+            tech = None
+
+        # Tier-driven extras (LLM scoring, action plan). force_full_report
+        # turns both on regardless of tier — used for master testing.
         from src.server import TIER_PLANS
         plan_cfg = TIER_PLANS.get(brand_snapshot["tier"], {})
+        want_llm = bool(plan_cfg.get("llm_scoring")) or force_full_report
+        want_plan = bool(plan_cfg.get("action_plan")) or force_full_report
+
         llm_scores: list = []
-        if plan_cfg.get("llm_scoring"):
+        if want_llm:
             try:
                 from src.llm_scorer import score_all
                 llm_scores = list(asyncio.run(score_all(responses, site)))
@@ -1862,11 +1917,9 @@ def _run_audit_for_brand(
         ]
         write_csv(rows, run_dir)
         # Monitoring runs always render the "full" report template so the
-        # subscriber sees every metric the paid one-shot audit produces. If
-        # their tier enables the action plan, generate it with Claude before
-        # rendering so the report includes it.
+        # subscriber sees every metric the paid one-shot audit produces.
         action_plan = None
-        if plan_cfg.get("action_plan"):
+        if want_plan:
             try:
                 from src.action_plan import generate as generate_action_plan
                 action_plan = generate_action_plan(rows, site)
@@ -1878,6 +1931,7 @@ def _run_audit_for_brand(
             run_dir,
             tier="full",
             action_plan=action_plan,
+            tech=tech,
             screenshot=screenshot_path.name if screenshot_path else None,
         )
 
