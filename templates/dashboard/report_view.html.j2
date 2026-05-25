@@ -90,9 +90,12 @@
     <h4>Jump to section</h4>
     <nav id="reportNav">
       {% for s in sections %}
-        <a href="/report/{{ run.run_id }}#{{ s.anchor }}" data-anchor="{{ s.anchor }}" data-fallback="{{ s.fallback }}" target="reportFrame">{{ s.label }}</a>
+        <a href="#" data-anchor="{{ s.anchor }}" data-fallback="{{ s.fallback }}">{{ s.label }}</a>
       {% endfor %}
     </nav>
+    <p id="reportNavNote" style="display:none; font-size:11px; color:var(--muted); margin:12px 0 0; padding:8px 10px; background:rgba(241,245,249,.7); border-radius:8px;">
+      Dimmed sections aren't in this report — re-run on a paid tier to include them.
+    </p>
     <div class="external">
       <a href="/report/{{ run.run_id }}" target="_blank" rel="noopener">Open full-screen ↗</a>
     </div>
@@ -100,24 +103,127 @@
 
   <div class="report-frame-wrap">
     <iframe
+      id="reportFrame"
       name="reportFrame"
       src="/report/{{ run.run_id }}"
       title="{{ brand.name if brand else run.run_id }} audit report"
-      loading="lazy"
     ></iframe>
   </div>
 </div>
 
+<style>
+  /* Disabled sidebar items still show but communicate that the section
+     isn't present in the rendered report. */
+  #reportNav a.disabled {
+    opacity: .4; pointer-events: none; cursor: not-allowed;
+  }
+</style>
+
 <script>
-  // Highlight the clicked section in the sidebar.
+  // Sidebar ↔ iframe sync. Three behaviours:
+  //   1. Click a sidebar link → scroll iframe to that anchor (or its
+  //      fallback for free-preview reports where the paid section is
+  //      missing). Stays inside the iframe — never reloads it.
+  //   2. After iframe loads, sidebar items pointing at sections that
+  //      don't exist in the current report get a .disabled style + tip.
+  //   3. As the user scrolls inside the iframe, the sidebar highlights
+  //      the section currently in view (IntersectionObserver inside
+  //      the iframe + a tiny event back to the parent).
   (function () {
-    var links = document.querySelectorAll('#reportNav a');
+    var iframe = document.getElementById('reportFrame');
+    if (!iframe) return;
+    var links = Array.prototype.slice.call(document.querySelectorAll('#reportNav a'));
+    var navNote = document.getElementById('reportNavNote');
+
+    function getDoc() {
+      try { return iframe.contentDocument || iframe.contentWindow.document; }
+      catch (e) { return null; }
+    }
+
+    function resolveAnchor(doc, anchor, fallback) {
+      if (!doc) return null;
+      var el = anchor ? doc.getElementById(anchor) : null;
+      if (!el && fallback) el = doc.getElementById(fallback);
+      return el;
+    }
+
+    function setActive(anchor) {
+      links.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('data-anchor') === anchor);
+      });
+    }
+
+    function syncDisabledState() {
+      var doc = getDoc();
+      if (!doc) return;
+      var anyDisabled = false;
+      links.forEach(function (a) {
+        var anchor = a.getAttribute('data-anchor');
+        var fallback = a.getAttribute('data-fallback');
+        var el = resolveAnchor(doc, anchor, fallback);
+        if (!el) {
+          a.classList.add('disabled');
+          a.title = "Not present in this report. Re-run on a paid tier to include it.";
+          anyDisabled = true;
+        } else {
+          a.classList.remove('disabled');
+          a.title = '';
+        }
+      });
+      if (navNote) navNote.style.display = anyDisabled ? 'block' : 'none';
+    }
+
+    function installScrollSpy() {
+      var doc = getDoc();
+      if (!doc) return;
+      var win = iframe.contentWindow;
+      if (!win || typeof win.IntersectionObserver !== 'function') return;
+      var sectionMap = {};  // anchor in this doc → sidebar's primary anchor
+      links.forEach(function (a) {
+        var anchor = a.getAttribute('data-anchor');
+        var fallback = a.getAttribute('data-fallback');
+        var el = resolveAnchor(doc, anchor, fallback);
+        if (el) sectionMap[el.id] = anchor;
+      });
+      var obs = new win.IntersectionObserver(function (entries) {
+        // Pick the entry closest to the top of the viewport that's intersecting.
+        var visible = entries
+          .filter(function (e) { return e.isIntersecting; })
+          .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+        if (visible.length) {
+          var primary = sectionMap[visible[0].target.id];
+          if (primary) setActive(primary);
+        }
+      }, { root: null, threshold: 0, rootMargin: '-80px 0px -60% 0px' });
+      Object.keys(sectionMap).forEach(function (id) {
+        var el = doc.getElementById(id);
+        if (el) obs.observe(el);
+      });
+    }
+
+    // Click handler: smooth-scroll inside the iframe, no reload.
     links.forEach(function (a) {
-      a.addEventListener('click', function () {
-        links.forEach(function (x) { x.classList.remove('active'); });
-        a.classList.add('active');
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (a.classList.contains('disabled')) return;
+        var doc = getDoc();
+        var el = resolveAnchor(doc, a.getAttribute('data-anchor'), a.getAttribute('data-fallback'));
+        if (el && el.scrollIntoView) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setActive(a.getAttribute('data-anchor'));
+        }
       });
     });
+
+    iframe.addEventListener('load', function () {
+      syncDisabledState();
+      installScrollSpy();
+    });
+    // The iframe may have already loaded by the time this script runs.
+    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+      syncDisabledState();
+      installScrollSpy();
+    }
   })();
 </script>
 {% endblock %}
