@@ -279,6 +279,9 @@ def _claim_preview_run(run_id: str, user_id: str) -> str | None:
 
 @router.get("", response_class=HTMLResponse)
 def index(request: Request):
+    """Dashboard landing page. Handles the post-signup 'claim a free preview'
+    cookie flow, then drops the user on /reports — the most common 'what
+    happened with my brands?' view. Brands list is one tab away."""
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
@@ -292,12 +295,22 @@ def index(request: Request):
             print(f"[claim] failed for {claim}: {type(exc).__name__}: {exc}")
             brand_id = None
         target = (
-            f"/dashboard/brands/{brand_id}?claimed=1" if brand_id else "/dashboard"
+            f"/dashboard/brands/{brand_id}?claimed=1" if brand_id else "/dashboard/reports"
         )
         resp = RedirectResponse(target, status_code=303)
         resp.delete_cookie(CLAIM_COOKIE, path="/")
         return resp
+    # No claim cookie — send the user to Reports (the friendliest 'what's
+    # happening?' view). Brands list is one tab over at /dashboard/brands.
+    return RedirectResponse("/dashboard/reports", status_code=303)
 
+
+@router.get("/brands", response_class=HTMLResponse)
+def brands_list(request: Request):
+    """All brands the user is tracking, with their latest run summary."""
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
     with get_session() as s:
         brands = list(
             s.exec(

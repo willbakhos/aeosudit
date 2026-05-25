@@ -328,10 +328,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 {% if user %}
 <div class="tabbar">
   <div class="tabbar-inner">
-    <a href="/dashboard" class="tab {% if active_tab == 'brands' %}active{% endif %}">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
-      Brands
-    </a>
     <a href="/dashboard/reports" class="tab {% if active_tab == 'reports' %}active{% endif %}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
       Reports
@@ -339,6 +335,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <a href="/dashboard/monitoring" class="tab {% if active_tab == 'monitoring' %}active{% endif %}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Monitoring
+    </a>
+    <a href="/dashboard/brands" class="tab {% if active_tab == 'brands' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      Brands
     </a>
     {% if user.is_master %}
       <a href="/dashboard/admin" class="tab tab-admin {% if active_tab == 'admin' %}active{% endif %}">
