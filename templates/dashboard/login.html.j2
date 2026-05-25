@@ -112,7 +112,7 @@
     <form method="post" action="/dashboard/login">
       {% if claim %}<input type="hidden" name="claim" value="{{ claim }}">{% endif %}
       <label for="email">Email</label>
-      <input type="email" name="email" id="email" required autofocus placeholder="you@company.com">
+      <input type="email" name="email" id="email" required autofocus placeholder="you@company.com" value="{{ prefilled_email or '' }}">
       <div style="margin-top:16px;">
         <button class="btn" type="submit" style="width:100%;" {% if not configured %}disabled{% endif %}>
           {% if claim %}Save report &amp; sign in →{% else %}Email me a sign-in link{% endif %}

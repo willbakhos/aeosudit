@@ -114,13 +114,14 @@ CLAIM_COOKIE = "monitor_claim"
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(sent: int = 0, error: str = "", claim: str = "") -> HTMLResponse:
+def login_page(sent: int = 0, error: str = "", claim: str = "", email: str = "") -> HTMLResponse:
     body = _render(
         "login.html.j2",
         sent=bool(sent),
         error=error or None,
         configured=supabase_configured(),
         claim=(claim or None),
+        prefilled_email=(email or ""),
     )
     if claim:
         # Survives the magic-link round-trip — read on /dashboard after sign-in.

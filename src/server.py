@@ -1479,16 +1479,18 @@ def orders_setup(
     competitor_5: str = Form(""),
 ) -> RedirectResponse:
     """Receive the post-payment setup form, attach competitors to the order
-    metadata, fire the audit in the background, and send the buyer straight
-    into the dashboard. The audit may still be pending when they arrive —
-    the report appears in the dashboard the moment it finishes."""
+    metadata, fire the audit in the background, then bounce the user to a
+    dedicated 'order received — check your email' page (NOT the generic
+    sign-in page — that felt like a mistake for new paying customers).
+    The audit completes in ~30s; by the time they click the magic link in
+    their inbox, the report is ready."""
     meta = PENDING_ORDERS.get(session_id)
     if not meta:
         if not session_id or not stripe.api_key:
             raise HTTPException(404, "Unknown session")
         try:
             sess_dict = _to_plain_dict(stripe.checkout.Session.retrieve(session_id))
-            meta = sess_dict.get("metadata") or {}
+            meta = _meta_with_email(sess_dict.get("metadata") or {}, sess_dict)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(404, f"Could not load session: {type(exc).__name__}: {exc}")
 
@@ -1498,12 +1500,51 @@ def orders_setup(
     ]
     meta = dict(meta)  # don't mutate the registry entry directly
     meta["competitors"] = competitors
+    buyer_email = (meta.get("email") or "").strip()
+    brand_name = (meta.get("brand_name") or "").strip()
+    domain = (meta.get("domain") or "").strip()
+    tier = (meta.get("tier") or "").strip()
 
     # Hand off to the existing fulfilment path.
     threading.Thread(target=_fulfil_order, args=(meta,), daemon=True).start()
     PENDING_ORDERS.pop(session_id, None)
 
-    return RedirectResponse("/dashboard", status_code=303)
+    # Build the thank-you URL with everything the template needs to confirm
+    # what was purchased + which inbox to check. Tier is the canonical key
+    # ('two_engine', 'full_audit', etc.) — the template maps it to a label.
+    from urllib.parse import urlencode
+    qs = urlencode({
+        "email": buyer_email,
+        "brand": brand_name,
+        "domain": domain,
+        "tier": tier,
+    })
+    return RedirectResponse(f"/orders/thank-you?{qs}", status_code=303)
+
+
+@app.get("/orders/thank-you", response_class=HTMLResponse)
+def orders_thank_you(
+    email: str = "",
+    brand: str = "",
+    domain: str = "",
+    tier: str = "",
+) -> HTMLResponse:
+    """Post-purchase confirmation page. Lands the buyer here after they
+    finish the competitors setup form. Tells them what's in motion (audit
+    running, magic link sent), so the generic 'Welcome back' sign-in page
+    doesn't feel like a dead end."""
+    plan = TIER_PLANS.get(tier, {})
+    raw_label = plan.get("label") or tier or "your audit"
+    tier_label = raw_label.split(" (")[0] if " (" in raw_label else raw_label
+    return HTMLResponse(_jinja.get_template("orders_thank_you.html.j2").render(
+        email=email,
+        brand=brand,
+        domain=domain,
+        tier=tier,
+        tier_label=tier_label,
+        is_subscription=(plan.get("stripe_mode") == "subscription"),
+        dashboard_url=f"{PUBLIC_BASE_URL}/dashboard",
+    ))
 
 
 @app.get("/checkout/cancel")

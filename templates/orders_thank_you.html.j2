@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5SSKHFCC');</script>
+<!-- End Google Tag Manager -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You're all set — check your email | monitoraeo</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+  :root { --ink:#0f172a; --muted:#64748b; --line:rgba(15,23,42,.10);
+          --blue:#2563eb; --purple:#7c3aed; --green:#16a34a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         color: var(--ink); line-height: 1.6;
+         background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%); min-height: 100vh; }
+  .shell { max-width: 640px; margin: 0 auto; padding: 56px 24px; }
+  .card { background: white; border-radius: 24px; padding: 40px 38px;
+          box-shadow: 0 24px 70px rgba(15,23,42,.10); border: 1px solid var(--line); }
+  .check-circle {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 18px;
+  }
+  .check-circle svg { color: var(--green); }
+  .eyebrow { display:inline-block; padding:6px 12px; border-radius:999px; background:#dcfce7;
+             color:#166534; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.08em;
+             margin-bottom: 14px; }
+  h1 { margin: 0 0 10px; font-size: 32px; line-height: 1.1; letter-spacing: -.04em; font-weight: 900; }
+  .lede { margin: 0 0 26px; color: var(--muted); font-size: 16px; }
+
+  .summary { padding: 18px 20px; margin: 0 0 28px;
+             background: #f8fafc; border: 1px solid var(--line); border-radius: 14px; }
+  .summary-row { display: flex; justify-content: space-between; gap: 14px;
+                 font-size: 14px; padding: 5px 0; }
+  .summary-row + .summary-row { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 5px; }
+  .summary-row .k { color: var(--muted); font-weight: 700; }
+  .summary-row .v { color: var(--ink); font-weight: 800; text-align: right; }
+  .summary-row .v code { padding: 2px 6px; border-radius: 6px;
+                         background: rgba(37,99,235,.08); color: #1d4ed8; font-size: 13px; }
+
+  .next-steps { margin: 0 0 26px; }
+  .next-steps h2 { margin: 0 0 14px; font-size: 15px; font-weight: 900;
+                   text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .step { display: flex; gap: 14px; padding: 12px 0; }
+  .step + .step { border-top: 1px solid var(--line); }
+  .step-num {
+    flex: 0 0 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: white; font-size: 13px; font-weight: 900;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 2px; }
+  .step-body span { color: var(--muted); font-size: 14px; }
+  .step-body span code { padding: 2px 6px; border-radius: 6px;
+                         background: rgba(37,99,235,.08); color: #1d4ed8; font-size: 13px; }
+
+  .help-row { padding-top: 22px; margin-top: 24px;
+              border-top: 1px solid var(--line);
+              color: var(--muted); font-size: 13px; }
+  .help-row a { color: var(--blue); font-weight: 800; }
+
+  @media (max-width: 600px) {
+    .shell { padding: 32px 16px; }
+    .card { padding: 28px 22px; border-radius: 20px; }
+    h1 { font-size: 26px; }
+    .lede { font-size: 15px; }
+    .summary-row { flex-direction: column; gap: 4px; }
+    .summary-row .v { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5SSKHFCC"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<main class="shell">
+  <div class="card">
+    <div class="check-circle">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <span class="eyebrow">Order received</span>
+    <h1>You're all set{% if brand %}, {{ brand }} audit is on the way{% endif %}.</h1>
+    <p class="lede">Your audit is running right now. We've emailed a one-time sign-in link to <strong>{{ email or 'your inbox' }}</strong> — click it to open your report.</p>
+
+    <div class="summary">
+      {% if brand %}
+        <div class="summary-row"><span class="k">Brand</span><span class="v">{{ brand }}</span></div>
+      {% endif %}
+      {% if domain %}
+        <div class="summary-row"><span class="k">Domain</span><span class="v"><code>{{ domain }}</code></span></div>
+      {% endif %}
+      {% if tier_label %}
+        <div class="summary-row"><span class="k">Plan</span><span class="v">{{ tier_label }}{% if is_subscription %} · monthly{% endif %}</span></div>
+      {% endif %}
+      <div class="summary-row"><span class="k">Sign-in email</span><span class="v">{{ email or '—' }}</span></div>
+    </div>
+
+    <div class="next-steps">
+      <h2>What happens next</h2>
+      <div class="step">
+        <span class="step-num">1</span>
+        <div class="step-body">
+          <strong>Check your inbox{% if email %} at {{ email }}{% endif %}</strong>
+          <span>The sign-in email lands in ~30 seconds. Subject: "Your monitoraeo sign-in link".</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <div class="step-body">
+          <strong>Click the magic link to sign in</strong>
+          <span>It works once — opens your dashboard with the audit ready to view. No password to set up.</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <div class="step-body">
+          <strong>Read your audit + action plan</strong>
+          <span>Visibility per engine, competitors named, top cited sources, 15 technical GEO checks and a prioritised action plan.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-row">
+      Already signed in? <a href="{{ dashboard_url }}">Open your dashboard ↗</a>
+      &nbsp;·&nbsp;
+      No email after a couple of minutes? Check spam, or <a href="/dashboard/login?email={{ email | urlencode }}">request another link</a>.
+    </div>
+  </div>
+</main>
+</body>
+</html>
