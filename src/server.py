@@ -1505,6 +1505,33 @@ def orders_setup(
     domain = (meta.get("domain") or "").strip()
     tier = (meta.get("tier") or "").strip()
 
+    # Defensive: persist the order meta to disk before kicking anything off.
+    # If hydration silently fails downstream, we can still recover the order
+    # later — by hand or via /dashboard/recover-paid-orders.
+    try:
+        pending_dir = OUTPUT_ROOT / "_paid_orders"
+        pending_dir.mkdir(parents=True, exist_ok=True)
+        (pending_dir / f"{session_id}.json").write_text(json.dumps({
+            **meta,
+            "received_at": datetime.utcnow().isoformat(),
+        }))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[orders/setup] failed to persist order meta for {session_id}: {exc}")
+
+    # Send the magic-link email IMMEDIATELY — before the audit runs and
+    # independent of hydration. Customers were waiting 30+ seconds for an
+    # email that never arrived because magic-link send used to live at the
+    # end of _ensure_dashboard_for_paid_order, so any upstream failure
+    # killed it. Now it fires right after the setup form, every time.
+    if buyer_email:
+        try:
+            from src.auth import send_magic_link, supabase_configured
+            if supabase_configured():
+                send_magic_link(buyer_email, f"{PUBLIC_BASE_URL}/dashboard/auth/callback")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[orders/setup] send_magic_link failed for {buyer_email}: "
+                  f"{type(exc).__name__}: {exc}")
+
     # Hand off to the existing fulfilment path.
     threading.Thread(target=_fulfil_order, args=(meta,), daemon=True).start()
     PENDING_ORDERS.pop(session_id, None)
@@ -2190,13 +2217,8 @@ def _ensure_dashboard_for_paid_order(
                 s.add(run_rec)
                 s.commit()
 
-        # 4. Trigger a magic-link sign-in email so they can land in /dashboard
-        #    with everything already present.
-        try:
-            from src.auth import send_magic_link
-            send_magic_link(email_lower, f"{PUBLIC_BASE_URL}/dashboard/auth/callback")
-        except Exception as exc:  # noqa: BLE001
-            print(f"[fulfil] send_magic_link failed for {email_lower}: {exc}")
+        # Magic-link sign-in email is now sent up-front in /orders/setup
+        # (independent of audit success), so nothing to do here.
 
     except Exception as exc:  # noqa: BLE001
         import traceback
