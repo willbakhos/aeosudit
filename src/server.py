@@ -1888,6 +1888,33 @@ def _build_site_for_order(meta: dict[str, Any]) -> SiteConfig:
 
 
 def _fulfil_order(meta: dict[str, Any]) -> None:
+    """Outer wrapper that catches anything unexpected so a background-thread
+    crash can't silently orphan a paying customer. Logs visibly and still
+    attempts the dashboard hydration with whatever data we have so the user
+    at least lands in /dashboard (vs an empty void)."""
+    try:
+        _fulfil_order_inner(meta)
+    except Exception as exc:  # noqa: BLE001
+        import traceback
+        print(f"[fulfil] UNCAUGHT in _fulfil_order for {meta.get('email')!r}: "
+              f"{type(exc).__name__}: {exc}")
+        traceback.print_exc()
+        # Last-ditch hydration: try to at least give the customer a dashboard
+        # row so they can see SOMETHING. Audit data may be partial.
+        try:
+            email = (meta.get("email") or "").strip()
+            tier = (meta.get("tier") or "").strip()
+            if email and tier in TIER_PLANS:
+                site = _build_site_for_order(meta)
+                _ensure_dashboard_for_paid_order(
+                    email=email, tier=tier, site=site,
+                    run_id=_make_run_id(site.brand.name), rows=[],
+                )
+        except Exception as inner:  # noqa: BLE001
+            print(f"[fulfil] last-ditch hydration also failed: {type(inner).__name__}: {inner}")
+
+
+def _fulfil_order_inner(meta: dict[str, Any]) -> None:
     """Run the audit, generate PDF, email the customer.
     All errors are swallowed and logged — the customer record gets retried via Stripe.
 
@@ -1939,8 +1966,16 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
 
     responses, tech = asyncio.run(_gather())
 
+    # LLM scoring is best-effort. A network blip or OpenRouter timeout
+    # MUST NOT abort the whole fulfilment — the customer has paid and we
+    # owe them the deterministic report + dashboard access even if the
+    # second-pass scoring degrades to None.
     if plan["llm_scoring"]:
-        llm_scores: list[LLMScore | None] = list(asyncio.run(score_all(responses, site)))
+        try:
+            llm_scores: list[LLMScore | None] = list(asyncio.run(score_all(responses, site)))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[fulfil] llm scoring failed: {type(exc).__name__}: {exc}")
+            llm_scores = [None] * len(responses)
     else:
         llm_scores = [None] * len(responses)
 
@@ -1953,7 +1988,15 @@ def _fulfil_order(meta: dict[str, Any]) -> None:
         for r, llm in zip(responses, llm_scores)
     ]
 
-    action_plan = generate_action_plan(rows, site) if plan["action_plan"] else None
+    # Same story for the action plan — Sonnet 4.6 occasionally times out
+    # or rate-limits. Don't kill the order over it.
+    action_plan = None
+    if plan["action_plan"]:
+        try:
+            action_plan = generate_action_plan(rows, site)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[fulfil] action_plan generation failed: {type(exc).__name__}: {exc}")
+            action_plan = None
 
     write_csv(rows, run_dir)
     write_html(
@@ -2156,4 +2199,6 @@ def _ensure_dashboard_for_paid_order(
             print(f"[fulfil] send_magic_link failed for {email_lower}: {exc}")
 
     except Exception as exc:  # noqa: BLE001
+        import traceback
         print(f"[fulfil] dashboard hydration failed for {email}: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
