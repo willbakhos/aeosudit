@@ -107,7 +107,7 @@ def check_robots_ai_bots(robots_status: int, robots_text: str, base: str) -> Tec
     )
 
 
-def check_sitemap(sitemap_status: int, sitemap_text: str) -> TechCheck:
+def check_sitemap(sitemap_status: int, sitemap_text: str, domain: str = "your-domain.com") -> TechCheck:
     expected = "/sitemap.xml is reachable, returns valid XML, and lists key product/category pages with <lastmod> dates."
     why = "Without a sitemap, AI crawlers may never discover deep pages — they prioritise sitemap-listed URLs. Stale or missing <lastmod> dates also cause AI engines to assume content is out of date."
     if sitemap_status == 0 or sitemap_status == 404:
@@ -117,7 +117,7 @@ def check_sitemap(sitemap_status: int, sitemap_text: str) -> TechCheck:
             expected=expected, why=why,
             status="fail", score_label="No sitemap.xml found",
             detail=f"Tried /sitemap.xml — status: {sitemap_status or 'no response'}.",
-            fix="Generate a sitemap.xml listing every public page. Most CMSs and SSGs do this automatically. Reference it from robots.txt with: Sitemap: https://your-domain.com/sitemap.xml",
+            fix=f"Generate a sitemap.xml listing every public page. Most CMSs and SSGs do this automatically. Reference it from robots.txt with: Sitemap: https://{domain}/sitemap.xml",
         )
     if sitemap_status >= 400:
         return TechCheck(
@@ -218,7 +218,7 @@ def _types_of(nodes: list[dict[str, Any]]) -> set[str]:
     return out
 
 
-def check_organization_schema(jsonld_types: set[str]) -> TechCheck:
+def check_organization_schema(jsonld_types: set[str], domain: str = "your-domain.com", brand_name: str = "Your Brand") -> TechCheck:
     expected = "An Organization or LocalBusiness JSON-LD block on the homepage with name, url and description."
     why = "Organization schema is how AI engines reliably identify your brand as an entity. Without it, the AI may conflate you with similar-named businesses or fail to associate your domain with your brand."
     if "Organization" in jsonld_types or "LocalBusiness" in jsonld_types:
@@ -241,8 +241,8 @@ def check_organization_schema(jsonld_types: set[str]) -> TechCheck:
             "{\n"
             '  "@context": "https://schema.org",\n'
             '  "@type": "Organization",\n'
-            '  "name": "Your Brand",\n'
-            '  "url": "https://your-domain.com",\n'
+            f'  "name": "{brand_name}",\n'
+            f'  "url": "https://{domain}",\n'
             '  "description": "What you do, in one sentence."\n'
             "}\n"
             "</script>"
@@ -401,7 +401,7 @@ def check_canonical(soup: BeautifulSoup, current_url: str) -> TechCheck:
             expected=expected, why=why,
             status="warn", score_label="Missing",
             detail="No canonical link element found on the homepage.",
-            fix='Add <link rel="canonical" href="https://your-domain.com/"> to the <head>.',
+            fix=f'Add <link rel="canonical" href="{current_url}"> to the <head>.',
         )
     return TechCheck(
         id="t2_canonical", title="Canonical URL declared",
@@ -617,7 +617,7 @@ async def _run(domain: str) -> TechAudit:
 
     # Tier 1 — visible in free preview
     checks.append(check_robots_ai_bots(robots_status, robots_text, base))
-    checks.append(check_sitemap(sitemap_status, sitemap_text))
+    checks.append(check_sitemap(sitemap_status, sitemap_text, norm_domain))
     checks.append(check_llms_txt(llms_status, llms_text))
 
     # Parse the homepage once for reuse
@@ -630,7 +630,7 @@ async def _run(domain: str) -> TechAudit:
         jsonld_types = set()
 
     # Tier 2 — paid-only
-    checks.append(check_organization_schema(jsonld_types))
+    checks.append(check_organization_schema(jsonld_types, norm_domain))
     checks.append(check_faq_schema(jsonld_types))
     checks.append(check_product_schema(jsonld_types))
     checks.append(check_meta_description(soup))
