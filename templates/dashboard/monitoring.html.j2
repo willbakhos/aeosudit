@@ -65,7 +65,7 @@
             {% if b.tier %}
               1st of next month
             {% else %}
-              Auto-runs require a monitoring subscription — <a href="/pricing" style="color:var(--blue); font-weight:700;">upgrade</a> to schedule monthly
+              Auto-runs require a monitoring subscription — <a href="#" data-open-upgrade data-brand-name="{{ b.name }}" data-brand-domain="{{ b.domain }}" style="color:var(--blue); font-weight:700;">upgrade</a> to schedule monthly
             {% endif %}
           </div>
         </div>
@@ -277,6 +277,153 @@
 </script>
 
 {% include "dashboard/_rerun_modal.html.j2" %}
+
+<!-- Upgrade-to-monitoring modal. Triggered by the 'upgrade' link on
+     free-tier brand cards. Renders the two monitoring tiers side-by-side
+     and POSTs to /buy when the user picks one, so it stays in-app
+     instead of bouncing the user to the pricing page. -->
+<div id="upgrade-modal" class="m-overlay" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
+  <div class="m-dialog" style="width: min(720px, 100%);">
+    <button type="button" class="m-close" data-upgrade-close aria-label="Close">&times;</button>
+    <h3 id="upgrade-title" style="margin:0 0 6px; font-size:21px;">Upgrade <span data-upgrade-brand>this brand</span> to monitoring</h3>
+    <p style="margin:0 0 22px; color:var(--muted); font-size:14px;">Both plans include monthly auto-runs, trend charts, an extra manual re-run per month, and the same depth as a one-off audit.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+      <!-- Two Engine Monitoring -->
+      <div class="m-plan">
+        <div class="m-plan-name">Two Engine Monitoring</div>
+        <div class="m-plan-price">$35<small>/mo</small></div>
+        <p class="m-plan-tagline">Google AI + ChatGPT — the two engines most buyers use.</p>
+        <ul class="m-plan-list">
+          <li>Google AI Overviews + ChatGPT</li>
+          <li>20 monitored buyer questions</li>
+          <li>1 scheduled run + 1 manual re-run per month</li>
+          <li>Trend chart over time</li>
+          <li>$10 per extra run (1-click)</li>
+        </ul>
+        <form method="post" action="/buy" style="margin:0;">
+          <input type="hidden" name="tier" value="two_engine_monthly">
+          <input type="hidden" name="brand_name" data-upgrade-input="brand_name" value="">
+          <input type="hidden" name="domain" data-upgrade-input="domain" value="">
+          <button type="submit" class="btn primary" style="width:100%;">Start — $35/mo</button>
+        </form>
+      </div>
+
+      <!-- Full Monitoring -->
+      <div class="m-plan featured">
+        <span class="m-plan-badge">Best value</span>
+        <div class="m-plan-name">Full Monitoring</div>
+        <div class="m-plan-price">$95<small>/mo</small></div>
+        <p class="m-plan-tagline">All 5 AI engines, monitored monthly.</p>
+        <ul class="m-plan-list">
+          <li>ChatGPT, Claude, Perplexity, Gemini &amp; Google AI</li>
+          <li>40 monitored buyer questions</li>
+          <li>1 scheduled run + 1 manual re-run per month</li>
+          <li>Per-engine trend charts</li>
+          <li>$25 per extra run (1-click)</li>
+        </ul>
+        <form method="post" action="/buy" style="margin:0;">
+          <input type="hidden" name="tier" value="full_monthly">
+          <input type="hidden" name="brand_name" data-upgrade-input="brand_name" value="">
+          <input type="hidden" name="domain" data-upgrade-input="domain" value="">
+          <button type="submit" class="btn primary" style="width:100%;">Start — $95/mo</button>
+        </form>
+      </div>
+    </div>
+
+    <p style="margin:18px 0 0; font-size:12px; color:var(--muted); text-align:center;">
+      Cancel anytime from the billing portal. Secure checkout via Stripe.
+    </p>
+  </div>
+</div>
+
+<style>
+  .m-plan {
+    position: relative;
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 18px;
+    display: flex; flex-direction: column;
+  }
+  .m-plan.featured {
+    background: linear-gradient(135deg, rgba(37,99,235,.06), rgba(124,58,237,.05));
+    border-color: rgba(37,99,235,.25);
+  }
+  .m-plan-badge {
+    position: absolute; top: -10px; right: 14px;
+    padding: 4px 10px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: white; font-size: 10px; font-weight: 900;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .m-plan-name { font-size: 15px; font-weight: 900; color: var(--ink); }
+  .m-plan-price {
+    margin: 6px 0 4px;
+    font-size: 32px; font-weight: 900; color: var(--ink);
+    letter-spacing: -.03em;
+  }
+  .m-plan-price small {
+    font-size: 13px; font-weight: 700; color: var(--muted); margin-left: 3px;
+  }
+  .m-plan-tagline {
+    margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.4;
+  }
+  .m-plan-list {
+    list-style: none; padding: 0; margin: 0 0 16px;
+    flex: 1;
+  }
+  .m-plan-list li {
+    position: relative; padding: 4px 0 4px 18px;
+    font-size: 13px; color: var(--ink);
+  }
+  .m-plan-list li::before {
+    content: "✓"; position: absolute; left: 0; top: 4px;
+    color: #16a34a; font-weight: 900;
+  }
+  @media (max-width: 600px) {
+    #upgrade-modal .m-dialog > div[style*="grid"] { grid-template-columns: 1fr !important; }
+  }
+</style>
+
+<script>
+  (function () {
+    var modal = document.getElementById('upgrade-modal');
+    if (!modal) return;
+    var brandSpan = modal.querySelector('[data-upgrade-brand]');
+    var nameInputs = modal.querySelectorAll('[data-upgrade-input="brand_name"]');
+    var domainInputs = modal.querySelectorAll('[data-upgrade-input="domain"]');
+
+    function open(link) {
+      var name = link.getAttribute('data-brand-name') || '';
+      var domain = link.getAttribute('data-brand-domain') || '';
+      brandSpan.textContent = name || 'this brand';
+      nameInputs.forEach(function (i) { i.value = name; });
+      domainInputs.forEach(function (i) { i.value = domain; });
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function close() {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    document.querySelectorAll('[data-open-upgrade]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        open(a);
+      });
+    });
+    modal.querySelectorAll('[data-upgrade-close]').forEach(function (el) {
+      el.addEventListener('click', close);
+    });
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) close();
+    });
+  })();
+</script>
 
 <div class="card" style="margin-top:32px; background:#f0f9ff; border-color:rgba(37,99,235,.18);">
   <h3 style="margin-top:0;">How monitoring works</h3>

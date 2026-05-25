@@ -4,8 +4,54 @@
 <h1>Reports</h1>
 <p class="lede">Every audit run across all your tracked brands. Click into a row to open the full report.</p>
 
+{# Pending-audit banner: hidden until JS polling detects an in-flight audit
+   for this user. Replaces the bare 'No audits run yet' empty state when a
+   purchase is still cooking, so the user sees real progress instead of
+   thinking nothing happened. #}
+<div id="pendingBanner" class="card" style="display:none; margin-bottom:18px; background:linear-gradient(135deg, rgba(37,99,235,.06), rgba(124,58,237,.05)); border:1px solid rgba(37,99,235,.20);">
+  <div style="display:flex; gap:14px; align-items:flex-start;">
+    <div style="flex:0 0 38px; height:38px; border-radius:50%; background:linear-gradient(135deg, var(--blue), var(--purple)); display:flex; align-items:center; justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <div style="flex:1; min-width:0;">
+      <h3 style="margin:0 0 4px; font-size:17px;">Your audit is running</h3>
+      <p id="pendingSubtitle" style="margin:0 0 14px; color:var(--muted); font-size:14px;">We'll refresh this page automatically when it's ready (usually 5–7 minutes).</p>
+      <div style="margin:0 0 8px;">
+        <div style="height:8px; background:rgba(15,23,42,.08); border-radius:999px; overflow:hidden;">
+          <div id="pendingBar" style="height:100%; width:5%; background:linear-gradient(90deg, var(--blue), #06b6d4); transition:width .6s cubic-bezier(.2,.8,.3,1); border-radius:999px;"></div>
+        </div>
+      </div>
+      <p id="pendingStep" style="margin:0; color:var(--ink); font-size:13.5px; font-weight:700;">Starting up…</p>
+
+      <ol id="pendingTimeline" style="margin:14px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px;">
+        <li data-stage="5"   style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Starting your audit</li>
+        <li data-stage="15"  style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Asking AI engines your buyer questions</li>
+        <li data-stage="55"  style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Identifying competitors named in the answers</li>
+        <li data-stage="65"  style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Scoring sentiment, accuracy &amp; hallucination flags</li>
+        <li data-stage="80"  style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Generating your prioritised action plan</li>
+        <li data-stage="92"  style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Assembling your report</li>
+        <li data-stage="100" style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);"><span class="dot"></span>Done — opening your dashboard</li>
+      </ol>
+
+      <p style="margin:14px 0 0; font-size:12px; color:var(--muted);">No need to wait here — we'll also email you the moment it's ready.</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  #pendingTimeline .dot {
+    width:9px; height:9px; border-radius:50%;
+    background:rgba(15,23,42,.18);
+    flex:0 0 9px;
+  }
+  #pendingTimeline li.active { color:var(--ink); font-weight:700; }
+  #pendingTimeline li.active .dot { background:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.16); }
+  #pendingTimeline li.done { color:var(--ink); }
+  #pendingTimeline li.done .dot { background:#16a34a; }
+</style>
+
 {% if not runs %}
-  <div class="empty">
+  <div class="empty" id="emptyState">
     <p style="margin:0 0 12px;">No audits run yet.</p>
     <a class="btn" href="/dashboard/brands">Go to Brands → Run audit</a>
   </div>
@@ -47,4 +93,89 @@
     </table>
   </div>
 {% endif %}
+
+<script>
+  // On page load: (a) try to recover any orphaned paid orders for this user
+  // (defensive — Supabase hydration sometimes drops them); (b) start polling
+  // /api/pending-audit so the banner can show real progress. When the audit
+  // completes, refresh so the new run appears in the table.
+  (function () {
+    var banner = document.getElementById('pendingBanner');
+    var emptyState = document.getElementById('emptyState');
+    if (!banner) return;
+
+    var bar = document.getElementById('pendingBar');
+    var step = document.getElementById('pendingStep');
+    var subtitle = document.getElementById('pendingSubtitle');
+    var timelineItems = banner.querySelectorAll('#pendingTimeline li');
+
+    function updateTimeline(pct) {
+      timelineItems.forEach(function (li) {
+        var stage = parseInt(li.getAttribute('data-stage'), 10);
+        li.classList.remove('active', 'done');
+        if (pct >= stage) {
+          // Mark all earlier stages done; the highest-reached stage is "active"
+          li.classList.add('done');
+        }
+      });
+      // Find the highest stage <= pct and mark it active (not done)
+      var active = null;
+      timelineItems.forEach(function (li) {
+        var stage = parseInt(li.getAttribute('data-stage'), 10);
+        if (pct >= stage) active = li;
+      });
+      if (active) {
+        active.classList.remove('done');
+        active.classList.add('active');
+      }
+    }
+
+    function show(data) {
+      banner.style.display = 'block';
+      if (emptyState) emptyState.style.display = 'none';
+      var pct = (typeof data.pct === 'number') ? data.pct : 5;
+      bar.style.width = Math.max(5, Math.min(100, pct)) + '%';
+      if (data.step) step.textContent = data.step;
+      if (data.brand) subtitle.innerHTML = 'Auditing <strong>' + data.brand + '</strong> — usually 5–7 minutes. We’ll refresh this page when it’s ready.';
+      updateTimeline(pct);
+    }
+
+    async function poll() {
+      try {
+        var r = await fetch('/dashboard/api/pending-audit', { credentials: 'same-origin' });
+        if (!r.ok) { setTimeout(poll, 4000); return; }
+        var data = await r.json();
+        if (data.status === 'complete') {
+          show(data);
+          // Brief delay so the user sees the "Done" state, then reload.
+          setTimeout(function () { window.location.reload(); }, 1200);
+          return;
+        }
+        if (data.status === 'running') {
+          show(data);
+        }
+        // idle / unauthenticated → leave banner hidden, just re-poll.
+        setTimeout(poll, 4000);
+      } catch (e) {
+        setTimeout(poll, 4000);
+      }
+    }
+
+    // Fire off a recovery attempt up front. If it finds orphaned orders
+    // and hydrates them, the page reloads to pick up the new records.
+    (async function () {
+      try {
+        var r = await fetch('/dashboard/api/recover-paid-orders', {
+          method: 'POST', credentials: 'same-origin',
+        });
+        var data = await r.json().catch(function () { return {}; });
+        if (data.recovered && data.recovered > 0) {
+          window.location.reload();
+          return;
+        }
+      } catch (e) { /* non-fatal, keep going */ }
+      poll();
+    })();
+  })();
+</script>
 {% endblock %}

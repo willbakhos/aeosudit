@@ -998,6 +998,80 @@ def report_in_dashboard(request: Request, run_id: str):
     )
 
 
+@router.get("/api/pending-audit", response_class=JSONResponse)
+def pending_audit_status(request: Request) -> JSONResponse:
+    """Tells the empty-dashboard banner whether the logged-in user has a
+    paid audit currently mid-flight, and if so what stage it's at. Used
+    by JS polling so the user sees real progress instead of guessing."""
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return JSONResponse({"status": "unauthenticated"}, status_code=401)
+    from src.server import PAID_AUDIT_JOBS
+    key = (user.get("email") or "").strip().lower()
+    job = PAID_AUDIT_JOBS.get(key) if key else None
+    if not job:
+        return JSONResponse({"status": "idle"})
+    return JSONResponse(job)
+
+
+@router.post("/api/recover-paid-orders", response_class=JSONResponse)
+def recover_paid_orders(request: Request) -> JSONResponse:
+    """Self-serve recovery: scan output/_paid_orders/ for paid order metas
+    matching the logged-in user's email and run hydration for any that
+    didn't make it into the dashboard the first time. Idempotent — re-runs
+    just see the brand already exists and no-op."""
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return JSONResponse({"status": "unauthenticated"}, status_code=401)
+    email = (user.get("email") or "").strip().lower()
+    if not email:
+        return JSONResponse({"recovered": 0, "checked": 0})
+
+    output_root = Path(os.environ.get("OUTPUT_ROOT", "output"))
+    pending_dir = output_root / "_paid_orders"
+    if not pending_dir.exists():
+        return JSONResponse({"recovered": 0, "checked": 0})
+
+    from src.server import (
+        _build_site_for_order,
+        _ensure_dashboard_for_paid_order,
+        _make_run_id,
+        TIER_PLANS,
+    )
+
+    checked = 0
+    recovered = 0
+    for meta_path in pending_dir.glob("*.json"):
+        try:
+            meta = json.loads(meta_path.read_text())
+        except Exception:  # noqa: BLE001
+            continue
+        meta_email = (meta.get("email") or "").strip().lower()
+        if meta_email != email:
+            continue
+        checked += 1
+        tier = (meta.get("tier") or "").strip()
+        if tier not in TIER_PLANS:
+            continue
+        try:
+            site = _build_site_for_order(meta)
+            # Use a stable run_id for recovery so we don't create duplicate
+            # records on repeat clicks. Caller is idempotent on (user, domain).
+            run_id = meta.get("run_id") or _make_run_id(site.brand.name)
+            _ensure_dashboard_for_paid_order(
+                email=email, tier=tier, site=site, run_id=run_id, rows=[],
+            )
+            recovered += 1
+            # Successful hydration → archive the meta so we don't process it again.
+            archived = pending_dir / "_recovered"
+            archived.mkdir(exist_ok=True)
+            meta_path.rename(archived / meta_path.name)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[recover-paid-orders] failed for {meta_path.name}: {type(exc).__name__}: {exc}")
+
+    return JSONResponse({"recovered": recovered, "checked": checked})
+
+
 @router.get("/reports", response_class=HTMLResponse)
 def reports(request: Request):
     user = _require_user(request)

@@ -132,6 +132,26 @@ PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
 # the audit kicks off. Keyed by Stripe session_id. Same MVP storage caveat.
 PENDING_ORDERS: dict[str, dict[str, Any]] = {}
 
+# Live progress tracker for paid audits in flight. Keyed by email_lower so the
+# dashboard can show 'your audit is running' without needing session_id.
+# Each entry: {step, pct, brand, domain, started_at, status}.
+# status flows: queued → running → complete | failed.
+PAID_AUDIT_JOBS: dict[str, dict[str, Any]] = {}
+
+
+def _publish_paid_status(email: str, step: str, pct: int, **extra) -> None:
+    """Publish a stage update for a paid-audit-in-flight so the dashboard's
+    'pending audit' banner can show real progress instead of a spinner."""
+    if not email:
+        return
+    key = email.strip().lower()
+    job = PAID_AUDIT_JOBS.get(key, {})
+    job["step"] = step
+    job["pct"] = pct
+    job["status"] = "running"
+    job.update(extra)
+    PAID_AUDIT_JOBS[key] = job
+
 _SLUG_ALPHABET = string.ascii_lowercase + string.digits
 
 
@@ -1959,6 +1979,13 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
     site = _build_site_for_order(meta)
     queries = _load_queries(DEFAULT_QUERIES_PATH)
 
+    _publish_paid_status(
+        email, "Starting your audit…", 5,
+        brand=site.brand.name, domain=site.brand.domain,
+        tier=tier,
+        started_at=datetime.utcnow().isoformat(),
+    )
+
     # Filter engines per the tier's plan
     plan_engines = plan["engines"]
     only_labels = None if plan_engines == "all" else set(plan_engines)
@@ -1984,6 +2011,7 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
 
     screenshot_path = capture_screenshot(site.brand.domain, run_dir)
+    _publish_paid_status(email, f"Asking {len(engine_objs)} AI engine{'s' if len(engine_objs) != 1 else ''} {len(queries)} buyer questions…", 15)
 
     async def _gather():
         return await asyncio.gather(
@@ -1992,12 +2020,14 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
         )
 
     responses, tech = asyncio.run(_gather())
+    _publish_paid_status(email, "Identifying competitors named in the answers…", 55)
 
     # LLM scoring is best-effort. A network blip or OpenRouter timeout
     # MUST NOT abort the whole fulfilment — the customer has paid and we
     # owe them the deterministic report + dashboard access even if the
     # second-pass scoring degrades to None.
     if plan["llm_scoring"]:
+        _publish_paid_status(email, "Scoring sentiment, accuracy and hallucination flags…", 65)
         try:
             llm_scores: list[LLMScore | None] = list(asyncio.run(score_all(responses, site)))
         except Exception as exc:  # noqa: BLE001
@@ -2019,12 +2049,14 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
     # or rate-limits. Don't kill the order over it.
     action_plan = None
     if plan["action_plan"]:
+        _publish_paid_status(email, "Generating your prioritised action plan with Claude…", 80)
         try:
             action_plan = generate_action_plan(rows, site)
         except Exception as exc:  # noqa: BLE001
             print(f"[fulfil] action_plan generation failed: {type(exc).__name__}: {exc}")
             action_plan = None
 
+    _publish_paid_status(email, "Assembling your report…", 92)
     write_csv(rows, run_dir)
     write_html(
         rows,
@@ -2084,6 +2116,16 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
         run_id=run_id,
         rows=rows,
     )
+
+    # Mark the audit as complete so the dashboard's pending-banner polling
+    # knows to reload the page and show the new brand + report.
+    key = email.strip().lower() if email else ""
+    if key:
+        job = PAID_AUDIT_JOBS.get(key, {})
+        job["status"] = "complete"
+        job["step"] = "Done — refreshing your dashboard…"
+        job["pct"] = 100
+        PAID_AUDIT_JOBS[key] = job
 
 
 def _ensure_dashboard_for_paid_order(
