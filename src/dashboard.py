@@ -998,6 +998,38 @@ def report_in_dashboard(request: Request, run_id: str):
     )
 
 
+@router.get("/reports/{run_id}/csv")
+def report_csv_download(request: Request, run_id: str):
+    """Stream the raw results.csv produced when the audit ran. Auth-gated
+    the same way as /reports/{run_id}: the run must belong to the logged-in
+    user, or the viewer must be a master account. The CSV file is the same
+    one write_csv(rows, run_dir) drops next to the HTML report."""
+    from fastapi.responses import FileResponse
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    with get_session() as s:
+        run = s.exec(
+            select(AuditRunRecord).where(AuditRunRecord.run_id == run_id)
+        ).first()
+        if not run:
+            raise HTTPException(404, "Report not found")
+        if str(run.user_id) != user["id"] and not user.get("is_master"):
+            raise HTTPException(404, "Report not found")
+        brand = s.get(TrackedBrand, run.brand_id)
+    output_root = Path(os.environ.get("OUTPUT_ROOT", "output"))
+    csv_path = output_root / run_id / "results.csv"
+    if not csv_path.exists():
+        # Older runs predate write_csv or the file was pruned. Be honest
+        # rather than 500ing — the report still works, just no CSV.
+        raise HTTPException(404, "CSV not available for this run")
+    # Friendly filename so the browser saves it as "<brand>-<run_id>.csv"
+    # instead of the bare "results.csv".
+    safe_brand = "".join(c if c.isalnum() else "-" for c in (brand.name if brand else "report")).strip("-").lower() or "report"
+    filename = f"monitoraeo-{safe_brand}-{run_id}.csv"
+    return FileResponse(csv_path, media_type="text/csv", filename=filename)
+
+
 @router.get("/api/pending-audit", response_class=JSONResponse)
 def pending_audit_status(request: Request) -> JSONResponse:
     """Tells the empty-dashboard banner whether the logged-in user has a
