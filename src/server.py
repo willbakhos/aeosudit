@@ -576,6 +576,9 @@ def _generate_paid_queries(brand: str, competitors: list[str] | None = None) -> 
     extra user input. Comparison queries lean on the customer-supplied
     competitor list when available; otherwise they fall back to generic
     'alternatives to' phrasings."""
+    import sys as _sys
+    print(f"[gen_queries] entered brand={brand!r} comps={competitors!r}", flush=True)
+    _sys.stdout.flush()
     competitors = [c for c in (competitors or []) if c and c.strip()]
     queries: list[Query] = []
 
