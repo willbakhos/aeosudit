@@ -2092,20 +2092,34 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
         return
     print(f"[fulfil] starting audit for {email!r} tier={tier!r} brand={meta.get('brand_name')!r}")
 
+    # Publish the 'Starting up…' banner FIRST so the customer sees progress
+    # even if the next steps hang. Without this, the audit could spend 30s+
+    # building site config / capturing screenshot / etc. while the dashboard
+    # shows 'No audits run yet' — looking broken even though it's working.
+    _publish_paid_status(
+        email, "Starting your audit…", 5,
+        brand=meta.get("brand_name") or "", domain=meta.get("domain") or "",
+        tier=tier,
+        started_at=datetime.utcnow().isoformat(),
+    )
+
+    # Per-step timing prints so the next stalled audit reveals exactly which
+    # call hangs. Remove once we've pinned down the regression.
+    import time as _time
+    t0 = _time.monotonic()
+    print(f"[fulfil] step=build_site start email={email!r}")
     site = _build_site_for_order(meta)
+    print(f"[fulfil] step=build_site done in {_time.monotonic()-t0:.2f}s")
+
+    t0 = _time.monotonic()
+    print(f"[fulfil] step=generate_queries start")
     # Generate brand-aware queries from the customer's actual brand name +
     # competitor list. The old config/queries.csv path was hardcoded to a
     # single seed brand, so every paid audit was effectively asking the
     # engines about that brand instead of the customer's — producing
     # hallucination flags on every row.
     queries = _generate_paid_queries(site.brand.name, list(site.competitors or []))
-
-    _publish_paid_status(
-        email, "Starting your audit…", 5,
-        brand=site.brand.name, domain=site.brand.domain,
-        tier=tier,
-        started_at=datetime.utcnow().isoformat(),
-    )
+    print(f"[fulfil] step=generate_queries done in {_time.monotonic()-t0:.2f}s ({len(queries)} queries)")
 
     # Filter engines per the tier's plan
     plan_engines = plan["engines"]
@@ -2126,12 +2140,17 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
                 language_code=site.locale.language,
             )
         )
+    print(f"[fulfil] step=engines_resolved count={len(engine_objs)} labels={[e.label for e in engine_objs]}")
 
     run_id = _make_run_id(site.brand.name)
     run_dir = OUTPUT_ROOT / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[fulfil] step=run_dir_created run_id={run_id!r} path={run_dir!s}")
 
+    t0 = _time.monotonic()
+    print(f"[fulfil] step=screenshot start domain={site.brand.domain!r}")
     screenshot_path = capture_screenshot(site.brand.domain, run_dir)
+    print(f"[fulfil] step=screenshot done in {_time.monotonic()-t0:.2f}s path={screenshot_path!s}")
     _publish_paid_status(email, f"Asking {len(engine_objs)} AI engine{'s' if len(engine_objs) != 1 else ''} {len(queries)} buyer questions…", 15)
 
     async def _gather():
