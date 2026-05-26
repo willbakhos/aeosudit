@@ -1084,6 +1084,7 @@ def recover_paid_orders(request: Request) -> JSONResponse:
     from src.server import (
         _build_site_for_order,
         _ensure_dashboard_for_paid_order,
+        _generate_paid_queries,
         _make_run_id,
         TIER_PLANS,
     )
@@ -1107,8 +1108,16 @@ def recover_paid_orders(request: Request) -> JSONResponse:
             # Use a stable run_id for recovery so we don't create duplicate
             # records on repeat clicks. Caller is idempotent on (user, domain).
             run_id = meta.get("run_id") or _make_run_id(site.brand.name)
+            # Seed monitored_queries from the same 40 paid queries the
+            # original audit would have used. Without this, subsequent
+            # dashboard re-runs fall through to the 8-query generic set
+            # and the customer gets a thin report with no real action plan.
+            paid_queries = _generate_paid_queries(
+                site.brand.name, list(site.competitors or [])
+            )
             _ensure_dashboard_for_paid_order(
                 email=email, tier=tier, site=site, run_id=run_id, rows=[],
+                monitored_queries=[q.query for q in paid_queries],
             )
             recovered += 1
             # Successful hydration → archive the meta so we don't process it again.
@@ -1869,11 +1878,20 @@ def _classify_query(text: str) -> str:
 def _resolve_brand_queries(brand: TrackedBrand) -> list:
     """Return the list of Query objects to run for this brand. Honours the
     user's curated `monitored_queries` when present; otherwise falls back to
-    the templated 8 so first-run / free-tier brands still get an audit."""
+    the same 40 brand-aware paid queries _generate_paid_queries produces.
+
+    Every brand in the dashboard is a paid customer (free previews can't
+    claim in any more), so the empty-monitored-queries fallback must be
+    the full paid 40 — not the 8-query _generic_brand_queries set, which
+    is what the dashboard used to silently use after orphan-recovery
+    brands hydrated with no seeded queries. Symptom: re-running a paid
+    brand only fired 8 questions and the action plan was thin/missing."""
     from src.models import Query
     texts = [q.strip() for q in (brand.monitored_queries or []) if q and q.strip()]
     if not texts:
-        return _generic_brand_queries(brand.name)
+        from src.server import _generate_paid_queries
+        comps = [c for c in (brand.competitors or []) if c and c.strip()]
+        return _generate_paid_queries(brand.name, comps)
     return [Query(query=t, type=_classify_query(t)) for t in texts]
 
 
