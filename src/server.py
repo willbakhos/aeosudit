@@ -540,6 +540,91 @@ def _generic_free_queries(brand: str, category: str | None) -> list[Query]:
     ]
 
 
+def _generate_paid_queries(brand: str, competitors: list[str] | None = None) -> list[Query]:
+    """Generate 40 brand-aware buyer-facing queries for a paid audit.
+
+    Replaces the old config/queries.csv approach, which was hardcoded to a
+    single seed brand ('Capify') — meaning every paid customer's report
+    used to ask the AI engines about that brand instead of their own, and
+    the hallucination scorer would flag everything because the answers
+    didn't match the buyer's actual ground truth.
+
+    No category required — every query references the brand directly OR a
+    'similar to {brand}' phrasing so results stay on-topic without needing
+    extra user input. Comparison queries lean on the customer-supplied
+    competitor list when available; otherwise they fall back to generic
+    'alternatives to' phrasings."""
+    competitors = [c for c in (competitors or []) if c and c.strip()]
+    queries: list[Query] = []
+
+    # Brand (12) — direct questions about this brand.
+    brand_qs = [
+        f"What is {brand}?",
+        f"Is {brand} legitimate?",
+        f"{brand} reviews",
+        f"{brand} pricing",
+        f"How does {brand} work?",
+        f"{brand} customer service contact",
+        f"Pros and cons of {brand}",
+        f"Is {brand} safe to use?",
+        f"{brand} customer testimonials",
+        f"{brand} support quality",
+        f"{brand} features",
+        f"{brand} setup process",
+    ]
+    queries += [Query(query=q, type="brand") for q in brand_qs]
+
+    # Comparison (10) — head-to-head against named competitors; padded
+    # with generic 'alternatives to {brand}' phrasings when fewer than 5
+    # competitors were supplied.
+    comp_qs: list[str] = []
+    for c in competitors[:5]:
+        comp_qs.append(f"{brand} vs {c}")
+        comp_qs.append(f"{c} or {brand}: which is better?")
+    while len(comp_qs) < 10:
+        for fallback in [
+            f"Best alternatives to {brand}",
+            f"Top {brand} alternatives 2026",
+            f"Companies similar to {brand}",
+            f"{brand} competitors compared",
+        ]:
+            if fallback not in comp_qs:
+                comp_qs.append(fallback)
+            if len(comp_qs) >= 10:
+                break
+    queries += [Query(query=q, type="comparison") for q in comp_qs[:10]]
+
+    # Category (10) — 'who else does what this brand does' style.
+    cat_qs = [
+        f"Best companies like {brand}",
+        f"Top providers similar to {brand}",
+        f"Who are the leaders in {brand}'s industry?",
+        f"Best in class for what {brand} does",
+        f"Companies that compete with {brand}",
+        f"Industry leaders for {brand}-style services",
+        f"Top-rated options similar to {brand}",
+        f"Who else does what {brand} does?",
+        f"Most recommended companies like {brand}",
+        f"Trusted alternatives to {brand}",
+    ]
+    queries += [Query(query=q, type="category") for q in cat_qs]
+
+    # Problem (8) — buyer-intent phrased.
+    prob_qs = [
+        f"How do I choose between {brand} and its competitors?",
+        f"What should I look for in a {brand}-style service?",
+        f"Is {brand} right for my business?",
+        f"When should I use {brand} vs alternatives?",
+        f"What are the risks of using {brand}?",
+        f"How to evaluate {brand} for my needs",
+        f"Should I trust {brand} reviews?",
+        f"What questions to ask before using {brand}",
+    ]
+    queries += [Query(query=q, type="problem") for q in prob_qs]
+
+    return queries[:40]
+
+
 # Country code → display name for the loading-page + report header. The codes
 # match Apify's `countryCode` param (ISO 3166-1 alpha-2, uppercase).
 SUPPORTED_COUNTRIES: dict[str, str] = {
@@ -1977,7 +2062,12 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
         return
 
     site = _build_site_for_order(meta)
-    queries = _load_queries(DEFAULT_QUERIES_PATH)
+    # Generate brand-aware queries from the customer's actual brand name +
+    # competitor list. The old config/queries.csv path was hardcoded to a
+    # single seed brand, so every paid audit was effectively asking the
+    # engines about that brand instead of the customer's — producing
+    # hallucination flags on every row.
+    queries = _generate_paid_queries(site.brand.name, list(site.competitors or []))
 
     _publish_paid_status(
         email, "Starting your audit…", 5,
@@ -2109,12 +2199,16 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
     # AuditRunRecord, and trigger a magic-link sign-in email. After they
     # click it they land in /dashboard with the brand + report already
     # present — not an empty workspace.
+    # Pass the generated query strings through so the brand row's
+    # monitored_queries gets seeded — keeps subsequent dashboard re-runs
+    # consistent with the first paid audit (same 40 questions every time).
     _ensure_dashboard_for_paid_order(
         email=email,
         tier=tier,
         site=site,
         run_id=run_id,
         rows=rows,
+        monitored_queries=[q.query for q in queries],
     )
 
     # Mark the audit as complete so the dashboard's pending-banner polling
@@ -2135,6 +2229,7 @@ def _ensure_dashboard_for_paid_order(
     site: SiteConfig,
     run_id: str,
     rows: list[ScoredRow],
+    monitored_queries: list[str] | None = None,
 ) -> None:
     """Auto-create the customer's dashboard footprint after a paid order.
     Looks up or creates the Supabase auth user, creates a TrackedBrand
@@ -2205,8 +2300,13 @@ def _ensure_dashboard_for_paid_order(
                     existing_brand.tier = tier
                     from src.dashboard import _compute_next_scheduled_run
                     existing_brand.next_scheduled_run = _compute_next_scheduled_run()
-                    s.add(existing_brand)
-                    s.commit()
+                # Seed monitored_queries once so future dashboard re-runs
+                # use the same brand-aware 40 questions, not the 8-query
+                # fallback that kicks in on empty monitored_queries.
+                if monitored_queries and not existing_brand.monitored_queries:
+                    existing_brand.monitored_queries = list(monitored_queries)
+                s.add(existing_brand)
+                s.commit()
                 brand_id = existing_brand.id
             else:
                 from src.dashboard import DEFAULT_ENGINES, _compute_next_scheduled_run
@@ -2223,6 +2323,7 @@ def _ensure_dashboard_for_paid_order(
                     competitors=competitors_list,
                     ground_truth=list(site.ground_truth or []),
                     engines=list(DEFAULT_ENGINES),
+                    monitored_queries=list(monitored_queries or []),
                     locale_country=(site.locale.country or "US").upper(),
                     locale_language=site.locale.language or "en",
                     tier=tier if is_monthly else "",
