@@ -1980,12 +1980,17 @@ def _run_audit_for_brand(
             responses = asyncio.run(run_audit(engine_objs, queries, run_dir))
             tech = None
 
-        # Tier-driven extras (LLM scoring, action plan). force_full_report
-        # turns both on regardless of tier — used for master testing.
-        from src.server import TIER_PLANS
-        plan_cfg = TIER_PLANS.get(brand_snapshot["tier"], {})
-        want_llm = bool(plan_cfg.get("llm_scoring")) or force_full_report
-        want_plan = bool(plan_cfg.get("action_plan")) or force_full_report
+        # Every brand in the dashboard is a paid customer (free previews
+        # can't claim into the dashboard any more), so action plan + LLM
+        # scoring should run on EVERY re-run regardless of brand.tier.
+        # Otherwise one-off subscribers (two_engine / full_audit), whose
+        # brand row has tier='' so the monitoring cron doesn't pick them
+        # up, would silently lose the action plan + LLM scoring after
+        # their first paid audit even though they paid for both.
+        # force_full_report kept as a no-op alias for master-account paths.
+        from src.server import TIER_PLANS  # noqa: F401 — imported for parity
+        want_llm = True
+        want_plan = True
 
         llm_scores: list = []
         if want_llm:
