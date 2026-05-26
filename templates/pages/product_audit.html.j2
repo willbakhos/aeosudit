@@ -10,38 +10,28 @@
   "@context": "https://schema.org",
   "@type": "Service",
   "@id": "{{ _base_url }}/product/audit#service",
+  "name": "monitoraeo AI visibility audit",
   "serviceType": "AI answer engine visibility audit",
   "provider": { "@id": "{{ _base_url }}/#org" },
   "areaServed": "Worldwide",
   "description": "{{ page_description }}",
+  "url": "{{ _canonical }}",
   "offers": [
     {
       "@type": "Offer",
       "name": "Two Engine Audit",
       "price": "29",
       "priceCurrency": "USD",
-      "url": "{{ _base_url }}/pricing"
+      "url": "{{ _base_url }}/pricing",
+      "description": "Google AI Overviews + ChatGPT, 40 buyer queries × 2 engines = 80 AI answers, hallucination + accuracy scoring, prioritised action plan."
     },
     {
       "@type": "Offer",
-      "name": "Full audit",
+      "name": "Full Audit",
       "price": "79",
       "priceCurrency": "USD",
-      "url": "{{ _base_url }}/pricing"
-    },
-    {
-      "@type": "Offer",
-      "name": "Two Engine Monitoring",
-      "price": "35",
-      "priceCurrency": "USD",
-      "url": "{{ _base_url }}/pricing"
-    },
-    {
-      "@type": "Offer",
-      "name": "Full monitoring",
-      "price": "95",
-      "priceCurrency": "USD",
-      "url": "{{ _base_url }}/pricing"
+      "url": "{{ _base_url }}/pricing",
+      "description": "All 5 engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini), 40 queries × 5 engines = 200 AI answers, engine heatmap, per-engine sentiment + accuracy scoring, prioritised action plan."
     }
   ]
 }
@@ -135,6 +125,11 @@
     <h3>Per-query drill-down</h3>
     <p>The raw evidence — every AI answer side-by-side, with sentiment tags, citation lists and competitor mentions. The brief your content team needs.</p>
   </div>
+  <div class="feature">
+    <div class="icon-box">✅</div>
+    <h3>Prioritised action plan</h3>
+    <p>Every paid audit ends with a Claude-generated checklist of what to fix first — split into content, schema and entity fixes. Each item explains why it matters, the expected impact and a concrete next step.</p>
+  </div>
 </div>
 
 <h2>What an audit covers</h2>
@@ -163,10 +158,22 @@
   </div>
 </div>
 
-<h2>Three audit tiers</h2>
-<p>From a $49 spotlight check on one engine to a $349 audit with 10 done-for-you written recommendations.</p>
+<h2>Audit pricing</h2>
+<p>Two one-off audit tiers, plus a free 8-question preview if you want to try it first. Every paid tier includes the prioritised action plan.</p>
+<div class="grid-2" style="gap:18px; margin: 14px 0;">
+  <div class="feature">
+    <div class="icon-box">2×</div>
+    <h3>Two Engine Audit — $29 one-off</h3>
+    <p style="color:var(--ink-2);">Google AI Overviews + ChatGPT. 40 buyer-facing queries × 2 engines = 80 AI answers. Includes hallucination + accuracy scoring and a Claude-generated prioritised action plan. Best if you want a fast, focused check on the two engines most buyers actually use today.</p>
+  </div>
+  <div class="feature">
+    <div class="icon-box">5×</div>
+    <h3>Full Audit — $79 one-off</h3>
+    <p style="color:var(--ink-2);">All 5 engines: Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini. 40 queries × 5 engines = 200 AI answers, engine heatmap, per-engine sentiment + accuracy scoring, and the full prioritised action plan. Best if you want complete coverage in a single report.</p>
+  </div>
+</div>
 <div style="margin: 12px 0;">
-  <a href="/pricing" class="btn-primary">See full pricing →</a>
+  <a href="/pricing" class="btn-primary">See full pricing comparison →</a>
 </div>
 
 <h2>What you'll know after one audit</h2>
@@ -179,5 +186,29 @@
 </ul>
 
 <h2>Looking for ongoing tracking?</h2>
-<p>An audit is a snapshot. AI engines drift weekly — answers change, new competitors enter, citations shuffle. The <a href="/product/monitoring" style="color:var(--blue); font-weight:700;">Monitoring product</a> re-runs your audit every month and emails you a diff when things move.</p>
+<p>An audit is a snapshot. AI engines drift weekly — answers change, new competitors enter, citations shuffle. The <a href="/product/monitoring" style="color:var(--blue); font-weight:700;">Monitoring product</a> re-runs your audit every month, charts the trend, and alerts you when visibility moves. Want the background on what we're measuring? <a href="/what-is-aeo" style="color:var(--blue); font-weight:700;">Read: What is AEO?</a></p>
+
+<h2 id="faq" style="margin-top:48px;">Frequently asked about the audit</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What is an AEO audit?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">An AEO (Answer Engine Optimisation) audit measures how often Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews name a brand, cite its domain, and recommend it in buyer-facing answers. Monitoraeo runs 40 buyer questions across all 5 engines (200 AI answers), scores visibility, citation rate, sentiment and hallucination risk per engine, and produces a prioritised action plan.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Which AI engines does monitoraeo test?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Five engines: Google AI Overviews (free preview tier and up), ChatGPT (Two Engine Audit and up), Claude, Perplexity and Gemini (Full Audit only). Each engine is queried with the same buyer questions and uses its native web search.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How long does an audit take?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Free preview: ~30 seconds (8 questions on Google AI Overviews only). Full paid audit: 5–10 minutes (40 questions × 5 engines = 200 individual answers). The report lands in your dashboard when the run finishes.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What's the difference between Two Engine Audit and Full Audit?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Two Engine Audit ($29 one-off) covers Google AI Overviews + ChatGPT — the two engines most buyers actually use. Full Audit ($79 one-off) adds Claude, Perplexity and Gemini for complete coverage. Both tiers include the full hallucination + accuracy scoring and a Claude-generated prioritised action plan.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Is the free preview really free?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Yes. No card, no signup. The preview runs 8 buyer questions on Google AI Overviews and shows visibility + citation rate. Paid tiers expand the engine set, query count, scoring depth and add the prioritised action plan.</p>
+  </details>
+</div>
 {% endblock %}

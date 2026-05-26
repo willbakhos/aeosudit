@@ -8,6 +8,39 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
+  "@type": "Service",
+  "@id": "{{ _base_url }}/product/monitoring#service",
+  "name": "monitoraeo AI visibility monitoring",
+  "serviceType": "Monthly AI answer engine visibility monitoring",
+  "provider": { "@id": "{{ _base_url }}/#org" },
+  "areaServed": "Worldwide",
+  "description": "{{ page_description }}",
+  "url": "{{ _canonical }}",
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Two Engine Monitoring",
+      "price": "35",
+      "priceCurrency": "USD",
+      "url": "{{ _base_url }}/pricing",
+      "description": "Google AI Overviews + ChatGPT, 20 monitored buyer questions, monthly re-runs, trend chart, prioritised action plan, includes the matching Two Engine Audit.",
+      "priceSpecification": {"@type": "UnitPriceSpecification", "billingDuration": "P1M", "price": "35", "priceCurrency": "USD"}
+    },
+    {
+      "@type": "Offer",
+      "name": "Full Monitoring",
+      "price": "95",
+      "priceCurrency": "USD",
+      "url": "{{ _base_url }}/pricing",
+      "description": "All 5 engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini), 40 monitored buyer questions, per-engine trend charts, competitor + source change tracking, prioritised action plan, includes the matching Full Audit.",
+      "priceSpecification": {"@type": "UnitPriceSpecification", "billingDuration": "P1M", "price": "95", "priceCurrency": "USD"}
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
     {
@@ -63,9 +96,14 @@
 {% endblock %}
 
 {% block content %}
-<span class="eyebrow">Product · Monitoring · Coming soon</span>
+<span class="eyebrow">Product · Monitoring</span>
 <h1 class="page-title">Track your AI visibility every month, automatically.</h1>
-<p class="page-lede">An audit is a snapshot. AI engines change their answers daily, your <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">GEO foundations</a> can regress with every site deploy, and competitors enter the cited-domains list constantly. Monitoring re-runs your full AEO + GEO audit every month and emails you a one-page diff — what moved, who's new, and what to do about it.</p>
+<p class="page-lede">An audit is a snapshot. AI engines change their answers daily, your <a href="/what-is-geo" style="color:var(--blue); font-weight:700;">GEO foundations</a> can regress with every site deploy, and competitors enter the cited-domains list constantly. Monitoring re-runs your full AEO + GEO audit every month, charts the trend, and emails you when something moves. From $35/mo. <a href="/what-is-aeo" style="color:var(--blue); font-weight:700;">What is AEO?</a></p>
+
+<div style="display:flex; gap:14px; margin: 18px 0 4px; flex-wrap:wrap;">
+  <a href="/pricing" class="btn-primary">See monitoring plans →</a>
+  <a href="/#preview" class="btn-secondary">Start with a free preview</a>
+</div>
 
 <div class="grid-3" style="margin: 18px 0;">
   <div class="preview-card">
@@ -118,39 +156,56 @@
     <p>Hosted timeline of visibility, citation rate and competitor share-of-voice over time. Shareable with your team.</p>
   </div>
   <div class="feature">
+    <div class="icon-box">✅</div>
+    <h3>Prioritised action plan</h3>
+    <p>Every monthly re-run ends with a refreshed Claude-generated checklist of what to fix first — content, schema and entity fixes, each with a why and a concrete next step.</p>
+  </div>
+  <div class="feature">
     <div class="icon-box">🤝</div>
     <h3>Multi-domain (agencies)</h3>
-    <p>Manage 10+ client domains in one workspace. White-labelled reports. Per-client reseller pricing for agencies.</p>
+    <p>Manage multiple client brands in one workspace. <a href="/support" style="color:var(--blue); font-weight:700;">Contact us</a> for agency / volume pricing.</p>
   </div>
 </div>
 
-<h2>Pricing (planned)</h2>
-<div class="grid-3" style="margin-top: 16px;">
+<h2>Monitoring pricing</h2>
+<p>Two monitoring tiers. Both include the matching one-off audit, monthly automatic re-runs, an extra manual re-run any time you want a fresh check, and the prioritised action plan. Cancel any time.</p>
+<div class="grid-2" style="gap:18px; margin-top: 16px;">
   <div class="feature">
-    <h3 style="margin-top:0;">Solo</h3>
-    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$99<span style="font-size:14px; color:var(--muted);">/mo</span></div>
-    <p>One domain. Monthly audit + alerts. Annual: $999 (16% off).</p>
+    <h3 style="margin-top:0;">Two Engine Monitoring</h3>
+    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$35<span style="font-size:14px; color:var(--muted);">/mo</span></div>
+    <p style="color:var(--ink-2);">Google AI Overviews + ChatGPT. 20 monitored buyer questions. Monthly re-run + 1 manual re-run per calendar month. Trend chart, hallucination flags, prioritised action plan. Includes the Two Engine Audit ($29 value).</p>
+    <a href="/pricing" class="btn-primary" style="align-self:flex-start;">Start Two Engine Monitoring →</a>
   </div>
   <div class="feature">
-    <h3 style="margin-top:0;">Growth</h3>
-    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$299<span style="font-size:14px; color:var(--muted);">/mo</span></div>
-    <p>Up to 5 domains, custom query sets, weekly cadence available.</p>
-  </div>
-  <div class="feature">
-    <h3 style="margin-top:0;">Agency</h3>
-    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$399<span style="font-size:14px; color:var(--muted);">/mo</span></div>
-    <p>10 domains, white-label dashboards, multi-client view, reseller pricing.</p>
+    <h3 style="margin-top:0;">Full Monitoring</h3>
+    <div style="font-size:36px; font-weight:900; letter-spacing:-.04em;">$95<span style="font-size:14px; color:var(--muted);">/mo</span></div>
+    <p style="color:var(--ink-2);">All 5 engines: Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini. 40 monitored buyer questions. Monthly re-run + 1 manual re-run. Per-engine trend charts, competitor + source change tracking, prioritised action plan. Includes the Full Audit ($79 value).</p>
+    <a href="/pricing" class="btn-primary" style="align-self:flex-start;">Start Full Monitoring →</a>
   </div>
 </div>
+<p style="margin-top: 14px;"><a href="/pricing" style="color:var(--blue); font-weight:700;">See full pricing comparison →</a></p>
 
-<div class="waitlist" style="margin-top: 28px;">
-  <h3>Get early access when we launch.</h3>
-  <p>Monitoring is in private beta. Join the waitlist — first 50 customers get 50% off for the first six months.</p>
-  <form method="POST" action="/monitoring/waitlist">
-    <input type="email" name="email" required placeholder="you@company.com">
-    <input type="text" name="domain" required placeholder="your-domain.com">
-    <button type="submit">Join the waitlist →</button>
-  </form>
-  <div class="hint">We'll only email you about Monitoring availability. No newsletter.</div>
+<h2 id="faq" style="margin-top:48px;">Frequently asked about monitoring</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What is AI visibility monitoring?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Monitoring re-runs your full AEO + GEO audit every month and emails you a one-page diff. You see what moved (visibility up or down per engine), who's new in the cited-domains list, and which technical foundations regressed since last month. An audit is a snapshot; monitoring catches drift between snapshots.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often does monitoraeo re-audit my brand?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Subscribers get one automatic cron-scheduled run on the 1st of every month at 06:00 UTC, plus one manual run any time you want a fresh check (e.g. right after a site change). Two runs per calendar month — the counter resets when the monthly cron fires.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What's the difference between Two Engine Monitoring ($35/mo) and Full Monitoring ($95/mo)?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Two Engine Monitoring covers Google AI Overviews + ChatGPT with 20 monitored buyer questions. Full Monitoring tracks all 5 engines (adds Claude, Perplexity, Gemini), 40 monitored questions, per-engine trend charts, competitor and source change alerts. Both subscriptions include the matching one-off audit.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can I edit which buyer questions are monitored?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Yes. From the dashboard you can replace the auto-generated buyer questions with your own list — up to 20 questions on Two Engine Monitoring, up to 40 on Full Monitoring. Edits apply on the next scheduled run.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can I cancel any time?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Yes — Stripe-managed subscription, cancel any time from Account settings → Billing. You keep access until the end of the current billing period.</p>
+  </details>
 </div>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends "_layout.html.j2" %}
 {% set active = 'how' %}
 {% set canonical_path = "/how-it-works" %}
-{% set page_description = "How monitoraeo turns a domain into a 5-engine AI visibility audit in under 10 minutes — query generation, parallel engine testing, scoring and report." %}
+{% set page_description = "How monitoraeo turns a domain into an AI visibility audit in under 10 minutes — query generation, 2-engine or 5-engine parallel testing, scoring and report." %}
 {% block title %}How it works — from domain to audit | monitoraeo{% endblock %}
 
 {% block schema %}
@@ -10,7 +10,7 @@
   "@context": "https://schema.org",
   "@type": "HowTo",
   "name": "How a monitoraeo AEO audit works",
-  "description": "Step-by-step process: monitoraeo turns a domain into a 5-engine AI visibility audit by generating buyer questions, querying every major AI engine, scoring how each one describes the brand, running a parallel GEO check, and assembling a hosted report.",
+  "description": "Step-by-step process: monitoraeo turns a domain into an AI visibility audit by generating 40 buyer questions, querying 2 engines (Two Engine Audit, $29) or all 5 engines (Full Audit, $79) in parallel, running a 15-check GEO audit on the site, scoring every answer, and generating a prioritised action plan.",
   "totalTime": "PT10M",
   "supply": [
     {"@type": "HowToSupply", "name": "Your domain"},
@@ -26,12 +26,12 @@
   ],
   "step": [
     {"@type":"HowToStep","position":1,"name":"Submit your domain, brand and category","text":"Three fields. Brand name must match exactly how you brand it (e.g. 'JB Hi-Fi' not 'jbhifi'). Category sharpens the buyer-question generator."},
-    {"@type":"HowToStep","position":2,"name":"Generate a 40-question buyer-query set","text":"Five intent buckets: brand, category, problem, comparison, vertical. Free preview uses 8 questions; paid full audit uses all 40."},
-    {"@type":"HowToStep","position":3,"name":"Query 5 AI engines in parallel","text":"Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini — each gets the same questions and uses its native web search. We capture full answer text plus source citations."},
+    {"@type":"HowToStep","position":2,"name":"Generate the buyer-query set","text":"Five intent buckets: brand, category, problem, comparison, vertical. Free preview uses 8 questions on one engine. Two Engine Audit ($29) and Full Audit ($79) both use all 40 questions."},
+    {"@type":"HowToStep","position":3,"name":"Query the AI engines in parallel","text":"Free preview queries 1 engine (Google AI Overviews). Two Engine Audit ($29) queries 2 engines (Google AI Overviews + ChatGPT) = 80 AI answers. Full Audit ($79) queries all 5 engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini) = 200 AI answers. Each engine uses its native web search and we capture the full answer text plus source citations."},
     {"@type":"HowToStep","position":4,"name":"Run a 15-check GEO audit on the site","text":"Crawlability, structured data, metadata, content shape, performance and entity signals — the technical foundation that determines whether AI engines can read the site at all."},
-    {"@type":"HowToStep","position":5,"name":"Score every AI answer (deterministic + LLM)","text":"Deterministic regex/URL parse for visibility, citation rate and competitors. Paid tiers add a second-pass Claude Haiku call for sentiment, accuracy and hallucination flags."},
-    {"@type":"HowToStep","position":6,"name":"Assemble the report","text":"Headline metrics, engine heatmap, top-cited domains, competitor share-of-voice, hallucination flags and per-query drill-down — delivered to your dashboard with CSV export."},
-    {"@type":"HowToStep","position":7,"name":"Deliver by email + dashboard","text":"The report appears in your dashboard the moment it's ready and we email you a sign-in link. Usually under 10 minutes from payment."}
+    {"@type":"HowToStep","position":5,"name":"Score every AI answer (deterministic + LLM)","text":"Deterministic regex/URL parse for visibility, citation rate and competitors. Paid tiers add a second-pass Claude Haiku 4.5 call for sentiment, accuracy and hallucination flags."},
+    {"@type":"HowToStep","position":6,"name":"Generate the prioritised action plan","text":"Every paid audit (Two Engine $29, Full $79, and both monitoring tiers) runs Claude Sonnet 4.6 over the full result set to produce a prioritised checklist of content, schema and entity fixes. Each item explains why it matters and a concrete next step."},
+    {"@type":"HowToStep","position":7,"name":"Assemble the report and deliver","text":"Headline metrics, engine heatmap, top-cited domains, competitor share-of-voice, hallucination flags, per-query drill-down and action plan — delivered to your dashboard. We email you a sign-in link the moment it's ready, usually under 10 minutes from payment."}
   ]
 }
 </script>
@@ -53,7 +53,7 @@
     {
       "@type": "Question",
       "name": "Why 40 questions instead of more or fewer?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Fewer is too noisy — single answers drift between runs. More is overkill and wastes engine quota. 40 questions × 5 engines = 200 individual AI answers, which is enough to see real patterns in visibility, citation rate and competitor share-of-voice without paying for diminishing returns. The 40 are split across five intent buckets: brand, category, problem, comparison and vertical."}
+      "acceptedAnswer": {"@type": "Answer", "text": "Fewer is too noisy — single answers drift between runs. More is overkill and wastes engine quota. 40 questions is enough to see real patterns in visibility, citation rate and competitor share-of-voice. Multiplied across engines that's 80 AI answers on the Two Engine Audit ($29, Google AI + ChatGPT) and 200 on the Full Audit ($79, all 5 engines). The 40 questions are split across five intent buckets: brand, category, problem, comparison and vertical."}
     },
     {
       "@type": "Question",
@@ -94,7 +94,7 @@
 <aside aria-label="Quick answer" style="margin:18px 0 28px; padding:18px 22px; border-radius:14px; background:linear-gradient(135deg,#eef2ff,#f0f9ff); border:1px solid #c7d2fe;">
   <strong style="display:block; font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#4338ca;">Quick answer</strong>
   <p style="margin:6px 0 0; font-size:15px; line-height:1.55; color:var(--ink-2);">
-    A monitoraeo audit takes a domain plus a brand name, generates 40 buyer-facing questions, asks them across <strong>5 AI engines</strong> in parallel (Claude, ChatGPT, Perplexity, Gemini, Google AI Overviews), runs a parallel <strong>15-check technical GEO audit</strong> on the site, scores every answer for visibility / citation / sentiment / hallucination risk, and delivers the result to your dashboard with CSV export — usually within 10 minutes.
+    A monitoraeo audit takes a domain plus a brand name, generates buyer-facing questions, asks them across the AI engines you chose, runs a parallel <strong>15-check technical GEO audit</strong> on the site, scores every answer, and produces a prioritised action plan. Engine coverage depends on the tier you pick: <strong>free preview</strong> = 8 questions on 1 engine (Google AI Overviews); <strong>Two Engine Audit ($29)</strong> = 40 questions × 2 engines (Google AI + ChatGPT) = 80 AI answers; <strong>Full Audit ($79)</strong> = 40 questions × 5 engines (Google AI, ChatGPT, Claude, Perplexity, Gemini) = 200 AI answers. Delivered to your dashboard usually within 10 minutes.
   </p>
 </aside>
 
@@ -114,17 +114,23 @@
 <div class="step-card">
   <div class="step-num">02</div>
   <div>
-    <h3>We generate a 40-question buyer-query set</h3>
-    <p>Five intent buckets: <strong>brand</strong> (people who already know you), <strong>category</strong> (discovery), <strong>problem</strong> (the pain that drives buying), <strong>comparison</strong> (head-to-head decisions), and <strong>vertical</strong> (industry-specific intent). The free preview uses 8 of these; full audit uses all 40.</p>
-    <div class="tech-strip"><strong>Why 40?</strong> Fewer is too noisy. More is overkill. 40 questions × 5 engines = 200 individual answers, which is enough to see real patterns rather than single-answer drift.</div>
+    <h3>We generate the buyer-query set</h3>
+    <p>Five intent buckets: <strong>brand</strong> (people who already know you), <strong>category</strong> (discovery), <strong>problem</strong> (the pain that drives buying), <strong>comparison</strong> (head-to-head decisions), and <strong>vertical</strong> (industry-specific intent). The free preview uses 8 of these. Both paid tiers — <strong>Two Engine Audit ($29)</strong> and <strong>Full Audit ($79)</strong> — use all 40.</p>
+    <div class="tech-strip"><strong>Why 40?</strong> Fewer is too noisy. More is overkill. 40 questions is enough to see real patterns in visibility, citation rate and competitor share-of-voice rather than single-answer drift. Multiplied across engines that's 80 AI answers on the Two Engine Audit, 200 on the Full Audit.</div>
   </div>
 </div>
 
 <div class="step-card">
   <div class="step-num">03</div>
   <div>
-    <h3>We query 5 AI engines in parallel</h3>
-    <p>Each engine sees the same questions and gets to use its native web search. We capture the full answer text plus the source citations.</p>
+    <h3>We query the AI engines in parallel</h3>
+    <p>Each engine sees the same questions and gets to use its native web search. We capture the full answer text plus the source citations. <strong>Which engines run depends on your tier:</strong></p>
+    <ul class="bullets">
+      <li><strong>Free preview (1 engine):</strong> Google AI Overviews</li>
+      <li><strong>Two Engine Audit, $29 (2 engines):</strong> Google AI Overviews + ChatGPT — the two engines most buyers actually use today</li>
+      <li><strong>Full Audit, $79 (5 engines):</strong> Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini</li>
+    </ul>
+    <p style="margin-top:14px;">Full list of engines and the models behind them:</p>
     <ul class="bullets">
       <li><strong>Google AI Overviews</strong> via the Apify google-search-scraper actor</li>
       <li><strong>ChatGPT</strong> (gpt-5-mini with built-in web search)</li>
@@ -158,21 +164,29 @@
 <div class="step-card">
   <div class="step-num">06</div>
   <div>
-    <h3>We assemble the report</h3>
-    <p>Headline metrics, engine heatmap, top-cited domains, competitor share-of-voice, hallucination flags, per-query drill-down — delivered into your dashboard the moment it's ready.</p>
-    <ul class="bullets">
-      <li>CSV export for your team</li>
-      <li>Re-run any time from the dashboard</li>
-      <li>Raw responses archived so we can re-score offline if you need to pivot the analysis</li>
-    </ul>
+    <h3>We generate the prioritised action plan</h3>
+    <p>Every paid audit — <strong>Two Engine ($29), Full ($79), Two Engine Monitoring ($35/mo) and Full Monitoring ($95/mo)</strong> — runs <strong>Claude Sonnet 4.6</strong> over the full result set and produces a prioritised checklist of what to fix first. Each item explains why it matters, the expected impact and a concrete next step. The plan is split into content fixes (claims to add or correct), schema fixes (JSON-LD to publish) and entity fixes (disambiguation signals like sameAs and ContactPoint).</p>
+    <div class="tech-strip"><strong>Why a separate LLM step?</strong> The scoring pass (step 05) tells you what's true today. The action plan tells you what to do about it — and that needs a higher-reasoning model than the per-answer classifier. The free preview doesn't include this step.</div>
   </div>
 </div>
 
 <div class="step-card">
   <div class="step-num">07</div>
   <div>
+    <h3>We assemble the report</h3>
+    <p>Headline metrics, engine heatmap, top-cited domains, competitor share-of-voice, hallucination flags, per-query drill-down and the action plan — assembled into a single hosted dashboard view, ready to share with your team.</p>
+    <ul class="bullets">
+      <li>Re-run any time from the dashboard (quota-limited: 1/month free, 2/month on paid tiers)</li>
+      <li>Raw responses archived so we can re-score offline if you need to pivot the analysis</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num">08</div>
+  <div>
     <h3>You get the report in your dashboard</h3>
-    <p>The finished report lands in your dashboard the moment it's ready, and we email you a sign-in link. Subject line: "Your [Brand] AEO audit is ready." Delivered within minutes of payment — usually under 10.</p>
+    <p>The finished report lands in your dashboard the moment it's ready, and we email you a sign-in link. Delivered within minutes of payment — usually under 10.</p>
   </div>
 </div>
 
@@ -202,7 +216,7 @@
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
     <summary style="cursor:pointer; font-weight:800; font-size:16px;">Why 40 questions instead of more or fewer?</summary>
-    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Fewer is too noisy — single answers drift between runs. More is overkill and wastes engine quota. 40 questions × 5 engines = 200 individual AI answers, which is enough to see real patterns in visibility, citation rate and competitor share-of-voice without paying for diminishing returns. The 40 are split across five intent buckets: brand, category, problem, comparison and vertical.</p>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Fewer is too noisy — single answers drift between runs. More is overkill and wastes engine quota. 40 questions is enough to see real patterns in visibility, citation rate and competitor share-of-voice. Multiplied across engines that's 80 AI answers on the Two Engine Audit ($29, Google AI + ChatGPT) and 200 on the Full Audit ($79, all 5 engines). The 40 questions are split across five intent buckets: brand, category, problem, comparison and vertical.</p>
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
     <summary style="cursor:pointer; font-weight:800; font-size:16px;">Do I need to install anything on my site?</summary>
