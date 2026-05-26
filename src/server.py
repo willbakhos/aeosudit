@@ -2077,11 +2077,20 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
     separate cron path, not from this fulfilment hook."""
     tier = (meta.get("tier") or "").strip()
     if tier not in TIER_PLANS:
+        # Silent return here was hiding a real bug — paid orders were dropping
+        # because tier wasn't matching, but we had no signal in the logs. Log
+        # the full meta so we can see exactly what Stripe handed us.
+        print(
+            f"[fulfil] BAIL: tier {tier!r} not in TIER_PLANS "
+            f"(valid={sorted(TIER_PLANS)}). meta={meta!r}"
+        )
         return
     plan = TIER_PLANS[tier]
     email = meta.get("email")
     if not email:
+        print(f"[fulfil] BAIL: no email on tier={tier!r} meta={meta!r}")
         return
+    print(f"[fulfil] starting audit for {email!r} tier={tier!r} brand={meta.get('brand_name')!r}")
 
     site = _build_site_for_order(meta)
     # Generate brand-aware queries from the customer's actual brand name +
