@@ -601,22 +601,34 @@ def _generate_paid_queries(brand: str, competitors: list[str] | None = None) -> 
 
     # Comparison (10) — head-to-head against named competitors; padded
     # with generic 'alternatives to {brand}' phrasings when fewer than 5
-    # competitors were supplied.
+    # competitors were supplied. The pad list must be at least 10 items
+    # so we can always reach 10 without duplicates — otherwise the
+    # 'if fallback not in comp_qs' guard spins forever when the customer
+    # supplies 0–2 competitors (2 comps × 2 = 4 real, + 4 unique pads = 8,
+    # never reaches 10). That was an infinite loop in production.
     comp_qs: list[str] = []
     for c in competitors[:5]:
         comp_qs.append(f"{brand} vs {c}")
         comp_qs.append(f"{c} or {brand}: which is better?")
-    while len(comp_qs) < 10:
-        for fallback in [
-            f"Best alternatives to {brand}",
-            f"Top {brand} alternatives 2026",
-            f"Companies similar to {brand}",
-            f"{brand} competitors compared",
-        ]:
-            if fallback not in comp_qs:
-                comp_qs.append(fallback)
-            if len(comp_qs) >= 10:
-                break
+    fallback_pad = [
+        f"Best alternatives to {brand}",
+        f"Top {brand} alternatives 2026",
+        f"Companies similar to {brand}",
+        f"{brand} competitors compared",
+        f"Sites like {brand}",
+        f"Cheaper alternatives to {brand}",
+        f"Better alternatives to {brand}",
+        f"Free alternatives to {brand}",
+        f"{brand} vs competitors review",
+        f"What companies compete with {brand}",
+        f"Who are {brand}'s biggest competitors",
+        f"Best {brand}-style platforms",
+    ]
+    for fallback in fallback_pad:
+        if len(comp_qs) >= 10:
+            break
+        if fallback not in comp_qs:
+            comp_qs.append(fallback)
     queries += [Query(query=q, type="comparison") for q in comp_qs[:10]]
 
     # Category (10) — 'who else does what this brand does' style.
