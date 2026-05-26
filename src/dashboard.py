@@ -988,6 +988,23 @@ def report_in_dashboard(request: Request, run_id: str):
         if str(run.user_id) != user["id"] and not user.get("is_master"):
             raise HTTPException(404, "Report not found")
         brand = s.get(TrackedBrand, run.brand_id)
+
+    # The DB record exists, but on Railway's ephemeral filesystem the report
+    # artifacts get wiped on every deploy. Detect that here so the user sees
+    # a styled re-run CTA instead of a raw JSON 404 inside the iframe.
+    from src.server import OUTPUT_ROOT
+    run_dir = OUTPUT_ROOT / run_id
+    has_html = (run_dir / "report.html").exists()
+    has_raw = (run_dir / "raw_responses.json").exists()
+    if not has_html and not has_raw:
+        return _render(
+            "report_unavailable.html.j2",
+            user=user,
+            run=run,
+            brand=brand,
+            active_tab="reports",
+        )
+
     return _render(
         "report_view.html.j2",
         user=user,
