@@ -1,7 +1,55 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/support" %}
-{% set page_description = "Need help with an monitoraeo? Open a support ticket — we respond within one business day. Common issues, refund requests and agency enquiries all welcome." %}
+{% set page_description = "Need help with monitoraeo? Open a support ticket — we respond within one business day. Common issues, refund requests and agency enquiries all welcome." %}
 {% block title %}Support — monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ContactPage",
+      "name": "Support — monitoraeo",
+      "url": "{{ _canonical }}",
+      "description": "{{ page_description }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "mainEntity": {"@id": "{{ _base_url }}/#org"}
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "My audit says my brand isn't appearing — what should I check?",
+          "acceptedAnswer": {"@type": "Answer", "text": "If visibility is 0% but the audit cited your domain, the brand-name match likely failed. Re-run the audit with the brand name typed exactly as it appears on your site (e.g. 'JB Hi-Fi' not 'jbhifi'). Capitalisation, hyphens and spacing all count because we do exact substring matching against the AI's answer text."}
+        },
+        {
+          "@type": "Question",
+          "name": "I paid but haven't received my audit — what now?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Paid audits take 5–15 minutes to run after payment and are emailed when complete. Check your spam folder first. If it has been more than 30 minutes, send a support ticket with the email you used at checkout and we'll either deliver the report or refund you."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I get a refund?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. If the audit failed completely (every engine errored), we refund automatically with no ticket needed. Otherwise email us within 14 days of purchase explaining the issue and we'll work it out — most refund requests are approved."}
+        },
+        {
+          "@type": "Question",
+          "name": "Do you offer agency or volume pricing?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. For 10+ domains/month, white-label dashboards, or custom buyer-question sets, send a support ticket with topic 'Custom audit / agency' and we'll set up a call to scope it."}
+        },
+        {
+          "@type": "Question",
+          "name": "How quickly do you respond to support tickets?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Within one business day for all tickets. Issues with a paid audit (didn't deliver, missing data) are prioritised and usually answered within a few hours during business hours."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block extra_css %}
   .support-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 26px; margin-top: 16px; }

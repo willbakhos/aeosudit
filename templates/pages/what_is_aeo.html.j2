@@ -1,8 +1,81 @@
 {% extends "_layout.html.j2" %}
 {% set active = 'aeo' %}
 {% set canonical_path = "/what-is-aeo" %}
-{% set page_description = "AEO (Answer Engine Optimisation) is making sure AI engines — ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews — name and cite your business when buyers ask high-intent questions. The metrics, the difference from SEO, and what to measure." %}
-{% block title %}What is AEO? Answer Engine Optimisation explained | monitoraeo{% endblock %}
+{% set page_description = "AEO (Answer Engine Optimisation) is getting your brand named and cited when buyers ask ChatGPT, Claude, Perplexity, Gemini or Google AI Overviews a question." %}
+{% block title %}What is AEO? Answer Engine Optimisation | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "What is AEO? Answer Engine Optimisation explained",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "Answer Engine Optimisation"},
+        {"@type": "Thing", "name": "AI search visibility"},
+        {"@type": "Thing", "name": "ChatGPT brand mentions"},
+        {"@type": "Thing", "name": "Google AI Overviews"}
+      ]
+    },
+    {
+      "@type": "DefinedTerm",
+      "name": "Answer Engine Optimisation (AEO)",
+      "alternateName": ["AEO", "Answer Engine Optimization"],
+      "description": "The practice of getting a brand named, cited and recommended inside AI-generated answers from engines like ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews — as opposed to ranking inside a list of blue links.",
+      "url": "{{ _canonical }}",
+      "inDefinedTermSet": {
+        "@type": "DefinedTermSet",
+        "name": "AI search glossary",
+        "url": "{{ _base_url }}/what-is-aeo"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does AEO stand for?",
+          "acceptedAnswer": {"@type": "Answer", "text": "AEO stands for Answer Engine Optimisation. It's the practice of making sure AI answer engines — ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews — name your brand, cite your domain and recommend you when buyers ask high-intent questions."}
+        },
+        {
+          "@type": "Question",
+          "name": "Is AEO the same as SEO?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No. SEO optimises for ranking in a list of blue links on a search engine results page. AEO optimises for being named and cited inside the synthesised answer that an AI returns. The fundamentals overlap (fast pages, semantic HTML, canonical URLs) but the success metric is different: in SEO you win clicks, in AEO you win mentions and citations even when nobody clicks."}
+        },
+        {
+          "@type": "Question",
+          "name": "What metrics matter in AEO?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Four headline metrics. (1) Visibility — the percentage of AI answers that name your brand. (2) Citation rate — the percentage that link to your domain as a source. (3) Competitor share-of-voice — who gets named or cited instead of you. (4) Sentiment + accuracy — whether the AI describes you positively and correctly, with hallucination flags for false claims."}
+        },
+        {
+          "@type": "Question",
+          "name": "Which AI engines should I track?",
+          "acceptedAnswer": {"@type": "Answer", "text": "The five that drive most current buyer research: Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini. Google AI Overviews now appears on the majority of high-intent commercial queries on mobile; ChatGPT and Perplexity are where buyers go for explicit recommendation questions; Claude and Gemini are growing fastest in B2B."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I improve my AEO?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Start by measuring — run an audit to see what each engine says about your brand today. Then prioritise: (a) publish FAQPage and Organization JSON-LD schema so engines can extract factual claims, (b) write Q&A-style pages that answer your buyers' real questions in 2–3 sentences each, (c) make sure robots.txt allows GPTBot, ClaudeBot and PerplexityBot, (d) publish an /llms.txt summary, and (e) build entity signals (sameAs links, ContactPoint) so engines disambiguate your brand from similarly named ones."}
+        },
+        {
+          "@type": "Question",
+          "name": "How long does AEO take to work?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Faster than SEO. AI engines re-crawl high-signal pages in days, not months, and re-generate answers on every query. Schema fixes (FAQPage, Product, Organization) and content additions typically show up in AI answers within 1–4 weeks. Entity changes (sameAs, ContactPoint) take a bit longer because they have to propagate through the engines' knowledge graphs."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block extra_css %}
   .timeline { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin: 18px 0; }
@@ -301,5 +374,33 @@
 <div style="margin: 32px 0; display:flex; gap:14px; flex-wrap:wrap;">
   <a href="/#preview" class="btn-primary">Run a free preview →</a>
   <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+
+<h2 id="faq">Frequently asked about AEO</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What does AEO stand for?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">AEO stands for Answer Engine Optimisation. It's the practice of making sure AI answer engines — ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews — name your brand, cite your domain and recommend you when buyers ask high-intent questions.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Is AEO the same as SEO?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">No. SEO optimises for ranking in a list of blue links on a search engine results page. AEO optimises for being named and cited inside the synthesised answer that an AI returns. The fundamentals overlap (fast pages, semantic HTML, canonical URLs) but the success metric is different: in SEO you win clicks, in AEO you win mentions and citations even when nobody clicks.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What metrics matter in AEO?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Four headline metrics. (1) Visibility — the percentage of AI answers that name your brand. (2) Citation rate — the percentage that link to your domain as a source. (3) Competitor share-of-voice — who gets named or cited instead of you. (4) Sentiment + accuracy — whether the AI describes you positively and correctly, with hallucination flags for false claims.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Which AI engines should I track?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">The five that drive most current buyer research: Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini. Google AI Overviews now appears on the majority of high-intent commercial queries on mobile; ChatGPT and Perplexity are where buyers go for explicit recommendation questions; Claude and Gemini are growing fastest in B2B.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How do I improve my AEO?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Start by measuring — run an audit to see what each engine says about your brand today. Then prioritise: (a) publish FAQPage and Organization JSON-LD schema so engines can extract factual claims, (b) write Q&amp;A-style pages that answer your buyers' real questions in 2–3 sentences each, (c) make sure robots.txt allows GPTBot, ClaudeBot and PerplexityBot, (d) publish an /llms.txt summary, and (e) build entity signals (sameAs links, ContactPoint) so engines disambiguate your brand from similarly named ones.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How long does AEO take to work?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Faster than SEO. AI engines re-crawl high-signal pages in days, not months, and re-generate answers on every query. Schema fixes (FAQPage, Product, Organization) and content additions typically show up in AI answers within 1–4 weeks. Entity changes (sameAs, ContactPoint) take a bit longer because they have to propagate through the engines' knowledge graphs.</p>
+  </details>
 </div>
 {% endblock %}

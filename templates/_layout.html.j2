@@ -14,7 +14,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 {% set _base_url = base_url or "https://monitoraeo.com" %}
 {% set _canonical = _base_url ~ (canonical_path or "/") %}
 {% set _description = page_description or "See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe, cite and recommend your brand. Free 8-question preview. Paid audits from $29, monitoring from $35/mo." %}
-{% set _og_image = (page_og_image or "/static/og-default.png") %}
+{% set _og_image = (page_og_image or "/static/monitoraeo-wordmark.png") %}
 {% if _og_image.startswith('/') %}{% set _og_image = _base_url ~ _og_image %}{% endif %}
 <title>{% block title %}Monitoraeo — AI answer visibility audit{% endblock %}</title>
 
@@ -48,8 +48,27 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       "@id": "{{ _base_url }}/#org",
       "name": "{{ _site_name }}",
       "url": "{{ _base_url }}/",
+      "logo": "{{ _base_url }}/static/monitoraeo-wordmark.png",
       "description": "Audit how AI answer engines (Claude, ChatGPT, Perplexity, Gemini, Google AI Overviews) describe, cite and recommend your brand.",
-      "slogan": "See how AI engines describe your brand."
+      "slogan": "See how AI engines describe your brand.",
+      "knowsAbout": [
+        "Answer Engine Optimisation",
+        "Generative Engine Optimisation",
+        "AI search visibility",
+        "Large language model citation tracking",
+        "ChatGPT brand mentions",
+        "Claude brand mentions",
+        "Perplexity citations",
+        "Google AI Overviews",
+        "Gemini answer ranking",
+        "Brand hallucination detection"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "{{ _base_url }}/support",
+        "availableLanguage": "English"
+      }
     },
     {
       "@type": "WebSite",
@@ -79,7 +98,37 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </script>
 {% endif %}
 {% block schema %}{% endblock %}
+<link rel="preload" href="/static/fonts/Inter-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/static/fonts/Inter-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
 <style>
+  @font-face {
+    font-family: 'Inter';
+    src: url('/static/fonts/Inter-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Inter';
+    src: url('/static/fonts/Inter-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Inter';
+    src: url('/static/fonts/Inter-Bold.ttf') format('truetype');
+    font-weight: 700 800;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Inter';
+    src: url('/static/fonts/Inter-Black.ttf') format('truetype');
+    font-weight: 900 950;
+    font-style: normal;
+    font-display: swap;
+  }
   :root {
     --ink: #0f172a;
     --ink-2: #1e293b;

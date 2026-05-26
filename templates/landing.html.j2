@@ -1,7 +1,7 @@
 {% extends "_layout.html.j2" %}
 {% set active = 'home' %}
 {% set canonical_path = "/" %}
-{% set page_description = "See how Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews describe, cite and recommend your brand. Free 8-question preview in 30 seconds. Paid audits from $29, monitoring from $35/mo." %}
+{% set page_description = "See how ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews describe your brand. Free 8-question preview in 30 seconds. Paid audits from $29." %}
 {% block title %}Monitoraeo — see how AI engines describe your brand{% endblock %}
 
 {% block schema %}
@@ -31,6 +31,49 @@
     "15-check technical GEO audit (crawlability, schema, performance)",
     "Monthly cron-scheduled re-audits with trend charts",
     "Hosted dashboard report + CSV export"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is monitoraeo?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Monitoraeo is an AI answer visibility audit platform. It runs 40 buyer-facing questions across Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews, then scores how often each engine names your brand, cites your domain and recommends a competitor instead. Every paid audit includes a prioritised action plan."}
+    },
+    {
+      "@type": "Question",
+      "name": "How is monitoraeo different from an SEO tool?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Traditional SEO tools (Ahrefs, Semrush) measure rankings in a Google results list of blue links. Monitoraeo measures what AI engines actually say when a buyer asks them a question — whether your brand is named in the answer, whether your domain is cited as a source, and which competitors are recommended instead. The metrics are different because AI answers replace the click, not the ranking."}
+    },
+    {
+      "@type": "Question",
+      "name": "Which AI engines does monitoraeo check?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Five: Google AI Overviews (free preview tier and up), ChatGPT (Two Engine and up), Claude, Perplexity and Gemini (Full Audit and Full Monitoring). Each engine is queried with its native web search enabled and we capture the full answer text plus source citations."}
+    },
+    {
+      "@type": "Question",
+      "name": "How much does monitoraeo cost?",
+      "acceptedAnswer": {"@type": "Answer", "text": "The free preview runs 8 questions on Google AI Overviews in about 30 seconds with no account. Paid one-off audits start at $29 (Two Engine, Google AI + ChatGPT) and $79 (Full, all 5 engines). Monitoring subscriptions cover monthly re-runs from $35/mo for Two Engine Monitoring and $95/mo for Full Monitoring. Every paid tier includes the prioritised action plan."}
+    },
+    {
+      "@type": "Question",
+      "name": "How long does an audit take?",
+      "acceptedAnswer": {"@type": "Answer", "text": "The free preview returns in about 30 seconds. A paid audit takes 5–10 minutes to run because it queries 40 buyer questions across multiple engines in parallel, then runs a second-pass LLM scoring step for sentiment, accuracy and hallucination flags. We email the sign-in link the moment the report is ready."}
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to install anything on my website?",
+      "acceptedAnswer": {"@type": "Answer", "text": "No. Monitoraeo audits are external — we ask the AI engines about your brand exactly the way a buyer would, then inspect your public pages for the 15 GEO foundations (robots.txt, sitemap.xml, llms.txt, JSON-LD schema, server-rendered HTML, mobile viewport, canonical, etc.). No tag, plugin or DNS change required."}
+    },
+    {
+      "@type": "Question",
+      "name": "What is an action plan?",
+      "acceptedAnswer": {"@type": "Answer", "text": "After every paid audit, monitoraeo produces a prioritised list of changes you can make to improve how AI engines describe and cite your brand. Each item explains why it matters, the expected impact and a concrete next step — typically split into content fixes (claims to add or correct), schema fixes (JSON-LD to publish) and entity fixes (disambiguation signals like sameAs and ContactPoint)."}
+    }
   ]
 }
 </script>
@@ -301,4 +344,36 @@
 </div>
 
 <p style="margin-top: 14px;"><a href="/pricing" style="color:var(--blue); font-weight:700;">See full pricing &amp; feature comparison →</a></p>
+
+<h2 id="faq" style="margin-top:48px;">Frequently asked</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">What is monitoraeo?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Monitoraeo is an AI answer visibility audit platform. It runs 40 buyer-facing questions across Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews, then scores how often each engine names your brand, cites your domain and recommends a competitor instead. Every paid audit includes a prioritised action plan.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">How is monitoraeo different from an SEO tool?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Traditional SEO tools (Ahrefs, Semrush) measure rankings in a Google results list of blue links. Monitoraeo measures what AI engines actually say when a buyer asks them a question — whether your brand is named in the answer, whether your domain is cited as a source, and which competitors are recommended instead. The metrics are different because AI answers replace the click, not the ranking.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">Which AI engines does monitoraeo check?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Five: Google AI Overviews (free preview tier and up), ChatGPT (Two Engine and up), Claude, Perplexity and Gemini (Full Audit and Full Monitoring). Each engine is queried with its native web search enabled and we capture the full answer text plus source citations.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">How much does monitoraeo cost?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">The free preview runs 8 questions on Google AI Overviews in about 30 seconds with no account. Paid one-off audits start at $29 (Two Engine, Google AI + ChatGPT) and $79 (Full, all 5 engines). Monitoring subscriptions cover monthly re-runs from $35/mo for Two Engine Monitoring and $95/mo for Full Monitoring. Every paid tier includes the prioritised action plan.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">How long does an audit take?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">The free preview returns in about 30 seconds. A paid audit takes 5–10 minutes to run because it queries 40 buyer questions across multiple engines in parallel, then runs a second-pass LLM scoring step for sentiment, accuracy and hallucination flags. We email the sign-in link the moment the report is ready.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">Do I need to install anything on my website?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">No. Monitoraeo audits are external — we ask the AI engines about your brand exactly the way a buyer would, then inspect your public pages for the 15 GEO foundations (robots.txt, sitemap.xml, llms.txt, JSON-LD schema, server-rendered HTML, mobile viewport, canonical, etc.). No tag, plugin or DNS change required.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px; letter-spacing:-.01em;">What is an action plan?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">After every paid audit, monitoraeo produces a prioritised list of changes you can make to improve how AI engines describe and cite your brand. Each item explains why it matters, the expected impact and a concrete next step — typically split into content fixes (claims to add or correct), schema fixes (JSON-LD to publish) and entity fixes (disambiguation signals like sameAs and ContactPoint).</p>
+  </details>
+</div>
 {% endblock %}

@@ -1,0 +1,55 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/404" %}
+{% set page_description = "The page you're looking for doesn't exist. Try the homepage, run a free AI visibility preview, or check the popular pages below." %}
+{% block title %}Page not found — monitoraeo{% endblock %}
+
+{# Soft-404s hurt SEO, so don't add a noindex here either — the HTTP 404
+   status is what tells Google the URL is gone. We just keep the layout
+   coherent so accidental crawlers and humans both land somewhere useful. #}
+
+{% block content %}
+<div style="max-width:720px; margin:48px auto; text-align:center;">
+  <p style="font-size:13px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--blue); margin:0;">Error 404</p>
+  <h1 style="margin:14px 0 12px; font-size:clamp(36px, 5vw, 54px); letter-spacing:-.04em; line-height:1.05;">We couldn't find that page.</h1>
+  <p style="margin:0 0 32px; color:var(--muted); font-size:17px; line-height:1.55;">The link may be broken, the page may have moved, or you may have typed the URL slightly wrong. Try one of the popular destinations below — or jump straight into a free AI visibility preview.</p>
+
+  <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:40px;">
+    <a href="/#preview" style="display:inline-flex; align-items:center; padding:14px 22px; border-radius:999px; background:linear-gradient(135deg, var(--blue), var(--purple)); color:white; text-decoration:none; font-weight:800; box-shadow:0 14px 28px rgba(37,99,235,.28);">Run a free preview →</a>
+    <a href="/" style="display:inline-flex; align-items:center; padding:14px 22px; border-radius:999px; background:white; border:1px solid var(--line); color:var(--ink); text-decoration:none; font-weight:800;">Back to home</a>
+  </div>
+</div>
+
+<h2 style="margin-top:8px;">Popular pages</h2>
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-top:14px;">
+  <a href="/pricing" style="display:block; padding:22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft); text-decoration:none; color:var(--ink);">
+    <div style="font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);">Pricing</div>
+    <h3 style="margin:6px 0 6px; font-size:17px;">From $29 one-off or $35/mo</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Two Engine and Full Audit tiers, plus monthly monitoring. Every paid tier includes the action plan.</p>
+  </a>
+  <a href="/what-is-aeo" style="display:block; padding:22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft); text-decoration:none; color:var(--ink);">
+    <div style="font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);">Guide</div>
+    <h3 style="margin:6px 0 6px; font-size:17px;">What is AEO?</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Answer Engine Optimisation — the practice of getting named and cited in AI answers.</p>
+  </a>
+  <a href="/what-is-geo" style="display:block; padding:22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft); text-decoration:none; color:var(--ink);">
+    <div style="font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);">Guide</div>
+    <h3 style="margin:6px 0 6px; font-size:17px;">What is GEO?</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">The 15 technical checks that decide whether AI engines can read and trust your site.</p>
+  </a>
+  <a href="/how-it-works" style="display:block; padding:22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft); text-decoration:none; color:var(--ink);">
+    <div style="font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);">Product</div>
+    <h3 style="margin:6px 0 6px; font-size:17px;">How it works</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Step-by-step: from your domain to a 5-engine audit in under 10 minutes.</p>
+  </a>
+  <a href="/aeo-vs-seo" style="display:block; padding:22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft); text-decoration:none; color:var(--ink);">
+    <div style="font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);">Compare</div>
+    <h3 style="margin:6px 0 6px; font-size:17px;">AEO vs SEO</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Side-by-side: what's the same, what's different, and when each one wins.</p>
+  </a>
+  <a href="/support" style="display:block; padding:22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft); text-decoration:none; color:var(--ink);">
+    <div style="font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);">Help</div>
+    <h3 style="margin:6px 0 6px; font-size:17px;">Support</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Open a ticket — we reply within one business day. Refunds, audit issues, agency enquiries.</p>
+  </a>
+</div>
+{% endblock %}
