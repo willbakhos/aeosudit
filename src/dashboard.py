@@ -1051,7 +1051,15 @@ def report_csv_download(request: Request, run_id: str):
 def pending_audit_status(request: Request) -> JSONResponse:
     """Tells the empty-dashboard banner whether the logged-in user has a
     paid audit currently mid-flight, and if so what stage it's at. Used
-    by JS polling so the user sees real progress instead of guessing."""
+    by JS polling so the user sees real progress instead of guessing.
+
+    Consumes 'complete' jobs on the first poll that reports them: the JS
+    schedules window.location.reload() 1.2s after seeing status=complete,
+    and without consumption the next poll after reload would *also* see
+    complete and trigger another reload — an infinite refresh loop that
+    presented as the banner flashing forever on 'Done — opening your
+    dashboard'. After we return complete once, subsequent polls return
+    idle and the banner stays hidden."""
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return JSONResponse({"status": "unauthenticated"}, status_code=401)
@@ -1060,6 +1068,8 @@ def pending_audit_status(request: Request) -> JSONResponse:
     job = PAID_AUDIT_JOBS.get(key) if key else None
     if not job:
         return JSONResponse({"status": "idle"})
+    if job.get("status") == "complete" and key:
+        PAID_AUDIT_JOBS.pop(key, None)
     return JSONResponse(job)
 
 
