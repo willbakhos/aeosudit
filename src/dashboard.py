@@ -2095,6 +2095,13 @@ def _run_audit_for_brand(
                 action_plan = generate_action_plan(rows, site)
             except Exception as exc:  # noqa: BLE001
                 print(f"[audit] action_plan generation failed: {type(exc).__name__}: {exc}")
+        # Log what we'll hand to write_html so we can tell from the deploy
+        # logs whether the sidebar dimming on 'Action plan' is because we
+        # generated nothing vs because the template skipped it on render.
+        print(
+            f"[audit] write_html action_plan="
+            f"{'None' if action_plan is None else f'list len={len(action_plan)}'}"
+        )
         write_html(
             rows,
             site,

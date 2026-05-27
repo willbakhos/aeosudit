@@ -236,12 +236,25 @@ def generate(
     rows: list[ScoredRow], config: SiteConfig
 ) -> list[dict[str, Any]]:
     """Top-level entry: returns a list of recommendation dicts. Empty list on
-    failure (caller decides how to handle — the report is still useful without)."""
+    failure (caller decides how to handle — the report is still useful without).
+
+    Logs every failure mode loudly. Used to silently return [] which made the
+    'action plan' sidebar section dim with no signal in the logs about why."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
+        print("[action_plan] BAIL: OPENROUTER_API_KEY not set — skipping action plan")
         return []
+    if not rows:
+        print("[action_plan] BAIL: no rows to summarise — skipping action plan")
+        return []
+    print(f"[action_plan] generating for {config.brand.name!r} from {len(rows)} rows using {PLANNER_MODEL}")
     summary = _summarise_findings(rows, config)
     try:
-        return asyncio.run(_call_planner(summary, api_key))
-    except Exception:  # noqa: BLE001
+        recs = asyncio.run(_call_planner(summary, api_key))
+        print(f"[action_plan] generated {len(recs)} recommendations")
+        return recs
+    except Exception as exc:  # noqa: BLE001
+        import traceback
+        print(f"[action_plan] FAILED: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
         return []
