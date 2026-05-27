@@ -957,13 +957,16 @@ def brand_queries_save(
 # free-preview (report_free.html.j2) and full (report.html.j2) templates;
 # any anchor not present in a given report just scrolls to the top of the
 # iframe, which is a graceful no-op.
+# Sidebar order mirrors the actual section order in templates/report.html.j2
+# so users see the same flow in the nav as they do when they scroll.
+# If you reorder sections in report.html.j2, mirror the change here.
 REPORT_SECTIONS: list[dict[str, str]] = [
     {"label": "Headline metrics", "anchor": "headline-metrics", "fallback": "visibility"},
-    {"label": "Engine heatmap", "anchor": "engine-heatmap", "fallback": "engines"},
+    {"label": "Technical foundations", "anchor": "technical-foundations", "fallback": "foundations"},
     {"label": "Action plan", "anchor": "action-plan", "fallback": "unlock"},
+    {"label": "Engine heatmap", "anchor": "engine-heatmap", "fallback": "engines"},
     {"label": "Top cited sources", "anchor": "top-cited-sources", "fallback": "sources"},
     {"label": "Competitor share-of-voice", "anchor": "competitor-sov", "fallback": "sources"},
-    {"label": "Technical foundations", "anchor": "technical-foundations", "fallback": "foundations"},
     {"label": "Hallucination flags", "anchor": "hallucinations", "fallback": "evidence"},
     {"label": "Per-query drill-down", "anchor": "query-drilldown", "fallback": "evidence"},
 ]
@@ -1113,6 +1116,42 @@ def recover_paid_orders(request: Request) -> JSONResponse:
         tier = (meta.get("tier") or "").strip()
         if tier not in TIER_PLANS:
             continue
+        # Skip orders whose audit already landed successfully. Without this,
+        # a paid order that fulfilled normally still left its meta file in
+        # _paid_orders/ until the in-fulfilment archive code ran — and any
+        # /recover-paid-orders call between fulfilment and archive would
+        # create a stub run record with rows=[] (queries=1) alongside the
+        # real report. Now: if a recent run exists for this brand+user,
+        # archive the meta and move on.
+        try:
+            domain_norm = (meta.get("domain") or "").strip().lower()
+            recently = None
+            if domain_norm:
+                with get_session() as s:
+                    brand_match = s.exec(
+                        select(TrackedBrand).where(
+                            TrackedBrand.user_id == UUID(user["id"]),
+                            TrackedBrand.domain == domain_norm,
+                        )
+                    ).first()
+                    if brand_match:
+                        recently = s.exec(
+                            select(AuditRunRecord)
+                            .where(
+                                AuditRunRecord.brand_id == brand_match.id,
+                                AuditRunRecord.status == "complete",
+                                AuditRunRecord.queries_total > 1,
+                            )
+                            .order_by(AuditRunRecord.started_at.desc())
+                        ).first()
+            if recently is not None:
+                # Already fulfilled — archive the orphan meta and skip.
+                archived = pending_dir / "_recovered"
+                archived.mkdir(exist_ok=True)
+                meta_path.rename(archived / meta_path.name)
+                continue
+        except Exception as exc:  # noqa: BLE001
+            print(f"[recover-paid-orders] duplicate-check failed for {meta_path.name}: {type(exc).__name__}: {exc}")
         try:
             site = _build_site_for_order(meta)
             # Use a stable run_id for recovery so we don't create duplicate

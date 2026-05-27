@@ -1650,6 +1650,10 @@ def orders_setup(
     # Defensive: persist the order meta to disk before kicking anything off.
     # If hydration silently fails downstream, we can still recover the order
     # later — by hand or via /dashboard/recover-paid-orders.
+    # Stash session_id INSIDE the meta so _fulfil_order can locate and
+    # archive the file after successful hydration (otherwise orphan recovery
+    # would re-process the order and create a duplicate stub run record).
+    meta["session_id"] = session_id
     try:
         pending_dir = OUTPUT_ROOT / "_paid_orders"
         pending_dir.mkdir(parents=True, exist_ok=True)
@@ -2285,6 +2289,24 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
         job["step"] = "Done — refreshing your dashboard…"
         job["pct"] = 100
         PAID_AUDIT_JOBS[key] = job
+
+    # Archive the on-disk order meta so the dashboard's orphan-recovery
+    # endpoint (/dashboard/api/recover-paid-orders) doesn't process this
+    # order a second time and create a stub run record with rows=[].
+    # Without this, every successful paid audit produced TWO rows in the
+    # reports table: the real one written above + a stub with queries=1.
+    session_id = meta.get("session_id") or meta.get("stripe_session_id") or ""
+    if session_id:
+        try:
+            pending_dir = OUTPUT_ROOT / "_paid_orders"
+            meta_path = pending_dir / f"{session_id}.json"
+            if meta_path.exists():
+                archived = pending_dir / "_recovered"
+                archived.mkdir(exist_ok=True)
+                meta_path.rename(archived / meta_path.name)
+                print(f"[fulfil] archived order meta {meta_path.name} → _recovered/")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[fulfil] could not archive meta for {session_id}: {type(exc).__name__}: {exc}")
 
 
 def _ensure_dashboard_for_paid_order(

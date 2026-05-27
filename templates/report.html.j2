@@ -654,7 +654,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     letter-spacing: .06em;
     text-transform: uppercase;
   }
-  .tech-check dd, .ap-rec dd { margin: 0; font-size: 14px; line-height: 1.58; }
+  .tech-check dd, .ap-rec dd {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.58;
+    /* min-width: 0 lets the grid cell shrink below its content width.
+       Without it, a long unbroken token (e.g. compact JSON-LD with no
+       spaces) forces the cell wider than its 1fr track and the card
+       spills past the iframe edge — which is what produced the
+       horizontally-overflowing action plan card. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .tech-check dd.score { font-weight: 900; }
   .tech-check dd.score.pass { color: #166534; }
   .tech-check dd.score.warn { color: #92400e; }
@@ -668,6 +679,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px;
     white-space: pre-wrap;
+    /* Break long compact strings (JSON-LD, URLs) at any character if
+       there's no natural breakpoint. Without this, the example block
+       was pushing the whole card off the right edge of the iframe. */
+    overflow-wrap: anywhere;
+    word-break: break-word;
     line-height: 1.5;
   }
 

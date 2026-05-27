@@ -24,8 +24,12 @@ ACTION_SCHEMA: dict[str, Any] = {
     "properties": {
         "recommendations": {
             "type": "array",
-            "minItems": 8,
-            "maxItems": 12,
+            # minItems / maxItems removed: OpenRouter routes Claude through
+            # providers (notably Google Vertex) whose schema engine only
+            # accepts minItems values of 0 or 1, and rejected our 8 with
+            # a 400. The prompt already asks for ~10 recommendations, so
+            # bounding the array via JSON schema was belt-and-braces that
+            # cost us the entire strict-mode call.
             "items": {
                 "type": "object",
                 "properties": {
