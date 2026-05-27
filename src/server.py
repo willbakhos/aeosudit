@@ -1515,7 +1515,6 @@ def create_checkout(req: CheckoutRequest) -> JSONResponse:
         mode=plan["stripe_mode"],  # "payment" (one-off) or "subscription" (monthly)
         line_items=[{"price": price_id, "quantity": 1}],
         customer_email=req.email,
-        allow_promotion_codes=True,
         success_url=f"{PUBLIC_BASE_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}",
         metadata={
@@ -1554,7 +1553,6 @@ def buy_redirect(
     session = stripe.checkout.Session.create(
         mode=plan["stripe_mode"],
         line_items=[{"price": price_id, "quantity": 1}],
-        allow_promotion_codes=True,
         success_url=f"{PUBLIC_BASE_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{PUBLIC_BASE_URL}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}",
         metadata={
