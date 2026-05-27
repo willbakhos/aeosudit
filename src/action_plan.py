@@ -178,12 +178,80 @@ def _build_prompt(summary: dict[str, Any]) -> str:
     )
 
 
+def _extract_content(data: dict[str, Any]) -> str:
+    """Pull the text content out of an OpenRouter chat completion. Handles
+    both string and Anthropic-style list-of-blocks responses."""
+    choices = data.get("choices") or []
+    if not choices:
+        return ""
+    msg = (choices[0] or {}).get("message") or {}
+    content = msg.get("content")
+    if isinstance(content, list):
+        return "".join(
+            b.get("text", "") for b in content if isinstance(b, dict)
+        )
+    return content or ""
+
+
+def _parse_recommendations(raw: str) -> list[dict[str, Any]]:
+    """Pull the recommendations list out of the model's response. Tolerant
+    of fenced code blocks (```json … ```) and chatter before/after the JSON
+    object — both common when we drop strict mode and the model riffs."""
+    s = (raw or "").strip()
+    if not s:
+        return []
+    # Strip a leading ```json / ``` fence if present.
+    if s.startswith("```"):
+        s = s.split("\n", 1)[1] if "\n" in s else s[3:]
+        if s.endswith("```"):
+            s = s[: -3].rstrip()
+    # Try direct parse first.
+    try:
+        parsed = json.loads(s)
+    except json.JSONDecodeError:
+        # Find the first { and last } and try that span.
+        first = s.find("{")
+        last = s.rfind("}")
+        if first == -1 or last <= first:
+            return []
+        try:
+            parsed = json.loads(s[first : last + 1])
+        except json.JSONDecodeError:
+            return []
+    if isinstance(parsed, list):
+        return parsed
+    return parsed.get("recommendations") or []
+
+
+async def _post_once(
+    client: httpx.AsyncClient, payload: dict[str, Any], api_key: str
+) -> httpx.Response:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/aeo-audit",
+        "X-Title": "monitoraeo",
+    }
+    return await client.post(OPENROUTER_URL, headers=headers, json=payload)
+
+
 async def _call_planner(
     summary: dict[str, Any], api_key: str
 ) -> list[dict[str, Any]]:
-    payload = {
+    """Two-stage call: try strict JSON-schema mode first (best quality on
+    OpenAI models), fall back to plain prompt-instructed JSON if Claude on
+    OpenRouter rejects the strict-mode payload or returns no recommendations.
+
+    OpenRouter's strict-schema polyfill for Anthropic models is patchy —
+    we've seen it return 400, return free-form text, or accept the call
+    but silently produce {} with no 'recommendations' key. The loose
+    fallback uses the same prompt with an explicit 'reply with JSON only'
+    instruction, which all Claude models handle reliably."""
+    prompt = _build_prompt(summary)
+
+    strict_payload = {
         "model": PLANNER_MODEL,
-        "messages": [{"role": "user", "content": _build_prompt(summary)}],
+        "messages": [{"role": "user", "content": prompt}],
         "max_tokens": MAX_TOKENS,
         "response_format": {
             "type": "json_schema",
@@ -194,38 +262,69 @@ async def _call_planner(
             },
         },
     }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/aeo-audit",
-        "X-Title": "monitoraeo",
+
+    loose_payload = {
+        "model": PLANNER_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    prompt
+                    + "\n\nReply with ONLY a JSON object of shape "
+                    + '{"recommendations": [...]}. No prose, no '
+                    + "markdown code fences, no commentary — just the "
+                    + "JSON. Each recommendation must include every "
+                    + "field listed above."
+                ),
+            }
+        ],
+        "max_tokens": MAX_TOKENS,
     }
 
     last_exc: Exception | None = None
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
         for attempt in range(MAX_RETRIES):
-            try:
-                resp = await client.post(OPENROUTER_URL, headers=headers, json=payload)
-                if resp.status_code == 429 or resp.status_code >= 500:
-                    last_exc = httpx.HTTPStatusError(
-                        f"HTTP {resp.status_code}: {resp.text[:200]}",
-                        request=resp.request,
-                        response=resp,
-                    )
-                    await asyncio.sleep(BASE_BACKOFF * (2**attempt))
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"]
-                if isinstance(content, list):
-                    content = "".join(
-                        b.get("text", "") for b in content if isinstance(b, dict)
-                    )
-                parsed = json.loads(content)
-                return parsed.get("recommendations", [])
-            except (httpx.TimeoutException, httpx.TransportError) as exc:
-                last_exc = exc
-                await asyncio.sleep(BASE_BACKOFF * (2**attempt))
+            for mode, payload in (("strict", strict_payload), ("loose", loose_payload)):
+                try:
+                    resp = await _post_once(client, payload, api_key)
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        last_exc = httpx.HTTPStatusError(
+                            f"HTTP {resp.status_code} ({mode}): {resp.text[:200]}",
+                            request=resp.request, response=resp,
+                        )
+                        # Retry the whole pair after backoff.
+                        break
+                    if resp.status_code >= 400:
+                        # 4xx on strict mode → fall through to loose
+                        # immediately (no point retrying a bad request).
+                        # 4xx on loose → give up.
+                        print(
+                            f"[action_plan] {mode} mode rejected: "
+                            f"HTTP {resp.status_code} {resp.text[:200]}"
+                        )
+                        last_exc = httpx.HTTPStatusError(
+                            f"HTTP {resp.status_code} ({mode})",
+                            request=resp.request, response=resp,
+                        )
+                        if mode == "strict":
+                            continue  # try loose
+                        break  # loose failed too → backoff + retry pair
+                    data = resp.json()
+                    recs = _parse_recommendations(_extract_content(data))
+                    if recs:
+                        if mode == "loose":
+                            print(f"[action_plan] strict mode returned empty, loose mode produced {len(recs)}")
+                        return recs
+                    # Empty list — try loose if we're still on strict.
+                    print(f"[action_plan] {mode} mode returned 0 recommendations")
+                    if mode == "strict":
+                        continue
+                    # Loose also empty → backoff + retry pair.
+                    break
+                except (httpx.TimeoutException, httpx.TransportError) as exc:
+                    last_exc = exc
+                    break
+            await asyncio.sleep(BASE_BACKOFF * (2**attempt))
 
     if last_exc:
         raise last_exc
