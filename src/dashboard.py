@@ -1102,6 +1102,15 @@ def recover_paid_orders(request: Request) -> JSONResponse:
         TIER_PLANS,
     )
 
+    # PAID_AUDIT_JOBS holds in-flight fulfilment jobs keyed by buyer email.
+    # If a job is currently running for this user, we MUST NOT create a stub
+    # for the same brand — the real fulfilment will write the proper run
+    # record (with rows + action plan) when it finishes. Without this check,
+    # users who click the magic link mid-audit (the common case, since the
+    # email lands ~30s in and the audit takes 5-10 min) saw a stub row with
+    # queries=1 appear alongside the in-flight banner.
+    from src.server import PAID_AUDIT_JOBS as _PAID_AUDIT_JOBS
+
     checked = 0
     recovered = 0
     for meta_path in pending_dir.glob("*.json"):
@@ -1116,13 +1125,22 @@ def recover_paid_orders(request: Request) -> JSONResponse:
         tier = (meta.get("tier") or "").strip()
         if tier not in TIER_PLANS:
             continue
-        # Skip orders whose audit already landed successfully. Without this,
-        # a paid order that fulfilled normally still left its meta file in
-        # _paid_orders/ until the in-fulfilment archive code ran — and any
-        # /recover-paid-orders call between fulfilment and archive would
-        # create a stub run record with rows=[] (queries=1) alongside the
-        # real report. Now: if a recent run exists for this brand+user,
-        # archive the meta and move on.
+
+        # Skip 1: in-flight fulfilment for this same brand. The active
+        # _fulfil_order_inner thread will create the run record itself
+        # when its engine + LLM + action-plan pipeline finishes. Leave
+        # the meta file alone — that thread also owns archiving it.
+        active = _PAID_AUDIT_JOBS.get(email) or {}
+        active_status = active.get("status")
+        active_brand = (active.get("brand") or "").strip().lower()
+        meta_brand = (meta.get("brand_name") or "").strip().lower()
+        if active_status == "running" and active_brand and active_brand == meta_brand:
+            continue
+
+        # Skip 2: a real run already landed for this brand+user (e.g. the
+        # fulfilment thread finished but its archive step didn't run, or
+        # the user is reloading after a previous successful purchase).
+        # Archive the orphan meta to stop it being seen on the next reload.
         try:
             domain_norm = (meta.get("domain") or "").strip().lower()
             recently = None
