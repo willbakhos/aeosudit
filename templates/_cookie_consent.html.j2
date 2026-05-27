@@ -1,0 +1,161 @@
+{# Consent-gated GTM loader + cookie banner.
+   Replaces the unconditional GTM <script>/<noscript> snippet in _layout.html.j2
+   and templates/dashboard/_layout.html.j2 so analytics cookies only fire after
+   the visitor explicitly accepts. Store the answer in `monitoraeo_consent` for
+   1 year; visitors with no cookie see the banner on every page load until they
+   choose. A 'Cookie settings' link in the footer re-opens the banner so they
+   can change their mind. #}
+<style>
+  .cc-bar {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 18px 22px;
+    background: #ffffff;
+    border: 1px solid rgba(15,23,42,.10);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(15,23,42,.18);
+    z-index: 9999;
+    display: none;
+    color: #0f172a;
+    font: 14px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .cc-bar.open { display: block; }
+  .cc-bar h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    color: #0f172a;
+  }
+  .cc-bar p { margin: 0 0 12px; color: #475569; font-size: 13.5px; }
+  .cc-bar p a { color: #2563eb; font-weight: 700; text-decoration: none; }
+  .cc-bar p a:hover { text-decoration: underline; }
+  .cc-bar .cc-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .cc-bar button {
+    appearance: none;
+    border: 1px solid rgba(15,23,42,.12);
+    background: white;
+    color: #0f172a;
+    padding: 9px 16px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .cc-bar button:hover { background: #f1f5f9; }
+  .cc-bar button.cc-accept {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 10px 22px rgba(37,99,235,.28);
+  }
+  .cc-bar button.cc-accept:hover { filter: brightness(1.05); background: linear-gradient(135deg, #2563eb, #7c3aed); }
+  @media (max-width: 520px) {
+    .cc-bar { left: 8px; right: 8px; bottom: 8px; padding: 16px; }
+    .cc-bar .cc-actions { justify-content: stretch; }
+    .cc-bar .cc-actions button { flex: 1; }
+  }
+</style>
+
+<div id="cookieBar" class="cc-bar" role="dialog" aria-live="polite" aria-label="Cookie consent">
+  <h4>We use cookies</h4>
+  <p>
+    Essential cookies (sign-in, security) are always on. Analytics cookies — Google Tag Manager and the tools it loads — only run after you accept, so we can see what's working without tracking you by default. See our <a href="/privacy">Privacy Policy</a>.
+  </p>
+  <div class="cc-actions">
+    <button type="button" class="cc-reject" data-cc-choice="rejected">Reject all</button>
+    <button type="button" class="cc-accept" data-cc-choice="accepted">Accept all</button>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var CONSENT_COOKIE = 'monitoraeo_consent';
+    var GTM_ID = 'GTM-5SSKHFCC';
+
+    function readConsent() {
+      var m = document.cookie.match(/(?:^|; )monitoraeo_consent=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+    function writeConsent(value) {
+      var exp = new Date();
+      exp.setFullYear(exp.getFullYear() + 1);
+      var secure = location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = CONSENT_COOKIE + '=' + encodeURIComponent(value) +
+        '; expires=' + exp.toUTCString() + '; path=/; SameSite=Lax' + secure;
+    }
+    function loadGTM() {
+      if (window.__monitoraeoGtmLoaded) return;
+      window.__monitoraeoGtmLoaded = true;
+      // Standard GTM snippet, fired only after consent.
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != 'dataLayer' ? '&l=' + l : '';
+        j.async = true;
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, 'script', 'dataLayer', GTM_ID);
+    }
+    function showBar() {
+      var bar = document.getElementById('cookieBar');
+      if (bar) bar.classList.add('open');
+    }
+    function hideBar() {
+      var bar = document.getElementById('cookieBar');
+      if (bar) bar.classList.remove('open');
+    }
+    function bindButtons() {
+      var bar = document.getElementById('cookieBar');
+      if (!bar) return;
+      bar.querySelectorAll('[data-cc-choice]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var choice = btn.getAttribute('data-cc-choice');
+          writeConsent(choice);
+          hideBar();
+          if (choice === 'accepted') loadGTM();
+        });
+      });
+    }
+
+    // Expose a global so the footer 'Cookie settings' link can re-open the bar.
+    window.monitoraeoOpenCookieSettings = function () { showBar(); };
+
+    // On page load: check existing consent.
+    var existing = readConsent();
+    if (existing === 'accepted') {
+      loadGTM();
+    } else if (existing === 'rejected') {
+      // explicit reject — never load GTM, never show banner again
+    } else {
+      // No decision yet — show the banner once the DOM is ready.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { showBar(); bindButtons(); });
+      } else {
+        showBar();
+        bindButtons();
+      }
+    }
+
+    // Always bind the buttons (cheap), in case the footer 'Cookie settings' link
+    // opens the bar on a page where the user already rejected.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bindButtons);
+    } else {
+      bindButtons();
+    }
+  })();
+</script>

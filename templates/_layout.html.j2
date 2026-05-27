@@ -2,13 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-5SSKHFCC');</script>
-<!-- End Google Tag Manager -->
+{# GTM is loaded inside _cookie_consent.html.j2 (at end of body), gated on the
+   visitor's explicit consent. Loading it unconditionally here would set
+   analytics cookies before the user has chosen, which is a GDPR/UK-GDPR/CCPA
+   violation. Do not re-add it. #}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {% set _site_name = "monitoraeo" %}
 {% set _base_url = base_url or "https://monitoraeo.com" %}
@@ -351,10 +348,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </style>
 </head>
 <body>
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5SSKHFCC"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+{# Old GTM <noscript> iframe removed — it bypassed JS-based consent and would
+   set analytics cookies for no-JS visitors before they had a chance to choose.
+   The JS-gated loader in _cookie_consent.html.j2 handles all visitors. #}
 <main class="shell">
   <header class="topbar">
     <a class="brand" href="/" aria-label="monitoraeo home">
@@ -432,10 +428,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <div class="legal">
       <span>© monitoraeo · Built for the AI answer era</span>
-      <span><a href="/support">Get help →</a></span>
+      <span>
+        <a href="#" onclick="window.monitoraeoOpenCookieSettings && window.monitoraeoOpenCookieSettings(); return false;">Cookie settings</a>
+        · <a href="/support">Get help →</a>
+      </span>
     </div>
   </footer>
 </main>
+{% include "_cookie_consent.html.j2" %}
 <script>
   (function(){
     var btn = document.querySelector('.nav-burger');

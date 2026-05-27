@@ -2,13 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-5SSKHFCC');</script>
-<!-- End Google Tag Manager -->
+{# GTM is loaded inside _cookie_consent.html.j2 (at end of body), gated on the
+   visitor's explicit consent. See note in templates/_layout.html.j2. #}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Monitoraeo — Dashboard{% endblock %}</title>
 <meta name="robots" content="noindex,nofollow">
@@ -288,10 +283,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </style>
 </head>
 <body>
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5SSKHFCC"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+{# GTM noscript iframe removed in favour of consent-gated loader, same as
+   templates/_layout.html.j2. #}
 {% set active_tab = active_tab|default('') %}
 <nav class="topbar">
   {# Logged-in users land on the dashboard index when they click the wordmark;
@@ -352,5 +345,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <main>
   {% block content %}{% endblock %}
 </main>
+{% include "_cookie_consent.html.j2" %}
 </body>
 </html>
