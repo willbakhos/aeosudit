@@ -14,16 +14,76 @@
   </div>
   <div style="display:flex; gap:8px; flex-wrap:wrap;">
     <span class="pill" style="background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-weight:900;">
-      {{ users|length }} user{{ '' if users|length == 1 else 's' }}
+      {{ total }} user{{ '' if total == 1 else 's' }}{% if has_range %} in range{% endif %}
     </span>
     <span class="pill" style="background:#ecfdf5; color:#166534; font-weight:900;">
-      ${{ '%.2f'|format(grand_revenue_usd) }} total revenue
+      ${{ '%.2f'|format(grand_revenue_usd) }}{% if has_range %} revenue in range{% else %} total revenue{% endif %}
     </span>
     <a href="/dashboard/admin/refulfil" class="pill" style="background:#eff6ff; color:#1d4ed8; font-weight:900; text-decoration:none;">
       Re-fulfil orphan order
     </a>
   </div>
 </div>
+
+{# Filters bar — date range, custom dates, search, CSV export. Submits as
+   GET so URLs are shareable / bookmarkable. The CSV link below is rendered
+   server-side with the active filter state already baked into the query
+   string so it always exports exactly what's on screen. #}
+<form method="get" action="/dashboard/admin" id="adminFilters"
+      style="margin-top:14px; padding:14px 16px; background:white; border:1px solid var(--line); border-radius:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+  <div style="display:flex; flex-direction:column; gap:4px;">
+    <label for="f-range" style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);">Date range</label>
+    <select id="f-range" name="range" onchange="document.getElementById('customDates').style.display = this.value === 'custom' ? 'flex' : 'none';" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:white; font:inherit; font-size:13px; min-width:160px;">
+      <option value="all"        {% if range_value == 'all' %}selected{% endif %}>All time</option>
+      <option value="today"      {% if range_value == 'today' %}selected{% endif %}>Today</option>
+      <option value="yesterday"  {% if range_value == 'yesterday' %}selected{% endif %}>Yesterday</option>
+      <option value="7d"         {% if range_value == '7d' %}selected{% endif %}>Last 7 days</option>
+      <option value="30d"        {% if range_value == '30d' %}selected{% endif %}>Last 30 days</option>
+      <option value="month"      {% if range_value == 'month' %}selected{% endif %}>This month</option>
+      <option value="last_month" {% if range_value == 'last_month' %}selected{% endif %}>Last month</option>
+      <option value="year"       {% if range_value == 'year' %}selected{% endif %}>This year</option>
+      <option value="custom"     {% if range_value == 'custom' %}selected{% endif %}>Custom…</option>
+    </select>
+  </div>
+
+  <div id="customDates" style="display:{% if range_value == 'custom' %}flex{% else %}none{% endif %}; gap:8px; align-items:flex-end;">
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <label for="f-start" style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);">Start</label>
+      <input id="f-start" name="start" type="date" value="{{ start_value }}" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line); font:inherit; font-size:13px;">
+    </div>
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <label for="f-end" style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);">End</label>
+      <input id="f-end" name="end" type="date" value="{{ end_value }}" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line); font:inherit; font-size:13px;">
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:200px;">
+    <label for="f-q" style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);">Search email</label>
+    <input id="f-q" name="q" type="search" value="{{ search_value }}" placeholder="e.g. acme.com" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); font:inherit; font-size:13px;">
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:4px;">
+    <label for="f-per" style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);">Per page</label>
+    <select id="f-per" name="per" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:white; font:inherit; font-size:13px;">
+      {% for n in [25, 50, 100, 200] %}
+        <option value="{{ n }}" {% if per == n %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div style="display:flex; gap:8px;">
+    <button type="submit" class="btn" style="padding:8px 16px; font-size:13px;">Apply</button>
+    <a href="/dashboard/admin" class="btn ghost" style="padding:8px 16px; font-size:13px;">Reset</a>
+    {# CSV download preserves the current filter state — built from the same query string. #}
+    {% set csv_qs = 'range=' ~ range_value ~ '&start=' ~ start_value ~ '&end=' ~ end_value ~ '&q=' ~ search_value %}
+    <a href="/dashboard/admin/export.csv?{{ csv_qs }}"
+       class="btn ghost"
+       title="Download the currently-filtered user list as CSV"
+       style="padding:8px 16px; font-size:13px;">
+      Download CSV ↓
+    </a>
+  </div>
+</form>
 
 {% if q_deleted %}
   <div class="card" style="background:#ecfdf5; border-color:rgba(22,163,74,.20); margin:16px 0;">
@@ -129,11 +189,42 @@
         </tr>
       {% else %}
         <tr><td colspan="8" style="padding:30px; text-align:center; color:var(--muted);">
-          No users found. If you expect users to be here, check that
-          DATABASE_URL connects to a project with auth.users populated.
+          {% if has_range or search_value %}
+            No users match those filters. <a href="/dashboard/admin" style="color:var(--blue); font-weight:700;">Clear filters</a> to see everyone.
+          {% else %}
+            No users found. If you expect users to be here, check that
+            DATABASE_URL connects to a project with auth.users populated.
+          {% endif %}
         </td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+{# Pagination footer — only render when there's actually more than one page. #}
+{% if total_pages > 1 %}
+  {% set qs_base = 'range=' ~ range_value ~ '&start=' ~ start_value ~ '&end=' ~ end_value ~ '&q=' ~ search_value ~ '&per=' ~ per %}
+  <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; font-size:13px; color:var(--muted);">
+    <div>
+      Showing <strong style="color:var(--ink);">{{ start_idx }}</strong>–<strong style="color:var(--ink);">{{ end_idx }}</strong> of <strong style="color:var(--ink);">{{ total }}</strong>
+    </div>
+    <div style="display:flex; gap:6px; align-items:center;">
+      {% if page > 1 %}
+        <a href="/dashboard/admin?{{ qs_base }}&page=1" class="btn ghost" style="padding:6px 10px; font-size:12px;">« First</a>
+        <a href="/dashboard/admin?{{ qs_base }}&page={{ page - 1 }}" class="btn ghost" style="padding:6px 10px; font-size:12px;">‹ Prev</a>
+      {% else %}
+        <span class="btn ghost" style="padding:6px 10px; font-size:12px; opacity:.4; cursor:not-allowed;">« First</span>
+        <span class="btn ghost" style="padding:6px 10px; font-size:12px; opacity:.4; cursor:not-allowed;">‹ Prev</span>
+      {% endif %}
+      <span style="padding:6px 12px; background:#f1f5f9; border-radius:8px; font-weight:800; color:var(--ink);">{{ page }} / {{ total_pages }}</span>
+      {% if page < total_pages %}
+        <a href="/dashboard/admin?{{ qs_base }}&page={{ page + 1 }}" class="btn ghost" style="padding:6px 10px; font-size:12px;">Next ›</a>
+        <a href="/dashboard/admin?{{ qs_base }}&page={{ total_pages }}" class="btn ghost" style="padding:6px 10px; font-size:12px;">Last »</a>
+      {% else %}
+        <span class="btn ghost" style="padding:6px 10px; font-size:12px; opacity:.4; cursor:not-allowed;">Next ›</span>
+        <span class="btn ghost" style="padding:6px 10px; font-size:12px; opacity:.4; cursor:not-allowed;">Last »</span>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
 {% endblock %}

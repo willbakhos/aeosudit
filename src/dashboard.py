@@ -1427,21 +1427,90 @@ def _short_tier(tier: str) -> str:
     return _TIER_SHORT_LABELS.get(tier, tier or "—")
 
 
+def _resolve_admin_range(
+    range_key: str, start_str: str, end_str: str,
+) -> tuple[datetime | None, datetime | None, str]:
+    """Translate a UI range selection into (start_dt, end_dt, normalised_key).
+
+    Returns (None, None, 'all') for the 'all time' default. Otherwise both
+    bounds are UTC datetimes; the upper bound is exclusive (e.g. 'today'
+    spans [today 00:00, tomorrow 00:00)). Falls back to 'all' on parse
+    errors in custom inputs so a bad URL doesn't 500 the admin page."""
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day)
+    key = (range_key or "all").lower()
+    if key == "today":
+        return today_start, today_start + timedelta(days=1), "today"
+    if key == "yesterday":
+        return today_start - timedelta(days=1), today_start, "yesterday"
+    if key == "7d":
+        return today_start - timedelta(days=6), today_start + timedelta(days=1), "7d"
+    if key == "30d":
+        return today_start - timedelta(days=29), today_start + timedelta(days=1), "30d"
+    if key == "month":
+        m_start = datetime(now.year, now.month, 1)
+        next_m = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
+        return m_start, next_m, "month"
+    if key == "last_month":
+        m_start = datetime(now.year, now.month, 1)
+        prev_m_end = m_start
+        prev_m_start = datetime(now.year - 1, 12, 1) if now.month == 1 else datetime(now.year, now.month - 1, 1)
+        return prev_m_start, prev_m_end, "last_month"
+    if key == "year":
+        return datetime(now.year, 1, 1), datetime(now.year + 1, 1, 1), "year"
+    if key == "custom":
+        try:
+            sd = datetime.strptime(start_str, "%Y-%m-%d") if start_str else None
+            ed = datetime.strptime(end_str, "%Y-%m-%d") + timedelta(days=1) if end_str else None
+            # If both bounds are missing, fall back to 'all'.
+            if sd is None and ed is None:
+                return None, None, "all"
+            return sd, ed, "custom"
+        except ValueError:
+            return None, None, "all"
+    return None, None, "all"
+
+
 @router.get("/admin", response_class=HTMLResponse)
 def admin_index(
-    request: Request, deleted: int = 0, error: str = "",
+    request: Request,
+    deleted: int = 0,
+    error: str = "",
+    range: str = "all",
+    start: str = "",
+    end: str = "",
+    q: str = "",
+    page: int = 1,
+    per: int = 50,
 ):
     user = _require_master(request)
     if isinstance(user, RedirectResponse):
         return user
     auth_users = _list_auth_users()
 
-    # One-shot fetch of every brand + run + purchase, then group in Python.
+    start_dt, end_dt, range_normalised = _resolve_admin_range(range, start, end)
+    has_range = start_dt is not None or end_dt is not None
+
+    # One-shot fetch of every brand + (filtered) run + (filtered) purchase,
+    # then group in Python. Brands themselves are not date-filtered — the
+    # date range only scopes activity (runs / purchases / revenue) so the
+    # admin can ask 'who paid us in March' vs 'who's signed up overall'.
     from src.db import Purchase
     with get_session() as s:
         all_brands = list(s.exec(select(TrackedBrand)))
-        all_runs = list(s.exec(select(AuditRunRecord)))
-        all_purchases = list(s.exec(select(Purchase)))
+        run_q = select(AuditRunRecord)
+        purchase_q = select(Purchase)
+        if start_dt is not None:
+            run_q = run_q.where(AuditRunRecord.started_at >= start_dt)
+            purchase_q = purchase_q.where(Purchase.created_at >= start_dt)
+        if end_dt is not None:
+            run_q = run_q.where(AuditRunRecord.started_at < end_dt)
+            purchase_q = purchase_q.where(Purchase.created_at < end_dt)
+        all_runs = list(s.exec(run_q))
+        all_purchases = list(s.exec(purchase_q))
+        # Latest run for each user is "all-time latest" regardless of range,
+        # because the 'last seen' signal is useful independent of the filter.
+        latest_runs_all = list(s.exec(select(AuditRunRecord)))
 
     brands_by_user: dict[str, list[TrackedBrand]] = {}
     for b in all_brands:
@@ -1449,6 +1518,11 @@ def admin_index(
     runs_by_user: dict[str, list[AuditRunRecord]] = {}
     for r in all_runs:
         runs_by_user.setdefault(str(r.user_id), []).append(r)
+    latest_by_user: dict[str, datetime] = {}
+    for r in latest_runs_all:
+        key = str(r.user_id)
+        if key not in latest_by_user or r.started_at > latest_by_user[key]:
+            latest_by_user[key] = r.started_at
     # Purchases are matched to users by lowercase email (Stripe doesn't
     # know about Supabase user_ids).
     purchases_by_email: dict[str, list[Purchase]] = {}
@@ -1465,27 +1539,67 @@ def admin_index(
             {"brand": b.name, "tier": b.tier, "label": TIER_PLANS.get(b.tier, {}).get("label", b.tier)}
             for b in brands if b.tier
         ]
-        latest_run = max(runs, key=lambda r: r.started_at) if runs else None
         summaries.append({
             **u,
             "brand_count": len(brands),
             "run_count": len(runs),
             "active_subs": active_subs,
             "is_master": is_master_email(u["email"]),
-            "latest_run_at": latest_run.started_at if latest_run else None,
+            "latest_run_at": latest_by_user.get(u["id"]),
             "purchase_count": len(purchases),
             "revenue_usd": round(sum(p.amount_usd or 0 for p in purchases), 2),
         })
-    # Footer totals for the admin index header.
+
+    # Search filter — case-insensitive substring match on email.
+    if q.strip():
+        ql = q.strip().lower()
+        summaries = [s for s in summaries if ql in (s.get("email") or "").lower()]
+
+    # When a date range is active, hide users with no activity in the window
+    # so the table shows ONLY who was active. With 'all time' we still want
+    # the full user list (including dormant accounts) for moderation.
+    if has_range:
+        summaries = [s for s in summaries if s["run_count"] or s["purchase_count"]]
+
+    # Sort: revenue desc, then run count desc, then signup recency desc.
+    summaries.sort(
+        key=lambda x: (x.get("revenue_usd") or 0, x.get("run_count") or 0, x.get("created_at") or datetime.min),
+        reverse=True,
+    )
+
+    # Pagination — clamp per to 10..200, page to >=1.
+    per = max(10, min(per or 50, 200))
+    page = max(1, page or 1)
+    total = len(summaries)
+    total_pages = max(1, (total + per - 1) // per)
+    page = min(page, total_pages)
+    start_idx = (page - 1) * per
+    end_idx = start_idx + per
+    page_summaries = summaries[start_idx:end_idx]
+
+    # Range total = sum of revenue across the filtered (search + date) set.
     grand_total = round(sum(s["revenue_usd"] for s in summaries), 2)
+
     return _render(
         "admin_users.html.j2",
         user=user,
-        users=summaries,
+        users=page_summaries,
         grand_revenue_usd=grand_total,
         flash_deleted=bool(deleted),
         flash_error=error or None,
         active_tab="admin",
+        # Filter / pagination state for the template.
+        range_value=range_normalised,
+        start_value=start,
+        end_value=end,
+        search_value=q,
+        page=page,
+        per=per,
+        total=total,
+        total_pages=total_pages,
+        start_idx=start_idx + 1 if total else 0,
+        end_idx=min(end_idx, total),
+        has_range=has_range,
     )
 
 
@@ -1493,6 +1607,118 @@ def is_master_email(email: str) -> bool:
     """Module-level alias so templates can call this via dashboard import."""
     from src.auth import is_master
     return is_master(email)
+
+
+@router.get("/admin/export.csv")
+def admin_export_csv(
+    request: Request,
+    range: str = "all",
+    start: str = "",
+    end: str = "",
+    q: str = "",
+):
+    """Download the currently-filtered user list as CSV. Reuses the same
+    range/search semantics as GET /admin so 'Download CSV' from the admin
+    UI always returns exactly what's on screen. No pagination — the CSV
+    contains every matching user."""
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    auth_users = _list_auth_users()
+    start_dt, end_dt, _ = _resolve_admin_range(range, start, end)
+    has_range = start_dt is not None or end_dt is not None
+
+    from src.db import Purchase
+    with get_session() as s:
+        all_brands = list(s.exec(select(TrackedBrand)))
+        run_q = select(AuditRunRecord)
+        purchase_q = select(Purchase)
+        if start_dt is not None:
+            run_q = run_q.where(AuditRunRecord.started_at >= start_dt)
+            purchase_q = purchase_q.where(Purchase.created_at >= start_dt)
+        if end_dt is not None:
+            run_q = run_q.where(AuditRunRecord.started_at < end_dt)
+            purchase_q = purchase_q.where(Purchase.created_at < end_dt)
+        all_runs = list(s.exec(run_q))
+        all_purchases = list(s.exec(purchase_q))
+        latest_runs_all = list(s.exec(select(AuditRunRecord)))
+
+    brands_by_user: dict[str, list[TrackedBrand]] = {}
+    for b in all_brands:
+        brands_by_user.setdefault(str(b.user_id), []).append(b)
+    runs_by_user: dict[str, list[AuditRunRecord]] = {}
+    for r in all_runs:
+        runs_by_user.setdefault(str(r.user_id), []).append(r)
+    latest_by_user: dict[str, datetime] = {}
+    for r in latest_runs_all:
+        k = str(r.user_id)
+        if k not in latest_by_user or r.started_at > latest_by_user[k]:
+            latest_by_user[k] = r.started_at
+    purchases_by_email: dict[str, list[Purchase]] = {}
+    for p in all_purchases:
+        purchases_by_email.setdefault((p.email or "").lower(), []).append(p)
+
+    from src.server import TIER_PLANS
+    rows: list[dict] = []
+    for u in auth_users:
+        brands = brands_by_user.get(u["id"], [])
+        runs = runs_by_user.get(u["id"], [])
+        purchases = purchases_by_email.get((u["email"] or "").lower(), [])
+        active_sub_labels = "; ".join(
+            f"{b.name} ({TIER_PLANS.get(b.tier, {}).get('label', b.tier)})"
+            for b in brands if b.tier
+        )
+        rows.append({
+            "user_id": u["id"],
+            "email": u.get("email") or "",
+            "is_master": "yes" if is_master_email(u.get("email") or "") else "",
+            "email_confirmed": "yes" if u.get("email_confirmed_at") else "",
+            "signed_up_utc": u["created_at"].strftime("%Y-%m-%d %H:%M:%S") if u.get("created_at") else "",
+            "last_sign_in_utc": u["last_sign_in_at"].strftime("%Y-%m-%d %H:%M:%S") if u.get("last_sign_in_at") else "",
+            "brand_count": len(brands),
+            "run_count_in_range": len(runs),
+            "purchase_count_in_range": len(purchases),
+            "revenue_usd_in_range": round(sum(p.amount_usd or 0 for p in purchases), 2),
+            "latest_run_all_time": latest_by_user[u["id"]].strftime("%Y-%m-%d %H:%M:%S") if u["id"] in latest_by_user else "",
+            "active_subscriptions": active_sub_labels,
+        })
+
+    # Apply search + has-range filters identically to the HTML view.
+    if q.strip():
+        ql = q.strip().lower()
+        rows = [r for r in rows if ql in (r.get("email") or "").lower()]
+    if has_range:
+        rows = [r for r in rows if r["run_count_in_range"] or r["purchase_count_in_range"]]
+    rows.sort(
+        key=lambda x: (x["revenue_usd_in_range"], x["run_count_in_range"]),
+        reverse=True,
+    )
+
+    import csv as _csv
+    import io as _io
+    buf = _io.StringIO()
+    fieldnames = list(rows[0].keys()) if rows else [
+        "user_id", "email", "is_master", "email_confirmed",
+        "signed_up_utc", "last_sign_in_utc", "brand_count",
+        "run_count_in_range", "purchase_count_in_range", "revenue_usd_in_range",
+        "latest_run_all_time", "active_subscriptions",
+    ]
+    writer = _csv.DictWriter(buf, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+    csv_bytes = buf.getvalue()
+
+    # Filename embeds the active range so multiple exports don't overwrite
+    # each other in the downloads folder.
+    label = range or "all"
+    if has_range and label == "custom":
+        label = f"{start or 'start'}_to_{end or 'end'}"
+    filename = f"monitoraeo-users-{label}-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv"
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/admin/users/{target_user_id}", response_class=HTMLResponse)
