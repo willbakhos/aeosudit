@@ -78,9 +78,9 @@
 <p class="page-lede">Send us a ticket using the form below. For urgent issues with a paid audit (e.g. it didn't deliver), include your purchase email and we'll prioritise it.</p>
 
 {% if status == 'sent' %}
-<div class="flash">✓ Ticket received. Check your email for confirmation — we'll respond within one business day.</div>
+<div class="flash">✓ Ticket received. We'll reply to the email you entered within one business day.</div>
 {% elif status == 'error' %}
-<div class="flash err">Something went wrong sending your ticket. Please email us directly at <a href="mailto:hello@example.com" style="color:#991b1b; font-weight:800;">hello@example.com</a>.</div>
+<div class="flash err">Something went wrong sending your ticket. Please email us directly at <a href="mailto:will@monitoraeo.com" style="color:#991b1b; font-weight:800;">will@monitoraeo.com</a>.</div>
 {% endif %}
 
 <div class="support-grid">
@@ -96,12 +96,13 @@
     <div class="field">
       <label for="topic">Topic</label>
       <select id="topic" name="topic">
-        <option value="general">General question</option>
         <option value="audit_issue">Issue with a paid audit</option>
-        <option value="refund">Refund request</option>
-        <option value="custom_audit">Custom audit / agency enquiry</option>
-        <option value="monitoring">Monitoring waitlist / early access</option>
+        <option value="billing">Billing or refund</option>
+        <option value="monitoring">Monitoring question</option>
+        <option value="custom_audit">Agency / volume / white-label</option>
         <option value="bug">Bug report</option>
+        <option value="feature_request">Feature request</option>
+        <option value="general">General question</option>
       </select>
     </div>
     <div class="field">
