@@ -11,46 +11,49 @@
     left: 16px;
     right: 16px;
     bottom: 16px;
-    max-width: 720px;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 18px 22px;
+    padding: 12px 18px;
     background: #ffffff;
     border: 1px solid rgba(15,23,42,.10);
-    border-radius: 16px;
-    box-shadow: 0 24px 60px rgba(15,23,42,.18);
+    border-radius: 14px;
+    box-shadow: 0 18px 44px rgba(15,23,42,.16);
     z-index: 9999;
     display: none;
     color: #0f172a;
-    font: 14px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font: 13.5px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   }
-  .cc-bar.open { display: block; }
-  .cc-bar h4 {
-    margin: 0 0 6px;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: -.01em;
-    color: #0f172a;
+  .cc-bar.open {
+    display: flex;
+    align-items: center;
+    gap: 18px;
   }
-  .cc-bar p { margin: 0 0 12px; color: #475569; font-size: 13.5px; }
-  .cc-bar p a { color: #2563eb; font-weight: 700; text-decoration: none; }
-  .cc-bar p a:hover { text-decoration: underline; }
+  .cc-bar .cc-msg {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: #334155;
+    font-size: 13.5px;
+  }
+  .cc-bar .cc-msg strong { color: #0f172a; font-weight: 800; }
+  .cc-bar .cc-msg a { color: #2563eb; font-weight: 700; text-decoration: none; }
+  .cc-bar .cc-msg a:hover { text-decoration: underline; }
   .cc-bar .cc-actions {
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
   }
   .cc-bar button {
     appearance: none;
     border: 1px solid rgba(15,23,42,.12);
     background: white;
     color: #0f172a;
-    padding: 9px 16px;
+    padding: 7px 14px;
     border-radius: 999px;
     font: inherit;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
     transition: background .15s ease, border-color .15s ease;
   }
   .cc-bar button:hover { background: #f1f5f9; }
@@ -58,24 +61,24 @@
     background: linear-gradient(135deg, #2563eb, #7c3aed);
     color: white;
     border-color: transparent;
-    box-shadow: 0 10px 22px rgba(37,99,235,.28);
+    box-shadow: 0 8px 18px rgba(37,99,235,.26);
   }
   .cc-bar button.cc-accept:hover { filter: brightness(1.05); background: linear-gradient(135deg, #2563eb, #7c3aed); }
-  @media (max-width: 520px) {
-    .cc-bar { left: 8px; right: 8px; bottom: 8px; padding: 16px; }
+  @media (max-width: 720px) {
+    .cc-bar { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+    .cc-bar.open { flex-direction: column; align-items: stretch; gap: 10px; }
     .cc-bar .cc-actions { justify-content: stretch; }
     .cc-bar .cc-actions button { flex: 1; }
   }
 </style>
 
 <div id="cookieBar" class="cc-bar" role="dialog" aria-live="polite" aria-label="Cookie consent">
-  <h4>We use cookies</h4>
-  <p>
-    Essential cookies (sign-in, security) are always on. Analytics cookies — Google Tag Manager and the tools it loads — only run after you accept, so we can see what's working without tracking you by default. See our <a href="/privacy">Privacy Policy</a>.
-  </p>
+  <div class="cc-msg">
+    <strong>Cookies.</strong> Essential cookies are always on. Analytics (Google Tag Manager) only run after you accept. <a href="/privacy">Privacy Policy</a>.
+  </div>
   <div class="cc-actions">
-    <button type="button" class="cc-reject" data-cc-choice="rejected">Reject all</button>
-    <button type="button" class="cc-accept" data-cc-choice="accepted">Accept all</button>
+    <button type="button" class="cc-reject" data-cc-choice="rejected">Reject</button>
+    <button type="button" class="cc-accept" data-cc-choice="accepted">Accept</button>
   </div>
 </div>
 
