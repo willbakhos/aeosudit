@@ -452,7 +452,52 @@ def _not_found_handler(request: Request, exc: HTTPException) -> Response:
     return HTMLResponse(html, status_code=404)
 
 
-SUPPORT_TO_EMAIL = os.environ.get("SUPPORT_TO_EMAIL", "hello@example.com")
+SUPPORT_TO_EMAIL = os.environ.get("SUPPORT_TO_EMAIL", "will@monitoraeo.com")
+
+
+def send_support_ticket(
+    *,
+    email: str,
+    subject: str,
+    topic: str,
+    message: str,
+    context: str | None = None,
+) -> bool:
+    """Email a support ticket to SUPPORT_TO_EMAIL via Resend. Returns True
+    on success, False if Resend is unconfigured or the send failed.
+
+    `context` is an optional pre-formatted HTML block prepended to the
+    body — used by the dashboard support form to include the logged-in
+    user's identity, plan and brand list so support replies have what
+    they need without a back-and-forth."""
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key:
+        print("[support] RESEND_API_KEY not set — ticket not sent")
+        return False
+    try:
+        import resend
+        resend.api_key = api_key
+        from_addr = os.environ.get(
+            "REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>"
+        )
+        body_html = (
+            (f"{context}<hr>" if context else "")
+            + f"<p><strong>From:</strong> {email}</p>"
+            + f"<p><strong>Topic:</strong> {topic}</p>"
+            + f"<hr>"
+            + f"<p>{message.replace(chr(10), '<br>')}</p>"
+        )
+        resend.Emails.send({
+            "from": from_addr,
+            "to": [SUPPORT_TO_EMAIL],
+            "reply_to": email,
+            "subject": f"[Support · {topic}] {subject}",
+            "html": body_html,
+        })
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(f"[support] send failed: {type(exc).__name__}: {exc}")
+        return False
 
 
 @app.post("/support", response_class=HTMLResponse)
@@ -462,33 +507,10 @@ def submit_support(
     topic: str = Form("general"),
     message: str = Form(...),
 ) -> HTMLResponse:
-    """Receive a support ticket and email it to SUPPORT_TO_EMAIL via Resend.
-    Falls back to a graceful failure if Resend isn't configured yet."""
-    api_key = os.environ.get("RESEND_API_KEY", "").strip()
-    sent = False
-    if api_key:
-        try:
-            import resend
-            resend.api_key = api_key
-            from_addr = os.environ.get(
-                "REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>"
-            )
-            body_html = (
-                f"<p><strong>From:</strong> {email}</p>"
-                f"<p><strong>Topic:</strong> {topic}</p>"
-                f"<hr>"
-                f"<p>{message.replace(chr(10), '<br>')}</p>"
-            )
-            resend.Emails.send({
-                "from": from_addr,
-                "to": [SUPPORT_TO_EMAIL],
-                "reply_to": email,
-                "subject": f"[Support · {topic}] {subject}",
-                "html": body_html,
-            })
-            sent = True
-        except Exception:  # noqa: BLE001
-            sent = False
+    """Public support form — anyone can submit, no login required."""
+    sent = send_support_ticket(
+        email=email, subject=subject, topic=topic, message=message,
+    )
     return _render("support.html.j2", status="sent" if sent else "error")
 
 

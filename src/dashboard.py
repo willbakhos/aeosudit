@@ -1226,6 +1226,76 @@ def reports(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Support tab — let logged-in users send us a ticket without leaving the app.
+# Email auto-prefills from their account, brand context is injected into the
+# email body so support replies have what they need without back-and-forth.
+# ---------------------------------------------------------------------------
+@router.get("/support", response_class=HTMLResponse)
+def support_form(request: Request, status: str = ""):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    return _render(
+        "support.html.j2",
+        user=user,
+        status=status or None,
+        active_tab="support",
+    )
+
+
+@router.post("/support", response_class=HTMLResponse)
+def submit_support_ticket(
+    request: Request,
+    subject: str = Form(...),
+    topic: str = Form("general"),
+    message: str = Form(...),
+):
+    user = _require_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    # Build the user-context block so support sees who's writing without
+    # us having to grep the DB. Include account id, tier, brands tracked.
+    brand_lines: list[str] = []
+    try:
+        with get_session() as s:
+            brands = list(
+                s.exec(
+                    select(TrackedBrand).where(
+                        TrackedBrand.user_id == UUID(user["id"])
+                    )
+                )
+            )
+            for b in brands[:10]:
+                brand_lines.append(
+                    f"<li><strong>{b.name}</strong> ({b.domain}) — tier "
+                    f"{(b.tier or 'one-off')!r}, {b.runs_this_month or 0} runs this month</li>"
+                )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[support] brand-context lookup failed: {type(exc).__name__}: {exc}")
+    context = (
+        f"<p><strong>Account:</strong> {user.get('email')} "
+        f"(<code>{user.get('id')}</code>){' — MASTER' if user.get('is_master') else ''}</p>"
+        + (
+            f"<p><strong>Brands tracked:</strong></p><ul>{''.join(brand_lines)}</ul>"
+            if brand_lines
+            else "<p><em>No brands tracked yet.</em></p>"
+        )
+    )
+    from src.server import send_support_ticket
+    sent = send_support_ticket(
+        email=user.get("email") or "",
+        subject=subject,
+        topic=topic,
+        message=message,
+        context=context,
+    )
+    return RedirectResponse(
+        f"/dashboard/support?status={'sent' if sent else 'error'}",
+        status_code=303,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Monitoring tab — cron status, schedule, recent metric progression
 # ---------------------------------------------------------------------------
 

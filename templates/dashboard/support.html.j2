@@ -1,0 +1,69 @@
+{% extends "dashboard/_layout.html.j2" %}
+{% block title %}Support · monitoraeo{% endblock %}
+{% block content %}
+
+<h1 style="margin:0 0 6px;">Support</h1>
+<p class="lede" style="max-width:680px;">Send us a message and we'll get back to you within one business day. Your account email and current brands are included automatically so we have what we need to help.</p>
+
+{% if status == 'sent' %}
+<div class="card" style="background:#ecfdf5; border:1px solid #86efac; color:#166534; margin:18px 0;">
+  <strong>✓ Ticket received.</strong> We'll reply to <code>{{ user.email }}</code> within one business day. Most audit-issue tickets are answered same-day during business hours.
+</div>
+{% elif status == 'error' %}
+<div class="card" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; margin:18px 0;">
+  Something went wrong sending your ticket. Please email us directly at <a href="mailto:will@monitoraeo.com" style="color:#991b1b; font-weight:800;">will@monitoraeo.com</a>.
+</div>
+{% endif %}
+
+<div class="card" style="max-width:760px; padding:28px;">
+  <form method="POST" action="/dashboard/support" style="display:flex; flex-direction:column; gap:16px;">
+    <div style="display:grid; gap:6px;">
+      <label style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">From</label>
+      <input type="email" value="{{ user.email }}" disabled style="padding:11px 13px; border-radius:10px; border:1px solid var(--line); background:#f8fafc; color:var(--muted); font:inherit; font-size:14px;">
+      <p style="margin:0; font-size:12px; color:var(--muted);">Replies will go to this address. To change it, update your account.</p>
+    </div>
+
+    <div style="display:grid; gap:6px;">
+      <label for="topic" style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">Topic</label>
+      <select id="topic" name="topic" style="padding:11px 13px; border-radius:10px; border:1px solid var(--line); background:white; font:inherit; font-size:14px;">
+        <option value="audit_issue">Issue with an audit (data missing, didn't deliver, wrong queries)</option>
+        <option value="billing">Billing or refund</option>
+        <option value="account">Account or login</option>
+        <option value="feature_request">Feature request</option>
+        <option value="bug">Bug report</option>
+        <option value="agency">Agency / volume / white-label</option>
+        <option value="general">General question</option>
+      </select>
+    </div>
+
+    <div style="display:grid; gap:6px;">
+      <label for="subject" style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">Subject</label>
+      <input id="subject" name="subject" type="text" required placeholder="Short summary — e.g. 'Action plan missing on Decidr audit'" style="padding:11px 13px; border-radius:10px; border:1px solid var(--line); background:white; font:inherit; font-size:14px;">
+    </div>
+
+    <div style="display:grid; gap:6px;">
+      <label for="message" style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">Message</label>
+      <textarea id="message" name="message" required rows="8" placeholder="Tell us what's happening. If it's about a specific audit or brand, include the brand name or report URL so we can look it up directly." style="padding:13px; border-radius:10px; border:1px solid var(--line); background:white; font:inherit; font-size:14px; line-height:1.55; resize:vertical; min-height:140px;"></textarea>
+    </div>
+
+    <div>
+      <button type="submit" class="btn" style="padding:12px 22px; font-size:14px;">Send ticket →</button>
+    </div>
+  </form>
+</div>
+
+<div style="max-width:760px; margin-top:28px; display:grid; gap:12px;">
+  <div class="card" style="padding:18px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">Audit didn't deliver?</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Audits usually finish in 5–10 minutes. If yours has been "running" for more than 30 minutes, send us a ticket with the brand name and we'll either deliver it or refund you.</p>
+  </div>
+  <div class="card" style="padding:18px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">Action plan missing or thin?</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">Hit re-run from the Brands tab — every paid re-run regenerates the action plan from fresh data. If it's still missing after a re-run, ticket us with the brand name.</p>
+  </div>
+  <div class="card" style="padding:18px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">Refund</h3>
+    <p style="margin:0; color:var(--muted); font-size:13.5px;">If the audit failed completely (every engine errored) we refund automatically. Otherwise pick <strong>Billing or refund</strong> above within 14 days of purchase.</p>
+  </div>
+</div>
+{% endblock %}
