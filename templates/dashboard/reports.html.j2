@@ -141,10 +141,22 @@
       updateTimeline(pct);
     }
 
+    // Slow tick = use when the dashboard is idle (no audit in flight). We
+    // don't need to know about new audits instantly — 30s feels live enough
+    // and cuts polling traffic ~85%. Fast tick is only used while an audit
+    // is actively running so the progress timeline keeps up.
+    var FAST_TICK = 4000;
+    var SLOW_TICK = 30000;
+
     async function poll() {
       try {
         var r = await fetch('/dashboard/api/pending-audit', { credentials: 'same-origin' });
-        if (!r.ok) { setTimeout(poll, 4000); return; }
+        // Session expired (cookie still in browser but JWT past TTL). No point
+        // retrying — the server will keep returning 401 until the user logs
+        // back in. Stop polling so we don't spam the logs with 401s for every
+        // abandoned tab. Page reload will resume polling once they're signed in.
+        if (r.status === 401 || r.status === 403) return;
+        if (!r.ok) { setTimeout(poll, SLOW_TICK); return; }
         var data = await r.json();
         if (data.status === 'complete') {
           show(data);
@@ -154,11 +166,13 @@
         }
         if (data.status === 'running') {
           show(data);
+          setTimeout(poll, FAST_TICK);
+          return;
         }
-        // idle / unauthenticated → leave banner hidden, just re-poll.
-        setTimeout(poll, 4000);
+        // idle → no audit in flight, slow-poll
+        setTimeout(poll, SLOW_TICK);
       } catch (e) {
-        setTimeout(poll, 4000);
+        setTimeout(poll, SLOW_TICK);
       }
     }
 
