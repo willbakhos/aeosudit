@@ -1907,23 +1907,110 @@ async def stripe_webhook(request: Request) -> JSONResponse:
     return JSONResponse({"received": True})
 
 
-RUN_ANOTHER_BAR = """
+SHARE_REPORT_BAR = """
 <div class="report-floating-cta" style="position: fixed; bottom: 22px; right: 22px; z-index: 9999;
             font-family: Inter, system-ui, sans-serif;">
-  <a href="/" style="display: inline-flex; align-items: center; gap: 8px;
-                     padding: 12px 18px; border-radius: 999px;
+  <div id="shareReportPopover" style="display:none; position: absolute; bottom: 58px; right: 0;
+              width: 320px; padding: 18px; border-radius: 16px; background: white;
+              box-shadow: 0 24px 60px rgba(15,23,42,.22); border: 1px solid rgba(15,23,42,.08);
+              color: #0f172a;">
+    <div style="font-size: 14px; font-weight: 800; margin-bottom: 10px;">Share this report</div>
+    <div style="display:flex; gap:8px; margin-bottom: 14px;">
+      <input id="shareReportUrl" readonly value=""
+             style="flex:1; min-width:0; padding:9px 11px; border-radius:8px;
+                    border:1px solid rgba(15,23,42,.14); background:#f8fafc;
+                    font: inherit; font-size: 12.5px; color: #334155;
+                    text-overflow: ellipsis;">
+      <button id="shareReportCopyBtn" type="button"
+              style="flex:0 0 auto; padding:9px 14px; border-radius:8px; border:0;
                      background: linear-gradient(135deg, #2563eb, #7c3aed);
-                     color: white; text-decoration: none; font-weight: 800;
-                     font-size: 13px; letter-spacing: -.01em;
-                     box-shadow: 0 18px 38px rgba(37,99,235,.34);">
-    + Run another preview
-  </a>
+                     color: white; font: inherit; font-size: 12.5px; font-weight: 800;
+                     cursor: pointer; white-space: nowrap;">Copy</button>
+    </div>
+    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;
+                letter-spacing: .06em; color: #64748b; margin-bottom: 8px;">Share via</div>
+    <div style="display:flex; gap:8px;">
+      <a id="shareLinkedIn" href="#" target="_blank" rel="noopener"
+         style="flex:1; padding:9px 12px; border-radius:8px; border:1px solid rgba(15,23,42,.10);
+                background:white; color:#0f172a; text-decoration:none; font: inherit; font-size:12.5px;
+                font-weight:700; text-align:center;">LinkedIn</a>
+      <a id="shareEmail" href="#"
+         style="flex:1; padding:9px 12px; border-radius:8px; border:1px solid rgba(15,23,42,.10);
+                background:white; color:#0f172a; text-decoration:none; font: inherit; font-size:12.5px;
+                font-weight:700; text-align:center;">Email</a>
+      <a id="shareX" href="#" target="_blank" rel="noopener"
+         style="flex:1; padding:9px 12px; border-radius:8px; border:1px solid rgba(15,23,42,.10);
+                background:white; color:#0f172a; text-decoration:none; font: inherit; font-size:12.5px;
+                font-weight:700; text-align:center;">X</a>
+    </div>
+  </div>
+  <button id="shareReportToggle" type="button"
+          style="display: inline-flex; align-items: center; gap: 8px;
+                 padding: 12px 18px; border: 0; border-radius: 999px;
+                 background: linear-gradient(135deg, #2563eb, #7c3aed);
+                 color: white; font: inherit; font-weight: 800; cursor: pointer;
+                 font-size: 13px; letter-spacing: -.01em;
+                 box-shadow: 0 18px 38px rgba(37,99,235,.34);">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+    Share this report
+  </button>
 </div>
+<script>
+  (function () {
+    var toggle = document.getElementById('shareReportToggle');
+    var pop = document.getElementById('shareReportPopover');
+    var urlInput = document.getElementById('shareReportUrl');
+    var copyBtn = document.getElementById('shareReportCopyBtn');
+    if (!toggle || !pop || !urlInput || !copyBtn) return;
+
+    var url = window.location.href;
+    urlInput.value = url;
+
+    var encoded = encodeURIComponent(url);
+    var shareText = encodeURIComponent('Check out this AI Visibility audit on monitoraeo');
+    document.getElementById('shareLinkedIn').href =
+      'https://www.linkedin.com/sharing/share-offsite/?url=' + encoded;
+    document.getElementById('shareEmail').href =
+      'mailto:?subject=' + shareText + '&body=' + shareText + '%0A%0A' + encoded;
+    document.getElementById('shareX').href =
+      'https://twitter.com/intent/tweet?text=' + shareText + '&url=' + encoded;
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
+    });
+    pop.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { pop.style.display = 'none'; });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') pop.style.display = 'none';
+    });
+
+    copyBtn.addEventListener('click', function () {
+      var done = function () {
+        copyBtn.textContent = 'Copied ✓';
+        setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1800);
+      };
+      var fallback = function () {
+        try { urlInput.select(); document.execCommand('copy'); done(); } catch (e) {}
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, fallback);
+      } else {
+        fallback();
+      }
+    });
+  })();
+</script>
 """
 
 # Injected into every served report. Detects whether the page is inside an
 # iframe (i.e. wrapped by /dashboard/reports/{id}) and hides the in-report
-# horizontal nav + floating "Run another preview" CTA — both are redundant
+# horizontal nav + floating "Share this report" CTA — both are redundant
 # when the dashboard chrome and side-nav are already present. Standalone
 # (full-screen) views keep them.
 EMBED_AWARE_HEAD = """
@@ -2038,11 +2125,11 @@ def serve_report(run_id: str, refresh: int = 0, tier: str = "full") -> HTMLRespo
     head_inject = f'<base href="/report/{run_id}/">{EMBED_AWARE_HEAD}'
     if "<head>" in html:
         html = html.replace("<head>", f"<head>{head_inject}", 1)
-    # Inject a floating "Run another preview" CTA when served over HTTP, so
-    # visitors can audit a new domain without backing out manually. Hidden
-    # when the report is embedded in /dashboard/reports/{id}.
+    # Inject a floating "Share this report" CTA when served over HTTP, so
+    # visitors can copy the preview URL or share via LinkedIn / email / X.
+    # Hidden when the report is embedded in /dashboard/reports/{id}.
     if "<body>" in html:
-        html = html.replace("<body>", f"<body>{RUN_ANOTHER_BAR}", 1)
+        html = html.replace("<body>", f"<body>{SHARE_REPORT_BAR}", 1)
     return HTMLResponse(html)
 
 
