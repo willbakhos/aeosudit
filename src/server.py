@@ -825,17 +825,28 @@ def _run_preview_job(
         ]
         run_dir = OUTPUT_ROOT / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
-        screenshot_path = capture_screenshot(domain, run_dir)
 
         _set_step(run_id, f"Gathering AI answers across {len(queries)} buyer questions…", 25)
+
+        # Fold the screenshot into the parallel gather so its 3-8s latency
+        # overlaps with Apify's 20-50s instead of stacking before it. Screenshot
+        # is a sync httpx call so wrap it in asyncio.to_thread; we swallow
+        # exceptions to keep parity with the previous best-effort behaviour
+        # (a failed screenshot must not fail the whole preview).
+        async def _capture_screenshot_safe() -> Path | None:
+            try:
+                return await asyncio.to_thread(capture_screenshot, domain, run_dir)
+            except Exception:  # noqa: BLE001
+                return None
 
         async def _gather():
             return await asyncio.gather(
                 run_audit(engine_objs, queries, run_dir),
                 run_tech_audit_async(domain),
+                _capture_screenshot_safe(),
             )
 
-        responses, tech = asyncio.run(_gather())
+        responses, tech, screenshot_path = asyncio.run(_gather())
 
         # Surface a couple of tech-audit findings to the loading page so the
         # user sees real signal while the rest of the audit finishes. Keyed by
