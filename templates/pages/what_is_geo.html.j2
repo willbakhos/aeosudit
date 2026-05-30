@@ -2,14 +2,40 @@
 {% set active = 'geo' %}
 {% set canonical_path = "/what-is-geo" %}
 {% set page_description = "GEO (Generative Engine Optimisation) is the technical layer that decides whether AI engines can read, parse and trust your site. The 15 things that matter." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
 {% block title %}What is GEO? Generative Engine Optimisation | monitoraeo{% endblock %}
 
 {% block schema %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _base_url }}/what-is-geo#article",
+      "headline": "What is GEO? Generative Engine Optimisation explained",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "author": { "@id": "{{ _base_url }}/#org" },
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "Generative Engine Optimisation"},
+        {"@type": "Thing", "name": "AI crawlability"},
+        {"@type": "Thing", "name": "llms.txt"},
+        {"@type": "Thing", "name": "Structured data for AI engines"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _base_url }}/what-is-geo#faq",
+      "mainEntity": [
     {
       "@type": "Question",
       "name": "What is GEO (Generative Engine Optimisation)?",
@@ -34,6 +60,8 @@
       "@type": "Question",
       "name": "What is llms.txt and do I need one?",
       "acceptedAnswer": {"@type": "Answer", "text": "llms.txt is an emerging standard (llmstxt.org) — a markdown file at /llms.txt that summarises the site for AI crawlers, similar to how robots.txt summarises crawl rules. It tells LLMs what the site is, who it's for, and which pages are authoritative content. Major AI ingestion pipelines are starting to honour it. Yes, publish one — it's a five-minute task with measurable upside."}
+        }
+      ]
     }
   ]
 }

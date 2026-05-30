@@ -2,6 +2,9 @@
 {% set active = 'aeo-vs-seo' %}
 {% set canonical_path = "/aeo-vs-seo" %}
 {% set page_description = "AEO vs SEO explained. SEO ranks pages on a results list. AEO gets your brand named and cited inside the AI's answer. Side-by-side comparison." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
 {% block title %}AEO vs SEO — what's the difference? | monitoraeo{% endblock %}
 
 {% block schema %}
@@ -15,8 +18,12 @@
       "headline": "AEO vs SEO — what's the difference?",
       "description": "{{ page_description }}",
       "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
       "author": { "@id": "{{ _base_url }}/#org" },
       "publisher": { "@id": "{{ _base_url }}/#org" },
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
       "inLanguage": "en"
     },
     {

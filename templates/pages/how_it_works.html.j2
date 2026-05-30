@@ -2,6 +2,9 @@
 {% set active = 'how' %}
 {% set canonical_path = "/how-it-works" %}
 {% set page_description = "How monitoraeo turns a domain into an AI visibility audit in under 10 minutes — query generation, 2-engine or 5-engine parallel testing, scoring and report." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
 {% block title %}How it works — from domain to audit | monitoraeo{% endblock %}
 
 {% block schema %}
@@ -11,6 +14,8 @@
   "@type": "HowTo",
   "name": "How a monitoraeo AEO audit works",
   "description": "Step-by-step process: monitoraeo turns a domain into an AI visibility audit by generating 40 buyer questions, querying 2 engines (Two Engine Audit, $29) or all 5 engines (Full Audit, $79) in parallel, running a 15-check GEO audit on the site, scoring every answer, and generating a prioritised action plan.",
+  "datePublished": "{{ page_published_time }}",
+  "dateModified": "{{ page_modified_time }}",
   "totalTime": "PT10M",
   "supply": [
     {"@type": "HowToSupply", "name": "Your domain"},

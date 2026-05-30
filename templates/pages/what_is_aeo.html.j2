@@ -2,6 +2,9 @@
 {% set active = 'aeo' %}
 {% set canonical_path = "/what-is-aeo" %}
 {% set page_description = "AEO (Answer Engine Optimisation) is getting your brand named and cited when buyers ask ChatGPT, Claude, Perplexity, Gemini or Google AI Overviews a question." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
 {% block title %}What is AEO? Answer Engine Optimisation | monitoraeo{% endblock %}
 
 {% block schema %}
@@ -17,6 +20,8 @@
       "mainEntityOfPage": "{{ _canonical }}",
       "publisher": {"@id": "{{ _base_url }}/#org"},
       "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
       "inLanguage": "en",
       "about": [
         {"@type": "Thing", "name": "Answer Engine Optimisation"},
