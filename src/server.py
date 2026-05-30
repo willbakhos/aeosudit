@@ -16,6 +16,7 @@ import re
 import secrets
 import string
 import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -127,6 +128,14 @@ _jinja = Environment(
 # In-memory job tracker for free previews. Fine for single-process MVP;
 # swap for Redis when you scale beyond one uvicorn worker.
 PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
+
+# Per-IP rate limit on /preview submissions. Anonymous visitors only — anyone
+# with a valid dashboard session bypasses entirely. In-memory by design (same
+# caveat as PREVIEW_JOBS: lost on restart, which is fine — restart resets the
+# counter and an attacker who timed it would only get one extra batch).
+PREVIEW_RATE_LIMIT_HITS: dict[str, list[float]] = {}
+PREVIEW_HOURLY_LIMIT = 5
+PREVIEW_DAILY_LIMIT = 10
 
 # Paid orders waiting for the customer to enter their competitor list before
 # the audit kicks off. Keyed by Stripe session_id. Same MVP storage caveat.
@@ -942,6 +951,49 @@ def _smart_titlecase(text: str) -> str:
     return re.sub(r"\b\w", lambda m: m.group().upper(), text)
 
 
+def _client_ip(request: Request) -> str:
+    """Real client IP, honouring Railway's X-Forwarded-For. Falls back to
+    'unknown' so the rate limit still applies when we can't identify the
+    caller (rather than letting them bypass)."""
+    fwd = request.headers.get("x-forwarded-for", "").strip()
+    if fwd:
+        return fwd.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _enforce_preview_rate_limit(request: Request) -> None:
+    """Throttle anonymous /preview submissions. Bypassed for:
+      - anyone with a valid dashboard session (logged-in / paid users)
+      - localhost (so local dev + scripts can hammer freely)
+    Limits: PREVIEW_HOURLY_LIMIT per rolling hour, PREVIEW_DAILY_LIMIT per
+    rolling day, per IP. Raises HTTPException(429) on breach.
+    """
+    from src.auth import current_user
+    if current_user(request) is not None:
+        return
+    ip = _client_ip(request)
+    if ip in ("127.0.0.1", "::1"):
+        return
+    now = time.time()
+    hits = [t for t in PREVIEW_RATE_LIMIT_HITS.get(ip, []) if now - t < 86400]
+    if len(hits) >= PREVIEW_DAILY_LIMIT:
+        raise HTTPException(
+            429,
+            f"You've used your {PREVIEW_DAILY_LIMIT} free previews for today. "
+            "Sign in to your dashboard for unlimited audits, or come back tomorrow.",
+        )
+    if sum(1 for t in hits if now - t < 3600) >= PREVIEW_HOURLY_LIMIT:
+        raise HTTPException(
+            429,
+            f"Too many previews from your network ({PREVIEW_HOURLY_LIMIT}/hour). "
+            "Please wait an hour, or sign in to your dashboard.",
+        )
+    hits.append(now)
+    PREVIEW_RATE_LIMIT_HITS[ip] = hits
+
+
 def _start_preview(
     domain: str, brand: str, category: str | None, country: str | None = None
 ) -> tuple[str, str, str, str]:
@@ -972,11 +1024,13 @@ def _start_preview(
 
 @app.post("/preview", response_class=HTMLResponse)
 def submit_preview(
+    request: Request,
     domain: str = Form(...),
     brand_name: str = Form(...),
     category: str = Form(""),
     country: str = Form(""),
 ) -> HTMLResponse:
+    _enforce_preview_rate_limit(request)
     run_id, norm, brand, resolved_country = _start_preview(
         domain, brand_name, category, country
     )
@@ -1013,6 +1067,7 @@ def _resolve_teaser_shortlink(d_param: str) -> tuple[str, str, str] | None:
 
 @app.get("/preview", response_class=HTMLResponse)
 def submit_preview_get(
+    request: Request,
     d: str = "",
     b: str = "",
     c: str = "",
@@ -1035,6 +1090,7 @@ def submit_preview_get(
     attribution ONLY fires on this initial /preview hit — normal landing
     visits, manual /preview submissions and direct navigation are never
     attributed to email/outreach."""
+    _enforce_preview_rate_limit(request)
     resolved_domain = d
     resolved_brand = b
     resolved_category = c
