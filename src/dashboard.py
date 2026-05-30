@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import threading
 import uuid
 from datetime import datetime, timedelta
@@ -2535,3 +2536,229 @@ def _run_audit_for_brand(
                 run_rec.error = f"{type(exc).__name__}: {exc}"
                 s.add(run_rec)
                 s.commit()
+
+
+# ---------------------------------------------------------------------------
+# Admin — industry rankings (Play 2 programmatic SEO)
+# Master-only: list, add, trigger immediate refresh of /ai-visibility/* pages.
+# ---------------------------------------------------------------------------
+
+_INDUSTRY_ADMIN_HTML = """<!doctype html>
+<meta charset="utf-8">
+<title>Industry rankings · admin</title>
+<style>
+  body {{ font-family: Inter, system-ui, sans-serif; margin: 32px; max-width: 1100px; color: #0f172a; }}
+  h1 {{ font-size: 28px; letter-spacing: -.03em; }}
+  h2 {{ font-size: 20px; margin-top: 32px; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }}
+  th, td {{ padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }}
+  th {{ background: #f8fafc; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }}
+  form {{ margin: 16px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }}
+  label {{ display: block; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 4px; }}
+  input, textarea, select {{ width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font: inherit; margin-bottom: 12px; }}
+  textarea {{ min-height: 120px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }}
+  button {{ padding: 10px 18px; border-radius: 999px; border: 0; background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; font-weight: 800; cursor: pointer; }}
+  .pill {{ display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 800; }}
+  .pill.warn {{ background: #fef3c7; color: #92400e; }}
+  .flash {{ padding: 12px 16px; background: #ecfdf5; border: 1px solid #86efac; color: #166534; border-radius: 12px; margin-bottom: 16px; }}
+  .flash.err {{ background: #fef2f2; border-color: #fca5a5; color: #991b1b; }}
+  code {{ font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }}
+</style>
+<h1>Industry rankings · admin</h1>
+<p><a href="/dashboard/admin">← back to admin</a> · <a href="/ai-visibility" target="_blank">view public index ↗</a></p>
+{flash}
+
+<h2>Add a new industry</h2>
+<form method="POST" action="/dashboard/admin/industries">
+  <label>Slug (URL fragment, lowercase-hyphenated)</label>
+  <input name="slug" required pattern="[a-z0-9-]+" placeholder="e.g. crm-software">
+
+  <label>Display name</label>
+  <input name="name" required placeholder="e.g. CRM software">
+
+  <label>Parent category</label>
+  <select name="parent_category" required>
+    {category_options}
+  </select>
+
+  <label>Short description (1 sentence, shown on page lede)</label>
+  <input name="description" placeholder="e.g. Customer relationship management platforms used by sales and support teams.">
+
+  <label>Brand list (one per line, format <code>Brand Name | domain.com</code>)</label>
+  <textarea name="brands" required placeholder="HubSpot | hubspot.com
+Salesforce | salesforce.com
+Pipedrive | pipedrive.com
+Zoho CRM | zoho.com
+..."></textarea>
+
+  <button type="submit">Create industry + queue audit →</button>
+</form>
+
+<h2>Existing rankings</h2>
+{rows_html}
+"""
+
+
+def _industries_admin_render(flash: str = "") -> str:
+    """Render the admin page with the current industry list. Pulled out so
+    GET and POST handlers share the same render path."""
+    from sqlmodel import select as _select, func as _func
+    from src.db import IndustryReport, IndustryBrand, get_session
+    from src.server import INDUSTRY_PARENT_CATEGORIES
+
+    category_options = "\n".join(
+        f'<option value="{c}">{c}</option>' for c in INDUSTRY_PARENT_CATEGORIES
+    )
+
+    rows_html = ""
+    try:
+        with get_session() as s:
+            reports = list(s.exec(_select(IndustryReport).order_by(IndustryReport.created_at.desc())))
+            if not reports:
+                rows_html = "<p><em>No industries published yet.</em></p>"
+            else:
+                rows_html = (
+                    "<table><thead><tr>"
+                    "<th>Slug</th><th>Name</th><th>Category</th>"
+                    "<th>Brands</th><th>Last refresh</th><th>Next refresh</th><th></th>"
+                    "</tr></thead><tbody>"
+                )
+                for r in reports:
+                    brand_count = s.exec(
+                        _select(_func.count(IndustryBrand.id))
+                        .where(IndustryBrand.industry_slug == r.slug)
+                    ).one() or 0
+                    last = r.last_full_refresh.strftime("%Y-%m-%d %H:%M") if r.last_full_refresh else "<span class='pill warn'>never</span>"
+                    nxt = r.next_scheduled_refresh.strftime("%Y-%m-%d") if r.next_scheduled_refresh else "<span class='pill warn'>asap</span>"
+                    rows_html += (
+                        f"<tr>"
+                        f"<td><code>{r.slug}</code></td>"
+                        f"<td><a href='/ai-visibility/{r.slug}' target='_blank'>{r.name}</a></td>"
+                        f"<td>{r.parent_category or '—'}</td>"
+                        f"<td>{int(brand_count)}</td>"
+                        f"<td>{last}</td>"
+                        f"<td>{nxt}</td>"
+                        f"<td><form method='POST' action='/dashboard/admin/industries/{r.slug}/refresh' style='display:inline; margin:0; padding:0; background:transparent; border:0;'>"
+                        f"<button type='submit' style='padding:6px 12px; font-size:12px;'>Refresh now</button></form></td>"
+                        f"</tr>"
+                    )
+                rows_html += "</tbody></table>"
+    except Exception as exc:  # noqa: BLE001
+        rows_html = f"<p class='flash err'>DB unavailable: {type(exc).__name__}: {exc}</p>"
+
+    return _INDUSTRY_ADMIN_HTML.format(
+        flash=flash, category_options=category_options, rows_html=rows_html,
+    )
+
+
+@router.get("/admin/industries", response_class=HTMLResponse)
+def admin_industries(request: Request, status: str = "", detail: str = ""):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    flash = ""
+    if status == "created":
+        flash = f"<div class='flash'>✓ Industry <code>{detail}</code> created. Cron will refresh it on next tick.</div>"
+    elif status == "refresh_queued":
+        flash = f"<div class='flash'>✓ <code>{detail}</code> queued for immediate refresh.</div>"
+    elif status:
+        flash = f"<div class='flash err'>Error: {status} — {detail}</div>"
+    return HTMLResponse(_industries_admin_render(flash=flash))
+
+
+@router.post("/admin/industries")
+def admin_industries_create(
+    request: Request,
+    slug: str = Form(...),
+    name: str = Form(...),
+    parent_category: str = Form(""),
+    description: str = Form(""),
+    brands: str = Form(...),
+):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryBrand, get_session
+
+    slug = re.sub(r"[^a-z0-9-]", "", slug.strip().lower())
+    if not slug or not name.strip():
+        return RedirectResponse(
+            "/dashboard/admin/industries?status=invalid&detail=slug+and+name+required",
+            status_code=303,
+        )
+
+    # Parse brand lines: "Brand Name | domain.com"
+    brand_rows: list[tuple[str, str]] = []
+    for line in (brands or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in line.split("|", 1)]
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            continue
+        brand_rows.append((parts[0], parts[1].lower().lstrip("https://").lstrip("http://").lstrip("www.")))
+    if not brand_rows:
+        return RedirectResponse(
+            "/dashboard/admin/industries?status=invalid&detail=no+valid+brand+lines",
+            status_code=303,
+        )
+
+    try:
+        with get_session() as s:
+            existing = s.exec(_select(IndustryReport).where(IndustryReport.slug == slug)).first()
+            if existing:
+                return RedirectResponse(
+                    f"/dashboard/admin/industries?status=duplicate&detail={slug}",
+                    status_code=303,
+                )
+            report = IndustryReport(
+                slug=slug,
+                name=name.strip(),
+                parent_category=parent_category.strip(),
+                description=description.strip(),
+                next_scheduled_refresh=datetime.utcnow(),  # eligible immediately
+            )
+            s.add(report)
+            for brand_name, brand_domain in brand_rows:
+                s.add(IndustryBrand(
+                    industry_slug=slug,
+                    brand_name=brand_name,
+                    brand_domain=brand_domain,
+                ))
+            s.commit()
+    except Exception as exc:  # noqa: BLE001
+        return RedirectResponse(
+            f"/dashboard/admin/industries?status=db_error&detail={type(exc).__name__}",
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        f"/dashboard/admin/industries?status=created&detail={slug}",
+        status_code=303,
+    )
+
+
+@router.post("/admin/industries/{slug}/refresh")
+def admin_industries_refresh(request: Request, slug: str):
+    """Trigger an immediate refresh of one industry's rankings, off-thread.
+    The cron will pick it up on its next tick if this fails."""
+    import threading as _threading
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+
+    def _run():
+        try:
+            from src.industry_audit import refresh_industry
+            summary = refresh_industry(slug)
+            print(f"[admin] manual refresh {slug}: {summary}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[admin] manual refresh {slug} raised: {type(exc).__name__}: {exc}")
+
+    _threading.Thread(target=_run, daemon=True).start()
+    return RedirectResponse(
+        f"/dashboard/admin/industries?status=refresh_queued&detail={slug}",
+        status_code=303,
+    )

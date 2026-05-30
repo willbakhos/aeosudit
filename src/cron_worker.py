@@ -84,11 +84,66 @@ def _loop() -> None:
             print("[cron] tick failed:")
             traceback.print_exc()
         try:
+            _industry_tick()
+        except Exception:  # noqa: BLE001
+            print("[cron] industry tick failed:")
+            traceback.print_exc()
+        try:
             _maybe_prune_teasers()
         except Exception:  # noqa: BLE001
             print("[cron] teaser prune failed:")
             traceback.print_exc()
         time.sleep(CHECK_INTERVAL)
+
+
+# How many industry rankings to refresh per tick. Each refresh is 8 Apify
+# queries — keep this low to avoid spiking spend if many industries fall due
+# at once (e.g. fresh deploy that bulk-creates rankings).
+INDUSTRY_BATCH_SIZE = int(os.environ.get("CRON_INDUSTRY_BATCH_SIZE", "3"))
+
+
+def _industry_tick() -> None:
+    """Refresh up to INDUSTRY_BATCH_SIZE industries whose
+    next_scheduled_refresh is due. Drives the /ai-visibility/{slug} pages.
+    Each refresh runs synchronously to keep concurrent Apify load bounded."""
+    from sqlmodel import select
+    from src.db import IndustryReport, get_session
+    from src.industry_audit import refresh_industry
+
+    now = datetime.utcnow()
+    try:
+        with get_session() as s:
+            due = list(
+                s.exec(
+                    select(IndustryReport)
+                    .where(
+                        (IndustryReport.next_scheduled_refresh == None)  # noqa: E711
+                        | (IndustryReport.next_scheduled_refresh <= now)
+                    )
+                    .order_by(IndustryReport.next_scheduled_refresh.asc().nulls_first())
+                    .limit(INDUSTRY_BATCH_SIZE)
+                )
+            )
+        if not due:
+            return
+        for report in due:
+            try:
+                summary = refresh_industry(report.slug)
+                print(
+                    f"[cron] industry {report.slug}: "
+                    f"updated={summary.get('rows_updated', 0)} "
+                    f"failed={summary.get('rows_failed', 0)} "
+                    f"queries={summary.get('queries_run', 0)} "
+                    f"elapsed={summary.get('elapsed_sec', '?')}s"
+                )
+                if summary.get("errors"):
+                    print(f"[cron] industry {report.slug} errors: {summary['errors'][:5]}")
+            except Exception:  # noqa: BLE001
+                print(f"[cron] industry {report.slug} refresh raised:")
+                traceback.print_exc()
+    except Exception:  # noqa: BLE001
+        print("[cron] _industry_tick error:")
+        traceback.print_exc()
 
 
 def _maybe_prune_teasers() -> None:

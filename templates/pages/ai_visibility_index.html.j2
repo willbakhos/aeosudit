@@ -1,0 +1,163 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/ai-visibility" %}
+{% set page_description = "AI search visibility rankings by industry — measured monthly across ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews. The top brands AI engines actually name and cite when buyers ask." %}
+{% set page_og_type = 'website' %}
+{% block title %}AI search visibility rankings by industry (2026) | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "{{ _canonical }}#collection",
+      "name": "AI search visibility rankings by industry",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "inLanguage": "en"
+    }
+    {%- if industries_by_category %},
+    {
+      "@type": "ItemList",
+      "@id": "{{ _canonical }}#list",
+      "name": "Published industry rankings",
+      "itemListOrder": "https://schema.org/ItemListOrderAscending",
+      "numberOfItems": {{ total_industries }},
+      "itemListElement": [
+        {%- set ns = namespace(pos=0) %}
+        {%- for category, items in industries_by_category %}
+          {%- for it in items %}
+            {%- set ns.pos = ns.pos + 1 %}
+            {%- if ns.pos > 1 %},{% endif %}
+        {"@type": "ListItem", "position": {{ ns.pos }}, "name": "{{ it.name }}", "url": "{{ _base_url }}/ai-visibility/{{ it.slug }}"}
+          {%- endfor %}
+        {%- endfor %}
+      ]
+    }
+    {%- endif %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .visibility-hero {
+    padding: 36px;
+    border-radius: 28px;
+    background: linear-gradient(135deg, rgba(15,23,42,.97) 0%, rgba(30,41,59,.96) 48%, rgba(30,64,175,.94) 100%);
+    color: white; box-shadow: var(--shadow); margin-bottom: 28px;
+    position: relative; overflow: hidden;
+  }
+  .visibility-hero::before {
+    content: ""; position: absolute; inset: -2px;
+    background:
+      radial-gradient(circle at 78% 20%, rgba(6,182,212,.28), transparent 24rem),
+      radial-gradient(circle at 8% 90%, rgba(124,58,237,.32), transparent 22rem);
+    pointer-events: none;
+  }
+  .visibility-hero .inner { position: relative; z-index: 1; }
+  .visibility-hero h1 { color: white; margin: 0 0 12px; font-size: clamp(32px, 4.5vw, 48px); line-height: 1.05; letter-spacing: -.045em; }
+  .visibility-hero .lede { color: rgba(255,255,255,.86); margin: 0 0 22px; font-size: 16px; max-width: 720px; line-height: 1.6; }
+  .hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+  .hero-stat { padding: 16px 18px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 16px; }
+  .hero-stat .n { font-size: 28px; font-weight: 900; letter-spacing: -.04em; line-height: 1; color: white; }
+  .hero-stat .l { color: rgba(255,255,255,.72); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
+
+  .category-section { margin: 36px 0 0; }
+  .category-section h2 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 4px; letter-spacing: -.03em; }
+  .category-section .section-sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+  .industry-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+  .industry-card {
+    display: block; padding: 20px 22px;
+    background: white; border: 1px solid var(--line); border-radius: 18px;
+    text-decoration: none; box-shadow: var(--shadow-soft);
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .industry-card:hover { transform: translateY(-1px); border-color: rgba(37,99,235,.30); box-shadow: 0 18px 38px rgba(15,23,42,.08); }
+  .industry-card .name {
+    display: block; font-size: 17px; font-weight: 800; color: var(--ink);
+    letter-spacing: -.015em; margin-bottom: 6px;
+  }
+  .industry-card .meta {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .industry-card .meta .top { color: var(--ink-2); font-weight: 700; }
+  .industry-card .meta .top strong { color: var(--blue); }
+  .industry-card .meta .updated { color: var(--soft-muted); }
+
+  .empty-card {
+    padding: 28px;
+    border-radius: 22px;
+    border: 1px dashed var(--line);
+    background: white;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  @media (max-width: 720px) {
+    .hero-stats { grid-template-columns: 1fr; }
+    .industry-grid { grid-template-columns: 1fr; }
+  }
+{% endblock %}
+
+{% block content %}
+<section class="visibility-hero">
+  <div class="inner">
+    <span class="eyebrow" style="background:rgba(255,255,255,.10); color:rgba(255,255,255,.84); border:1px solid rgba(255,255,255,.16);">AI Visibility Rankings</span>
+    <h1>The brands AI engines actually name when buyers ask.</h1>
+    <p class="lede">We audit thousands of brands across the five major AI answer engines — ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews — every month. These pages rank who's named, who's cited, and who AI engines have decided are the default answers in each category.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="n">{{ total_industries or 0 }}</div>
+        <div class="l">Industries tracked</div>
+      </div>
+      <div class="hero-stat">
+        <div class="n">{{ '{:,}'.format(total_brands) if total_brands else 0 }}</div>
+        <div class="l">Brands audited</div>
+      </div>
+      <div class="hero-stat">
+        <div class="n">{{ '{:,}'.format(total_brands * 8) if total_brands else 0 }}</div>
+        <div class="l">AI answers analysed</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if industries_by_category %}
+  {% for category, items in industries_by_category %}
+    <div class="category-section">
+      <h2>{{ category }}</h2>
+      <p class="section-sub">{{ items|length }} industry ranking{{ '' if items|length == 1 else 's' }}</p>
+      <div class="industry-grid">
+        {% for it in items %}
+          <a class="industry-card" href="/ai-visibility/{{ it.slug }}">
+            <span class="name">{{ it.name }}</span>
+            <div class="meta">
+              {% if it.top_brand_name %}<span class="top">Top brand: <strong>{{ it.top_brand_name }}</strong></span>{% endif %}
+              {% if it.brand_count %}<span class="updated">{{ it.brand_count }} brand{{ '' if it.brand_count == 1 else 's' }} audited</span>{% endif %}
+              {% if it.last_refresh %}<span class="updated">Updated {{ it.last_refresh.strftime('%b %Y') }}</span>{% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-card">
+    <h3 style="margin:0 0 8px;">Rankings publishing soon</h3>
+    <p style="margin:0;">We're auditing the first set of industries now. Check back in a few days — or <a href="/#preview" style="color:var(--blue); font-weight:700;">run a free preview on your own brand</a> in the meantime.</p>
+  </div>
+{% endif %}
+
+<h2 style="margin-top:48px;">How these rankings are produced</h2>
+<p>For each industry we pick 20 leading brands and run an 8-query AI Mode audit per brand monthly — that's the same query set the <a href="/#preview" style="color:var(--blue); font-weight:700;">free preview</a> uses, asked of Google's standalone AI Mode page. Brands are ranked by a composite score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/how-it-works" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+
+<div style="display:flex; gap:14px; margin-top: 18px; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Audit your brand →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+{% endblock %}

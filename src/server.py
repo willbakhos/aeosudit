@@ -260,6 +260,9 @@ SITEMAP_PAGES: list[tuple[str, str, str]] = [
     ("/what-is-aeo", "monthly", "0.8"),
     ("/what-is-geo", "monthly", "0.8"),
     ("/aeo-vs-seo", "monthly", "0.8"),
+    ("/what-is-ai-overview", "monthly", "0.8"),
+    ("/glossary", "monthly", "0.7"),
+    ("/ai-visibility", "weekly", "0.9"),
     ("/product/audit", "monthly", "0.8"),
     ("/product/monitoring", "monthly", "0.6"),
     ("/how-it-works", "monthly", "0.7"),
@@ -357,14 +360,32 @@ Every paid tier includes the prioritised action plan (content, schema and entity
 @app.get("/sitemap.xml")
 def sitemap_xml() -> Response:
     today = datetime.now().strftime("%Y-%m-%d")
+    entries: list[tuple[str, str, str, str]] = [
+        (path, today, freq, prio) for path, freq, prio in SITEMAP_PAGES
+    ]
+    # Dynamically include every published /ai-visibility/{slug} page so new
+    # industries appear in the sitemap the moment they're created. Use the
+    # per-report last_full_refresh as <lastmod> so engines re-crawl whenever
+    # the cron worker refreshes a category. Fail-soft on DB error: the static
+    # entries still ship.
+    try:
+        from sqlmodel import select as _select
+        from src.db import IndustryReport, get_session
+        with get_session() as s:
+            for r in s.exec(_select(IndustryReport).order_by(IndustryReport.slug)):
+                lastmod = (r.last_full_refresh or r.created_at or datetime.utcnow()).strftime("%Y-%m-%d")
+                entries.append((f"/ai-visibility/{r.slug}", lastmod, "monthly", "0.6"))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[sitemap] industry entries skipped: {type(exc).__name__}: {exc}")
+
     urls = "\n".join(
         f"  <url>\n"
         f"    <loc>{SITE_BASE_URL}{path}</loc>\n"
-        f"    <lastmod>{today}</lastmod>\n"
+        f"    <lastmod>{lastmod}</lastmod>\n"
         f"    <changefreq>{freq}</changefreq>\n"
         f"    <priority>{prio}</priority>\n"
         f"  </url>"
-        for path, freq, prio in SITEMAP_PAGES
+        for path, lastmod, freq, prio in entries
     )
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -421,6 +442,170 @@ def page_product_monitoring(request: Request) -> HTMLResponse:
 def page_how_it_works(request: Request) -> HTMLResponse:
     return _render("how_it_works.html.j2", request=request,
                    breadcrumbs=[{"name": "How it works", "path": "/how-it-works"}])
+
+
+# ---------------------------------------------------------------------------
+# Definitional pages (Play 1 — content surface area for AEO/GEO keywords)
+# ---------------------------------------------------------------------------
+
+@app.get("/what-is-ai-overview", response_class=HTMLResponse)
+def page_what_is_ai_overview(request: Request) -> HTMLResponse:
+    return _render(
+        "what_is_ai_overview.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "Glossary", "path": "/glossary"},
+            {"name": "What is AI Overview?", "path": "/what-is-ai-overview"},
+        ],
+    )
+
+
+@app.get("/glossary", response_class=HTMLResponse)
+def page_glossary(request: Request) -> HTMLResponse:
+    return _render("glossary.html.j2", request=request,
+                   breadcrumbs=[{"name": "Glossary", "path": "/glossary"}])
+
+
+# ---------------------------------------------------------------------------
+# Industry visibility pages (Play 2 — programmatic data-backed rankings)
+# ---------------------------------------------------------------------------
+
+# Stable parent_category list — used to group the index page and to populate
+# the admin form dropdown. New categories can be added freely; the index page
+# only renders categories that have at least one IndustryReport in them.
+INDUSTRY_PARENT_CATEGORIES = [
+    "SaaS",
+    "Fintech",
+    "Productivity",
+    "Marketing",
+    "Creative",
+    "Developer tools",
+    "E-commerce",
+    "Healthcare",
+    "HR & People",
+    "Legal & Compliance",
+    "Other",
+]
+
+
+@app.get("/ai-visibility", response_class=HTMLResponse)
+def page_ai_visibility_index(request: Request) -> HTMLResponse:
+    """Index of every industry we publish rankings for, grouped by
+    parent_category. Falls back to an empty-state when no industries have
+    been published yet (early launch / dev environment without DB)."""
+    industries_by_category: dict[str, list[dict[str, Any]]] = {}
+    total_brands = 0
+    total_industries = 0
+    last_refresh: datetime | None = None
+
+    try:
+        from sqlmodel import select as _select, func as _func
+        from src.db import IndustryReport, IndustryBrand, get_session
+        with get_session() as s:
+            reports = list(s.exec(_select(IndustryReport).order_by(IndustryReport.name)))
+            total_industries = len(reports)
+            for r in reports:
+                # Pull the #1 brand for the preview line ("top brand: X").
+                top = s.exec(
+                    _select(IndustryBrand)
+                    .where(IndustryBrand.industry_slug == r.slug)
+                    .order_by(IndustryBrand.rank_in_industry.asc())
+                    .limit(1)
+                ).first()
+                cnt = s.exec(
+                    _select(_func.count(IndustryBrand.id))
+                    .where(IndustryBrand.industry_slug == r.slug)
+                ).one()
+                total_brands += int(cnt or 0)
+                if r.last_full_refresh and (last_refresh is None or r.last_full_refresh > last_refresh):
+                    last_refresh = r.last_full_refresh
+                industries_by_category.setdefault(r.parent_category or "Other", []).append({
+                    "slug": r.slug,
+                    "name": r.name,
+                    "description": r.description,
+                    "last_refresh": r.last_full_refresh,
+                    "top_brand_name": top.brand_name if top else None,
+                    "brand_count": int(cnt or 0),
+                })
+    except Exception as exc:  # noqa: BLE001
+        # DB unreachable (local CLI dev) — render the empty state rather than 500.
+        print(f"[ai-visibility] index DB unavailable: {type(exc).__name__}: {exc}")
+
+    # Render categories in the canonical order, omitting empty buckets.
+    ordered = [
+        (cat, industries_by_category[cat])
+        for cat in INDUSTRY_PARENT_CATEGORIES
+        if cat in industries_by_category
+    ]
+    return _render(
+        "ai_visibility_index.html.j2", request=request,
+        industries_by_category=ordered,
+        total_industries=total_industries,
+        total_brands=total_brands,
+        last_refresh=last_refresh,
+        breadcrumbs=[{"name": "AI Visibility Rankings", "path": "/ai-visibility"}],
+    )
+
+
+@app.get("/ai-visibility/{slug}", response_class=HTMLResponse)
+def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
+    """One industry's ranking page. 404s if the slug isn't published — we
+    do NOT want random invented slugs to render an empty page that Google
+    might index as thin content."""
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryBrand, get_session
+
+    try:
+        with get_session() as s:
+            report = s.exec(
+                _select(IndustryReport).where(IndustryReport.slug == slug)
+            ).first()
+            if not report:
+                raise HTTPException(404, "Industry ranking not found")
+            brands = list(
+                s.exec(
+                    _select(IndustryBrand)
+                    .where(IndustryBrand.industry_slug == slug)
+                    .order_by(IndustryBrand.rank_in_industry.asc())
+                )
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ai-visibility] {slug} DB error: {type(exc).__name__}: {exc}")
+        raise HTTPException(503, "Rankings temporarily unavailable")
+
+    # Surface a few aggregate signals the template uses for the hero band.
+    audited = [b for b in brands if b.last_audited]
+    avg_visibility = (
+        sum(b.visibility_pct for b in audited) / len(audited)
+        if audited else 0.0
+    )
+    avg_citation = (
+        sum(b.citation_pct for b in audited) / len(audited)
+        if audited else 0.0
+    )
+    # Top cited sources across the whole category — flatten + count.
+    source_counts: dict[str, int] = {}
+    for b in audited:
+        for src in (b.top_cited_sources or []):
+            source_counts[src] = source_counts.get(src, 0) + 1
+    top_category_sources = [
+        s for s, _ in sorted(source_counts.items(), key=lambda kv: -kv[1])[:8]
+    ]
+
+    return _render(
+        "ai_visibility_industry.html.j2", request=request,
+        report=report,
+        brands=brands,
+        avg_visibility=avg_visibility,
+        avg_citation=avg_citation,
+        top_category_sources=top_category_sources,
+        audited_count=len(audited),
+        breadcrumbs=[
+            {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+            {"name": report.name, "path": f"/ai-visibility/{report.slug}"},
+        ],
+    )
 
 
 @app.get("/privacy", response_class=HTMLResponse)

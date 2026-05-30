@@ -61,6 +61,18 @@ def init_db() -> None:
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS monitored_queries JSONB DEFAULT '[]'::jsonb",
         "ALTER TABLE monitor_audit_run ADD COLUMN IF NOT EXISTS trigger_type VARCHAR DEFAULT 'manual'",
         "ALTER TABLE monitor_tracked_brand ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR",
+        # IndustryReport / IndustryBrand additive columns. Both tables are
+        # created by create_all above; the ALTERs below let us add columns to
+        # an already-deployed schema without an explicit migration tool.
+        "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS parent_category VARCHAR DEFAULT ''",
+        "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS methodology_version INTEGER DEFAULT 1",
+        "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS refresh_interval_days INTEGER DEFAULT 30",
+        "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS visibility_pct DOUBLE PRECISION DEFAULT 0",
+        "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS citation_pct DOUBLE PRECISION DEFAULT 0",
+        "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS top_engine VARCHAR DEFAULT ''",
+        "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS top_cited_sources JSONB DEFAULT '[]'::jsonb",
+        "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS last_audit_error VARCHAR",
+        "CREATE INDEX IF NOT EXISTS idx_industry_brand_slug_rank ON monitor_industry_brand (industry_slug, rank_in_industry)",
     ]
     with eng.begin() as conn:
         for sql in migrations:
@@ -200,3 +212,57 @@ class AuditRunRecord(SQLModel, table=True):
     # post-purchase fulfilment). Used by the trend chart to colour-code
     # manual interventions distinctly from the scheduled baseline.
     trigger_type: str = "manual"
+
+
+class IndustryReport(SQLModel, table=True):
+    """A public industry visibility ranking page at /ai-visibility/{slug}.
+    Drives the programmatic-SEO moat: every industry we cover becomes one
+    indexable page ranking the top N brands in that category by their AI
+    answer-engine visibility. Refreshed monthly by the cron worker."""
+    __tablename__ = "monitor_industry_report"
+
+    slug: str = Field(primary_key=True)          # "crm-software"
+    name: str                                     # "CRM software"
+    parent_category: str = ""                     # "SaaS" | "Fintech" | "Productivity" | "Marketing" | "Creative"
+    description: str = ""                         # 1-sentence category def for the page lede
+    methodology_version: int = 1                  # bump when scoring math changes (invalidates trends)
+    refresh_interval_days: int = 30               # how often each brand re-audits
+    last_full_refresh: datetime | None = None     # most recent successful pass over all brands
+    next_scheduled_refresh: datetime | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class IndustryBrand(SQLModel, table=True):
+    """One brand inside an IndustryReport. The (industry_slug, brand_domain)
+    pair is unique. Each row carries the cached audit result so the public
+    page can render with a single SELECT — no live audit calls on render."""
+    __tablename__ = "monitor_industry_brand"
+
+    id: int | None = Field(default=None, primary_key=True)
+    industry_slug: str = Field(index=True)         # foreign key to IndustryReport.slug
+    brand_name: str
+    brand_domain: str = Field(index=True)
+    # Composite 0-100 score: weighted average of visibility (% of answers
+    # naming brand) and citation rate (% citing brand's domain). Higher = better.
+    visibility_score: float = 0.0
+    # Raw visibility (% of answers naming the brand at all). 0-100.
+    visibility_pct: float = 0.0
+    # Raw citation rate (% of answers citing the brand's domain). 0-100.
+    citation_pct: float = 0.0
+    # Per-engine breakdown: {"google_ai": {"visibility": 50, "citations": 25}, ...}
+    visibility_per_engine: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB)
+    )
+    # Top 5 domains the AI cited when answering category questions. Used to
+    # show "AI's trusted sources in this category" on the page.
+    top_cited_sources: list[str] = Field(
+        default_factory=list, sa_column=Column(JSONB)
+    )
+    # The single strongest engine for this brand. Surfaced as the "top engine"
+    # column in the ranking table.
+    top_engine: str = ""
+    rank_in_industry: int = 0                      # cached for sort, recomputed on full refresh
+    last_audited: datetime | None = None
+    last_audit_error: str | None = None            # last failure reason, for triage
+    created_at: datetime = Field(default_factory=datetime.utcnow)

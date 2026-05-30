@@ -1,0 +1,260 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/what-is-ai-overview" %}
+{% set page_description = "AI Overview is Google's AI-generated answer panel that appears above the regular search results on ~25–48% of queries. It summarises web content and cites sources — and if your brand isn't in there, you're invisible on the queries that drive buyer research." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-05-30T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
+{% block title %}What is Google AI Overview? How it works + how to appear in it | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "What is Google AI Overview? How it works and how to appear in it",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "Google AI Overview"},
+        {"@type": "Thing", "name": "Search Generative Experience"},
+        {"@type": "Thing", "name": "Answer Engine Optimisation"},
+        {"@type": "Thing", "name": "AI search visibility"}
+      ]
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "{{ _canonical }}#term",
+      "name": "AI Overview",
+      "alternateName": ["Google AI Overview", "AIO", "Search Generative Experience", "SGE"],
+      "description": "Google's AI-generated summary panel that appears above the traditional search results on roughly 25–48% of queries. It synthesises content from multiple web sources and shows a clickable list of citations alongside the prose.",
+      "url": "{{ _canonical }}",
+      "inDefinedTermSet": {"@type": "DefinedTermSet", "name": "AEO & GEO glossary", "url": "{{ _base_url }}/glossary"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Google AI Overview?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Google AI Overview (formerly Search Generative Experience or SGE) is the AI-generated summary panel that appears above Google's traditional blue-link results on roughly 25–48% of queries. It synthesises content from multiple web sources into a short answer and shows a small list of clickable source citations underneath. The query has to be informational or comparative for an AI Overview to render — purely navigational and transactional queries usually don't trigger one."}
+        },
+        {
+          "@type": "Question",
+          "name": "Is AI Overview the same as AI Mode?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No. AI Overview is the panel that appears above standard search results (still on the regular Google SERP). AI Mode is Google's standalone full-page AI search experience — you reach it via the AI Mode tab or the URL parameter ?udm=50. AI Mode always renders a full conversational answer with 15–30 citations; AI Overview renders inline only on a subset of queries and shows 3–10 citations on average."}
+        },
+        {
+          "@type": "Question",
+          "name": "What percentage of Google searches show an AI Overview?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Industry studies in 2026 put the render rate at roughly 25–48% of queries depending on intent class. Informational queries (\"how does X work\", \"what are the side effects of Y\") trigger an AI Overview most often. Navigational (\"facebook login\") and pure transactional (\"buy iphone 17 case\") queries rarely do. The exact rate also varies by vertical — health and finance queries see lower rates because Google is more conservative about generating AI summaries on those topics."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I get my brand into Google AI Overviews?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Three things move the needle. First, make sure AI crawlers can actually read your site — Google-Extended allowed in robots.txt, sitemap.xml present, server-rendered HTML, JSON-LD structured data (Organization, FAQPage, Product). Second, write content that directly answers buyer questions in 2–3 sentence chunks so AI can extract a quote-worthy passage. Third, earn citations on the domains the AI already trusts in your category — that's typically G2, Capterra, Wikipedia, Reddit and major trade publications. The fastest way to find the trusted domains in your category is to audit a few competitor queries and see which sources show up under their AI Overview panel."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I see what an AI Overview shows without manually searching?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. AI Overview content can be captured programmatically via Google search APIs (SerpApi, SearchApi, Apify's google-search-scraper actor) — that's how monitoraeo's free preview works. The free preview runs 8 buyer-facing questions for your brand and category, extracts the AI Overview text plus the citation list, and shows whether your brand is named, cited, or neither."}
+        },
+        {
+          "@type": "Question",
+          "name": "Does ranking #1 on Google guarantee I'll be in the AI Overview?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No. AI Overview citations are picked by a separate retrieval pipeline that weights different signals from classical SERP ranking. Pages with strong structured data, clear factual claims, recent dates and Q&A-style sections tend to win citations even when they don't rank #1 organically. Conversely, top-ranked pages with thin content or no schema often get bypassed for an AI Overview citation. Treat AI Overview as an additional surface to optimise for — not a derivative of your existing rank."}
+        },
+        {
+          "@type": "Question",
+          "name": "How often do AI Overviews change?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Day to day. Google regenerates an AI Overview on every fresh query, so two searches for the same question 10 minutes apart can return different prose, sometimes different cited sources, and occasionally no AI Overview at all. The signal you should track is the pattern over time, not the snapshot — which is why audits should run repeatedly and look at the trend, not single results."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .definition-box {
+    padding: 22px 26px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #eef2ff, #f0f9ff);
+    border: 1px solid #c7d2fe;
+    margin: 24px 0;
+  }
+  .definition-box .label {
+    display: inline-block; font-size: 11px; font-weight: 900;
+    letter-spacing: .08em; text-transform: uppercase; color: #4338ca;
+    margin-bottom: 8px;
+  }
+  .definition-box p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+  .definition-box p strong { color: var(--ink); }
+
+  .vs-card { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+  .vs-card .tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+  .vs-card.aio { border-left: 4px solid var(--blue); }
+  .vs-card.aim { border-left: 4px solid var(--purple); }
+  .vs-card.aio .tag { background: #eff6ff; color: var(--blue); }
+  .vs-card.aim .tag { background: #f5f3ff; color: var(--purple); }
+  .vs-card ul { padding-left: 0; list-style: none; margin: 8px 0 0; }
+  .vs-card li { padding: 6px 0 6px 22px; position: relative; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  .vs-card li::before { content: "—"; position: absolute; left: 0; color: var(--soft-muted); }
+
+  .checklist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .checklist { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+  .checklist h3 { margin: 0 0 4px; font-size: 16px; }
+  .checklist .why { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+  .checklist ul { padding: 0; list-style: none; margin: 0; }
+  .checklist li { padding: 6px 0 6px 24px; position: relative; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+  .checklist li::before { content: "✓"; position: absolute; left: 0; top: 6px; color: var(--success); font-weight: 900; }
+
+  @media (max-width: 820px) { .checklist-grid { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary · Google AI surfaces</span>
+<h1 class="page-title">What is Google AI Overview?</h1>
+<p class="page-lede">Google AI Overview is the AI-generated answer panel that appears above the regular search results on roughly 25–48% of queries. It summarises content from multiple sources, cites a handful of clickable links, and — for the queries it renders on — replaces the click-through your homepage used to get.</p>
+
+<div class="definition-box">
+  <div class="label">Definition</div>
+  <p>An <strong>AI Overview</strong> is the inline AI-generated summary panel Google shows at the top of its search results page, above the traditional blue links. It synthesises an answer from multiple web sources and lists a small set of clickable citations. AI Overview rendered on the standard Google SERP and is distinct from <strong>AI Mode</strong>, Google's standalone full-page AI search experience.</p>
+</div>
+
+<h2>How AI Overview actually works</h2>
+<p>When you submit a query Google's search system parses it the same way as always — but in parallel it runs a query classifier that decides whether the question warrants an AI-generated summary. That classifier is the gatekeeper: only ~25–48% of queries pass it, with the highest rates on <em>informational</em> queries ("how does retinol work", "what's the difference between Stripe and Adyen") and the lowest on <em>navigational</em> and <em>transactional</em> queries.</p>
+
+<p>If the classifier says yes, Google's retrieval system pulls a candidate set of source pages — broadly the same pool that feeds the classical SERP, but ranked by different signals. It feeds those candidate pages into a large language model with a prompt that says, roughly, "synthesise an answer to the user's question using these sources, then list the sources you actually relied on." The output is the prose you see at the top of the page plus the small set of clickable citations beneath it.</p>
+
+<p>Two implications for brands. First, getting cited inside an AI Overview is <strong>not</strong> a function of organic ranking position — it depends on whether your content gives the LLM something quote-worthy to extract. Pages that rank #5 organically routinely beat the #1 page for AI Overview citations because they answer the question more directly. Second, the panel regenerates on every fresh search. Two queries for the same question, 10 minutes apart, can return different prose and sometimes different cited sources. That's why one-off measurement is misleading — you need the pattern over time.</p>
+
+<h2>AI Overview vs AI Mode — the difference that matters</h2>
+<p>This is where most brands get confused. Google now has two distinct AI search surfaces, and they behave fundamentally differently:</p>
+
+<div class="grid-2" style="margin-top: 16px;">
+  <div class="vs-card aio">
+    <span class="tag">AI Overview</span>
+    <h3 style="margin: 0 0 8px;">Inline panel, above the SERP</h3>
+    <ul>
+      <li>Lives at the top of the regular Google SERP</li>
+      <li>Renders on roughly 25–48% of queries</li>
+      <li>Shorter — 1–3 paragraph summary</li>
+      <li>3–10 citations on average</li>
+      <li>What most users encounter today by default</li>
+    </ul>
+  </div>
+  <div class="vs-card aim">
+    <span class="tag">AI Mode</span>
+    <h3 style="margin: 0 0 8px;">Standalone conversational page</h3>
+    <ul>
+      <li>Reached via the AI Mode tab or <code>?udm=50</code></li>
+      <li>Always renders a full AI response</li>
+      <li>Longer — multi-paragraph + structured sections</li>
+      <li>15–30 citations on average</li>
+      <li>Where Google is steering its product strategy</li>
+    </ul>
+  </div>
+</div>
+
+<p style="margin-top: 18px; padding: 16px 20px; background: rgba(37,99,235,.06); border-left: 3px solid var(--blue); border-radius: 0 12px 12px 0;">
+  <strong>Why both matter:</strong> AI Overview is what most users see <em>today</em>. AI Mode is where Google's behaviour is heading over the next 12–24 months. A serious AEO programme measures both — AI Overview for current visibility, AI Mode for the trend you'll be optimising for in 2027. They're different products with different ranking signals.
+</p>
+
+<h2>How to get your brand into Google AI Overviews</h2>
+<p>The optimisations that work for AI Overview citations are different from classical SEO — there's some overlap, but the leverage points are not the same pages. Four concrete moves, in priority order:</p>
+
+<div class="checklist-grid">
+  <div class="checklist">
+    <h3>1. Make sure AI crawlers can read you</h3>
+    <p class="why">If Google can't ingest your content, it can't cite you. Most invisibility on AI Overview is a foundational issue, not a content one.</p>
+    <ul>
+      <li>Allow <code>Google-Extended</code> in robots.txt</li>
+      <li>Server-render HTML (no SPA-only flows)</li>
+      <li>Publish a sitemap.xml and an <a href="/what-is-geo">llms.txt</a></li>
+      <li>Add Organization + FAQPage + Product JSON-LD</li>
+    </ul>
+  </div>
+  <div class="checklist">
+    <h3>2. Write quote-worthy content</h3>
+    <p class="why">AI Overview citations go to pages that answer the question in extractable 2–3 sentence chunks. Wall-of-text essays rarely get cited.</p>
+    <ul>
+      <li>Lead each section with the answer, not the setup</li>
+      <li>Use H2/H3 questions that mirror real buyer queries</li>
+      <li>Include concrete numbers, dates, comparisons</li>
+      <li>Update <code>dateModified</code> when content changes</li>
+    </ul>
+  </div>
+  <div class="checklist">
+    <h3>3. Win citations on AI's trusted sources</h3>
+    <p class="why">AI Overview disproportionately cites the same 5–10 domains per category. Earn mentions there and you compound into citations.</p>
+    <ul>
+      <li>Audit which domains AI cites for your category queries</li>
+      <li>Pitch G2 / Capterra / trade pubs that show up most</li>
+      <li>Reddit and Wikipedia are often heavily weighted</li>
+      <li>Track citation changes monthly to see what's working</li>
+    </ul>
+  </div>
+  <div class="checklist">
+    <h3>4. Measure repeatedly, not once</h3>
+    <p class="why">AI Overview content shifts day-to-day. Pattern beats snapshot.</p>
+    <ul>
+      <li>Run the same query set at least monthly</li>
+      <li>Track per-query visibility over time</li>
+      <li>Watch for competitors gaining ground on your queries</li>
+      <li>Use the trend, not the single result</li>
+    </ul>
+  </div>
+</div>
+
+<h2>How monitoraeo measures your AI Overview visibility</h2>
+<p>The free preview runs 8 buyer-facing questions for your brand and category, hits Google AI Overview for each, and reports back whether your brand is <strong>named</strong> in the response prose, <strong>cited</strong> as a source link, or neither. It also extracts the competitor brands Google's AI is naming instead of you. Paid audits extend this to all five major AI engines (ChatGPT, Claude, Perplexity, Gemini and Google AI Overview) across 40 questions and add a prioritised action plan generated from the gaps found. <a href="/how-it-works">See the full methodology →</a></p>
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/ai-visibility" class="btn-secondary">See industry rankings</a>
+</div>
+
+<h2>Related concepts</h2>
+<ul class="bullets">
+  <li><a href="/what-is-aeo">What is AEO?</a> — Answer Engine Optimisation, the discipline of getting your brand named and cited across all AI engines (not just Google).</li>
+  <li><a href="/what-is-geo">What is GEO?</a> — Generative Engine Optimisation, the technical foundations that decide whether AI engines can read your site at all.</li>
+  <li><a href="/aeo-vs-seo">AEO vs SEO</a> — The full comparison of the two disciplines.</li>
+  <li><a href="/glossary">Glossary</a> — Every AI search term defined.</li>
+</ul>
+
+<h2 id="faq">Frequently asked about AI Overview</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What percentage of Google searches show an AI Overview?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Roughly 25–48% of queries depending on intent class. Informational queries trigger an AI Overview most often. Navigational ("facebook login") and pure transactional ("buy iphone 17 case") queries rarely do. Health and finance queries see lower rates because Google is more conservative about AI summaries in those verticals.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Is AI Overview the same as AI Mode?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">No. AI Overview is the panel above standard search results. AI Mode is Google's standalone full-page AI search experience (reached via <code>?udm=50</code>). AI Mode always renders a full conversational answer with 15–30 citations; AI Overview renders inline only on a subset of queries and shows 3–10 citations on average.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Does ranking #1 on Google guarantee I'll be in the AI Overview?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">No. AI Overview citations are picked by a separate retrieval pipeline that weights different signals from classical SERP ranking. Pages with strong structured data, clear factual claims, recent dates and Q&amp;A-style sections tend to win citations even when they don't rank #1 organically.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How do I get my brand into Google AI Overviews?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Three things move the needle: (1) make sure AI crawlers can read your site — Google-Extended allowed in robots.txt, server-rendered HTML, JSON-LD schema; (2) write content that directly answers buyer questions in extractable 2–3 sentence chunks; (3) earn citations on the domains the AI already trusts in your category (G2, Capterra, Wikipedia, Reddit, major trade pubs). Track which sources AI cites for competitor queries and pitch those.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often do AI Overviews change?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Day to day. Google regenerates the AI Overview on every fresh query, so two searches for the same question minutes apart can return different prose and sometimes different cited sources. The signal you should track is the pattern over time, not the snapshot — which is why audits should run repeatedly.</p>
+  </details>
+</div>
+{% endblock %}

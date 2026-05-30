@@ -1,0 +1,226 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/ai-visibility/" ~ report.slug %}
+{% set page_description = "Top " ~ (brands|length) ~ " " ~ report.name ~ " brands ranked by AI search visibility across ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews. Refreshed monthly." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
+{% block title %}Top {{ brands|length }} {{ report.name }} by AI search visibility (2026) | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Dataset",
+      "@id": "{{ _canonical }}#dataset",
+      "name": "AI search visibility rankings — {{ report.name }} (2026)",
+      "description": "Per-brand AI visibility, citation rate and per-engine breakdown for the top {{ brands|length }} {{ report.name|lower }} brands. Audited monthly across ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews.",
+      "url": "{{ _canonical }}",
+      "creator": { "@id": "{{ _base_url }}/#org" },
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "isAccessibleForFree": true,
+      "keywords": ["AI search visibility", "{{ report.name }}", "AEO", "answer engine optimisation", "ChatGPT", "Claude", "Perplexity", "Gemini", "Google AI Overviews"],
+      "variableMeasured": [
+        {"@type": "PropertyValue", "name": "Visibility", "description": "Percentage of AI answers that name the brand"},
+        {"@type": "PropertyValue", "name": "Citation rate", "description": "Percentage of AI answers that cite the brand's domain as a source"},
+        {"@type": "PropertyValue", "name": "Composite visibility score", "description": "0-100 composite combining visibility and citation rate"}
+      ]
+    }
+    {%- if brands %},
+    {
+      "@type": "ItemList",
+      "@id": "{{ _canonical }}#ranking",
+      "name": "Top {{ report.name }} brands by AI visibility",
+      "itemListOrder": "https://schema.org/ItemListOrderDescending",
+      "numberOfItems": {{ brands|length }},
+      "itemListElement": [
+        {%- for b in brands %}
+          {%- if not loop.first %},{% endif %}
+        {
+          "@type": "ListItem",
+          "position": {{ b.rank_in_industry or loop.index }},
+          "item": {
+            "@type": "Organization",
+            "name": {{ b.brand_name|tojson }},
+            "url": "https://{{ b.brand_domain }}"
+          }
+        }
+        {%- endfor %}
+      ]
+    }
+    {%- endif %},
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "Top {{ brands|length }} {{ report.name }} by AI search visibility (2026)",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "author": { "@id": "{{ _base_url }}/#org" },
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .ind-hero {
+    padding: 32px;
+    border-radius: 24px;
+    background: white;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 24px;
+  }
+  .ind-hero h1 { margin: 6px 0 10px; font-size: clamp(28px, 4vw, 42px); line-height: 1.08; letter-spacing: -.04em; }
+  .ind-hero .lede { color: var(--muted); margin: 0 0 16px; font-size: 15.5px; max-width: 720px; line-height: 1.6; }
+  .ind-hero .updated-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px; border-radius: 999px;
+    background: rgba(16,185,129,.10); color: #15803d;
+    font-size: 12px; font-weight: 700;
+  }
+  .ind-hero .updated-pill::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: #16a34a;
+  }
+  .ind-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .ind-stat { padding: 14px 16px; background: #f8fafc; border-radius: 14px; border: 1px solid var(--line); }
+  .ind-stat .n { font-size: 24px; font-weight: 900; letter-spacing: -.04em; line-height: 1; color: var(--ink); }
+  .ind-stat .l { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
+
+  .rank-table { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-soft); }
+  .rank-table thead th { background: #f8fafc; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); }
+  .rank-table thead th.num { text-align: right; }
+  .rank-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 14.5px; vertical-align: middle; }
+  .rank-table tr:last-child td { border-bottom: 0; }
+  .rank-table td.rank { font-weight: 900; color: var(--blue); font-variant-numeric: tabular-nums; width: 52px; }
+  .rank-table td.brand { font-weight: 800; color: var(--ink); }
+  .rank-table td.brand .dom { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .rank-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .rank-table td .bar-wrap { display: inline-block; width: 80px; height: 6px; border-radius: 999px; background: rgba(15,23,42,.06); margin-right: 8px; vertical-align: middle; overflow: hidden; }
+  .rank-table td .bar { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple)); border-radius: 999px; }
+  .rank-table td.engine-tag { color: var(--ink-2); font-size: 13px; }
+  .rank-table tr.top-1 td.brand, .rank-table tr.top-1 td.rank { color: var(--success); }
+
+  .source-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .source-pills span { font-size: 12px; padding: 5px 10px; background: white; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); font-weight: 600; }
+
+  .findings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .finding { padding: 18px 20px; background: white; border: 1px solid var(--line); border-radius: 14px; }
+  .finding h4 { margin: 0 0 6px; font-size: 14px; }
+  .finding p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+
+  @media (max-width: 720px) {
+    .ind-stats, .findings-grid { grid-template-columns: 1fr; }
+    .rank-table { display: block; overflow-x: auto; }
+  }
+{% endblock %}
+
+{% block content %}
+<section class="ind-hero">
+  <span class="eyebrow">AI Visibility Rankings · {{ report.parent_category or 'Industry' }}</span>
+  <h1>Top {{ brands|length }} {{ report.name|lower }} by AI search visibility (2026)</h1>
+  <p class="lede">{% if report.description %}{{ report.description }} {% endif %}Ranked by a composite score combining how often ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews name the brand (70%) and how often they cite the brand's domain as a source (30%).</p>
+  {% if report.last_full_refresh %}
+    <span class="updated-pill">Refreshed {{ report.last_full_refresh.strftime('%b %d, %Y') }}</span>
+  {% else %}
+    <span class="updated-pill" style="background:#fef3c7; color:#92400e;">First audit running</span>
+  {% endif %}
+  <div class="ind-stats">
+    <div class="ind-stat">
+      <div class="n">{{ '%.0f' % avg_visibility }}%</div>
+      <div class="l">Avg visibility across category</div>
+    </div>
+    <div class="ind-stat">
+      <div class="n">{{ '%.0f' % avg_citation }}%</div>
+      <div class="l">Avg citation rate</div>
+    </div>
+    <div class="ind-stat">
+      <div class="n">{{ audited_count }}/{{ brands|length }}</div>
+      <div class="l">Brands successfully audited</div>
+    </div>
+  </div>
+</section>
+
+{% if brands %}
+<h2>The ranking</h2>
+<table class="rank-table">
+  <thead>
+    <tr>
+      <th class="num" style="width:52px;">#</th>
+      <th>Brand</th>
+      <th class="num">Visibility</th>
+      <th class="num">Citation</th>
+      <th>Top engine</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for b in brands %}
+      <tr class="{% if loop.first %}top-1{% endif %}">
+        <td class="rank">{{ b.rank_in_industry or loop.index }}</td>
+        <td class="brand">
+          {{ b.brand_name }}
+          <span class="dom">{{ b.brand_domain }}</span>
+        </td>
+        <td class="num">
+          <span class="bar-wrap"><span class="bar" style="width: {{ b.visibility_pct }}%;"></span></span>{{ '%.0f' % b.visibility_pct }}%
+        </td>
+        <td class="num">
+          <span class="bar-wrap"><span class="bar" style="width: {{ b.citation_pct }}%;"></span></span>{{ '%.0f' % b.citation_pct }}%
+        </td>
+        <td class="engine-tag">{{ b.top_engine or '—' }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if top_category_sources %}
+<h2>Sources AI engines trust in this category</h2>
+<p>Across every {{ report.name|lower }} query we ran, these are the domains AI engines cite most often as evidence. If you're not on this list — or if your competitors are — that's a concrete PR / linkbuilding target.</p>
+<div class="source-pills">
+  {% for src in top_category_sources %}<span>{{ src }}</span>{% endfor %}
+</div>
+{% endif %}
+
+<h2>What the data tells you</h2>
+<div class="findings-grid">
+  <div class="finding">
+    <h4>Visibility is about being <em>named</em></h4>
+    <p>A brand's visibility % is the share of AI answers that mention it by name in the response prose. This is who AI engines actively <strong>recommend</strong> to the buyer.</p>
+  </div>
+  <div class="finding">
+    <h4>Citation rate is about being <em>trusted</em></h4>
+    <p>A brand's citation rate is the share of AI answers that link to the brand's domain as a clickable source. This is what AI engines treat as authoritative evidence.</p>
+  </div>
+  <div class="finding">
+    <h4>Top engine differs by brand</h4>
+    <p>The "top engine" column shows which engine each brand performs best on. Big gaps between engines usually point to specific content gaps — e.g. winning ChatGPT but losing Gemini often means thin product schema.</p>
+  </div>
+  <div class="finding">
+    <h4>The ranking moves monthly</h4>
+    <p>AI engines re-crawl and re-rank weekly. We re-audit every brand on this list at least every {{ report.refresh_interval_days }} days and update the page automatically.</p>
+  </div>
+</div>
+
+<h2>How brands rank in this category</h2>
+<p>We pick 20 leading {{ report.name|lower }} brands and run an 8-query AI Mode audit per brand monthly. Queries cover the five buyer-intent buckets that matter for category research: brand, category, problem, comparison and vertical. The composite score weights visibility 70% and citation rate 30% — the same weighting our paid audits use. <a href="/how-it-works" style="color:var(--blue); font-weight:700;">Read the full methodology →</a></p>
+
+<h2>Get your own brand audited</h2>
+<p>The brands above were picked from public market-leader lists. If you want your own brand measured with the same methodology — even if you're not on this ranking yet — the free preview takes 30 seconds and shows you exactly which queries you appear in, which competitors get named instead, and what to fix first.</p>
+
+<div style="display:flex; gap:14px; margin-top: 14px; flex-wrap:wrap;">
+  <a href="/preview?c={{ report.name|urlencode }}" class="btn-primary">Audit your {{ report.name|lower }} brand →</a>
+  <a href="/ai-visibility" class="btn-secondary">Browse all rankings</a>
+</div>
+{% endblock %}

@@ -363,8 +363,16 @@
       <img class="wordmark" src="/static/monitoraeo-wordmark.png" alt="monitoraeo">
     </a>
     <nav class="nav">
-      <a href="/what-is-aeo" class="desktop-only{% if active=='aeo' %} active{% endif %}">What is AEO</a>
-      <a href="/what-is-geo" class="desktop-only{% if active=='geo' %} active{% endif %}">What is GEO</a>
+      <div class="has-sub desktop-only">
+        <a href="/what-is-aeo"{% if active in ('aeo','geo','aeo-vs-seo','glossary') %} class="active"{% endif %}>Learn</a>
+        <div class="submenu">
+          <a href="/what-is-aeo">What is AEO<span class="desc">Answer Engine Optimisation explained</span></a>
+          <a href="/what-is-geo">What is GEO<span class="desc">The technical foundation under AEO</span></a>
+          <a href="/aeo-vs-seo">AEO vs SEO<span class="desc">What's actually changing</span></a>
+          <a href="/glossary">Glossary<span class="desc">Every AI search term defined</span></a>
+        </div>
+      </div>
+      <a href="/ai-visibility" class="desktop-only{% if active=='ai-visibility' %} active{% endif %}">Rankings</a>
       <div class="has-sub desktop-only">
         <a href="/product/audit"{% if active=='audit' or active=='monitoring' %} class="active"{% endif %}>Product</a>
         <div class="submenu">
@@ -387,10 +395,14 @@
     </nav>
   </header>
   <div class="mobile-menu" id="mobile-menu" hidden>
-    <a href="/what-is-aeo"{% if active=='aeo' %} class="active"{% endif %}>What is AEO</a>
-    <a href="/what-is-geo"{% if active=='geo' %} class="active"{% endif %}>What is GEO</a>
+    <a href="/ai-visibility"{% if active=='ai-visibility' %} class="active"{% endif %}>Rankings</a>
     <a href="/how-it-works"{% if active=='how' %} class="active"{% endif %}>How it works</a>
     <a href="/pricing"{% if active=='pricing' %} class="active"{% endif %}>Pricing</a>
+    <div class="group-label">Learn</div>
+    <a href="/what-is-aeo" class="sub{% if active=='aeo' %} active{% endif %}">What is AEO</a>
+    <a href="/what-is-geo" class="sub{% if active=='geo' %} active{% endif %}">What is GEO</a>
+    <a href="/aeo-vs-seo" class="sub{% if active=='aeo-vs-seo' %} active{% endif %}">AEO vs SEO</a>
+    <a href="/glossary" class="sub{% if active=='glossary' %} active{% endif %}">Glossary</a>
     <div class="group-label">Product</div>
     <a href="/product/audit" class="sub{% if active=='audit' %} active{% endif %}">Audit</a>
     <a href="/product/monitoring" class="sub{% if active=='monitoring' %} active{% endif %}">Monitoring</a>
@@ -421,11 +433,18 @@
         <li><a href="/what-is-aeo">What is AEO</a></li>
         <li><a href="/what-is-geo">What is GEO</a></li>
         <li><a href="/aeo-vs-seo">AEO vs SEO</a></li>
-        <li><a href="/#preview">Run a free preview</a></li>
+        <li><a href="/what-is-ai-overview">What is AI Overview</a></li>
+        <li><a href="/glossary">Glossary →</a></li>
       </ul>
     </div>
     <div>
-      <h4>Company</h4>
+      <h4>Rankings</h4>
+      <ul>
+        <li><a href="/ai-visibility">All industries →</a></li>
+        <li><a href="/#preview">Audit your brand</a></li>
+        <li><a href="/support">Get listed</a></li>
+      </ul>
+      <h4 style="margin-top:18px;">Company</h4>
       <ul>
         <li><a href="/support">Support</a></li>
         <li><a href="/privacy">Privacy</a></li>

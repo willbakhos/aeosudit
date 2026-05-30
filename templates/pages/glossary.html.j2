@@ -1,0 +1,203 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/glossary" %}
+{% set page_description = "Every term that matters in AI search — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice and more. Defined, with links to in-depth explainers." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
+{% block title %}AEO & GEO glossary — every term defined | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "{{ _canonical }}#collection",
+      "name": "AEO & GEO glossary",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "publisher": { "@id": "{{ _base_url }}/#org" },
+      "inLanguage": "en",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}"
+    },
+    {
+      "@type": "DefinedTermSet",
+      "@id": "{{ _canonical }}#termset",
+      "name": "AEO & GEO glossary",
+      "url": "{{ _canonical }}",
+      "hasDefinedTerm": [
+        {"@type": "DefinedTerm", "name": "AEO (Answer Engine Optimisation)", "url": "{{ _base_url }}/what-is-aeo"},
+        {"@type": "DefinedTerm", "name": "GEO (Generative Engine Optimisation)", "url": "{{ _base_url }}/what-is-geo"},
+        {"@type": "DefinedTerm", "name": "AEO vs SEO", "url": "{{ _base_url }}/aeo-vs-seo"},
+        {"@type": "DefinedTerm", "name": "AI Overview", "url": "{{ _base_url }}/what-is-ai-overview"}
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .glossary-section { margin: 36px 0 0; }
+  .glossary-section h2 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 4px; letter-spacing: -.03em; }
+  .glossary-section .section-sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+  .term-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .term-card {
+    display: block; padding: 18px 20px;
+    background: white; border: 1px solid var(--line); border-radius: 16px;
+    text-decoration: none; box-shadow: var(--shadow-soft);
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .term-card:hover { transform: translateY(-1px); border-color: rgba(37,99,235,.30); box-shadow: 0 18px 38px rgba(15,23,42,.08); }
+  .term-card .term-name {
+    display: block; font-size: 16px; font-weight: 800; color: var(--ink);
+    letter-spacing: -.015em; margin-bottom: 4px;
+  }
+  .term-card .term-def {
+    display: block; font-size: 13.5px; color: var(--muted); line-height: 1.55;
+  }
+  .term-card .upcoming-tag {
+    display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+    background: #f1f5f9; color: var(--soft-muted); margin-left: 8px;
+    vertical-align: middle;
+  }
+  .term-card.upcoming { opacity: .72; pointer-events: none; }
+
+  @media (max-width: 720px) { .term-grid { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary</span>
+<h1 class="page-title">AEO &amp; GEO glossary</h1>
+<p class="page-lede">Every term that matters in AI search — defined, with a link to the full explainer where one exists. New entries land here as we ship them.</p>
+
+{# Sections are hand-curated rather than auto-generated so the editorial
+   order (most foundational → most advanced) holds. Terms with no URL yet
+   are marked "upcoming" — leaving them visible signposts the gaps we're
+   filling without breaking links. #}
+
+<div class="glossary-section">
+  <h2>Concepts</h2>
+  <p class="section-sub">The foundational ideas — start here if you're new to AEO.</p>
+  <div class="term-grid">
+    <a class="term-card" href="/what-is-aeo">
+      <span class="term-name">AEO (Answer Engine Optimisation)</span>
+      <span class="term-def">Getting your brand named, cited and recommended inside AI answers from ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews.</span>
+    </a>
+    <a class="term-card" href="/what-is-geo">
+      <span class="term-name">GEO (Generative Engine Optimisation)</span>
+      <span class="term-def">The technical and content layer that makes a site readable, parseable and trustworthy to generative AI systems.</span>
+    </a>
+    <a class="term-card" href="/aeo-vs-seo">
+      <span class="term-name">AEO vs SEO</span>
+      <span class="term-def">Where blue-link optimisation ends and answer-inclusion optimisation begins — and why the same site needs both.</span>
+    </a>
+    <span class="term-card upcoming">
+      <span class="term-name">AI Search vs SEO <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Not a tactics comparison — how buyer behaviour itself has shifted away from scrolling blue links.</span>
+    </span>
+  </div>
+</div>
+
+<div class="glossary-section">
+  <h2>Google AI surfaces</h2>
+  <p class="section-sub">Google's two AI search products — and the structural differences that shape how you measure visibility on each.</p>
+  <div class="term-grid">
+    <a class="term-card" href="/what-is-ai-overview">
+      <span class="term-name">AI Overview</span>
+      <span class="term-def">Google's inline AI panel that appears above the regular search results. Renders on ~25–48% of queries depending on intent.</span>
+    </a>
+    <span class="term-card upcoming">
+      <span class="term-name">AI Mode <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Google's standalone AI search experience (<code>?udm=50</code>). Always renders a full conversational answer with 15–30 citations.</span>
+    </span>
+  </div>
+</div>
+
+<div class="glossary-section">
+  <h2>How each engine works</h2>
+  <p class="section-sub">Engine-by-engine breakdowns of how citations get picked and why some brands consistently win.</p>
+  <div class="term-grid">
+    <span class="term-card upcoming">
+      <span class="term-name">How ChatGPT chooses citations <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">The web_search tool ranking signals and what content makes the cut.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">How Claude Web Search works <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Anthropic's tool-use pipeline, retrieval pattern, and what gets quoted.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">How Perplexity ranks sources <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Sonar-native retrieval, citation density, and the live web grounding model.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">How Google AI Overviews pick sources <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">SGE's retrieval pipeline, the SERP layering, and why classic ranking signals still matter.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">How Gemini grounding works <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Vertex AI's groundingMetadata, citation extraction, and what shows up in user-facing Gemini.</span>
+    </span>
+  </div>
+</div>
+
+<div class="glossary-section">
+  <h2>Metrics</h2>
+  <p class="section-sub">The four numbers that matter when you measure your AI visibility.</p>
+  <div class="term-grid">
+    <span class="term-card upcoming">
+      <span class="term-name">Visibility <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">The % of AI answers that name your brand by name in the prose.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">Citation rate <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">The % of AI answers that link to your domain as a clickable source.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">Share of voice in AI answers <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Your visibility relative to competitors in the same answer set.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">Brand hallucination <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">When AI engines fabricate false claims about your brand — what causes it and how to defend.</span>
+    </span>
+  </div>
+</div>
+
+<div class="glossary-section">
+  <h2>Tactics</h2>
+  <p class="section-sub">What you actually do to move the metrics above.</p>
+  <div class="term-grid">
+    <span class="term-card upcoming">
+      <span class="term-name">AEO checklist <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">The 20-item priority list every brand should run through before pushing AEO content live.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">Structured data for AI engines <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Which schema types AI engines actually parse — and which ones are wasted effort.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">llms.txt examples + templates <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Working <code>/llms.txt</code> files from real sites, plus a template you can fork.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">What is llms.txt? <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">The emerging markdown manifest standard for AI crawlers, similar to robots.txt for search.</span>
+    </span>
+    <span class="term-card upcoming">
+      <span class="term-name">AEO tools comparison <span class="upcoming-tag">upcoming</span></span>
+      <span class="term-def">Every AEO-flavoured audit tool we know of, what each is good at, and where the gaps are.</span>
+    </span>
+  </div>
+</div>
+
+<h2 style="margin-top:48px;">See it on your own brand</h2>
+<p>The fastest way to understand any of these terms is to see them measured against your own domain. The free preview gives you a real-data snapshot in under a minute.</p>
+<div style="display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/ai-visibility" class="btn-secondary">Browse industry rankings</a>
+</div>
+{% endblock %}
