@@ -2763,7 +2763,11 @@ def admin_industries_create(
             status_code=303,
         )
 
-    # Parse brand lines: "Brand Name | domain.com"
+    # Parse brand lines: "Brand Name | domain.com".
+    # IMPORTANT: use explicit startswith/slice rather than str.lstrip(prefix) —
+    # str.lstrip treats its argument as a SET of characters to strip, not a
+    # prefix string, which eats the first letter of any domain that happens
+    # to start with h/t/p/s (e.g. hubspot.com -> ubspot.com).
     brand_rows: list[tuple[str, str]] = []
     for line in (brands or "").splitlines():
         line = line.strip()
@@ -2772,7 +2776,15 @@ def admin_industries_create(
         parts = [p.strip() for p in line.split("|", 1)]
         if len(parts) != 2 or not parts[0] or not parts[1]:
             continue
-        brand_rows.append((parts[0], parts[1].lower().lstrip("https://").lstrip("http://").lstrip("www.")))
+        dom = parts[1].lower()
+        for prefix in ("https://", "http://"):
+            if dom.startswith(prefix):
+                dom = dom[len(prefix):]
+        if dom.startswith("www."):
+            dom = dom[4:]
+        dom = dom.rstrip("/")
+        if dom:
+            brand_rows.append((parts[0], dom))
     if not brand_rows:
         return RedirectResponse(
             "/dashboard/admin/industries?status=invalid&detail=no+valid+brand+lines",

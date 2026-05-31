@@ -73,6 +73,16 @@ def init_db() -> None:
         "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS top_cited_sources JSONB DEFAULT '[]'::jsonb",
         "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS last_audit_error VARCHAR",
         "CREATE INDEX IF NOT EXISTS idx_industry_brand_slug_rank ON monitor_industry_brand (industry_slug, rank_in_industry)",
+        # One-off repair: the admin form's old `lstrip('https://')` ate the
+        # first character of any brand_domain whose first letter happened to
+        # match h/t/p/s (the lstrip char set). Fix surgically by exact
+        # (brand_name, broken_domain) match — never touches a row whose
+        # domain looks intentional. Idempotent (no-op once domains are
+        # correct). Add new pairs here if more truncations surface.
+        "UPDATE monitor_industry_brand SET brand_domain = 'hubspot.com'    WHERE brand_name = 'HubSpot'     AND brand_domain = 'ubspot.com'",
+        "UPDATE monitor_industry_brand SET brand_domain = 'salesforce.com' WHERE brand_name = 'Salesforce'  AND brand_domain = 'alesforce.com'",
+        "UPDATE monitor_industry_brand SET brand_domain = 'pipedrive.com'  WHERE brand_name = 'Pipedrive'   AND brand_domain = 'ipedrive.com'",
+        "UPDATE monitor_industry_brand SET brand_domain = 'sugarcrm.com'   WHERE brand_name = 'SugarCRM'    AND brand_domain = 'ugarcrm.com'",
     ]
     with eng.begin() as conn:
         for sql in migrations:
