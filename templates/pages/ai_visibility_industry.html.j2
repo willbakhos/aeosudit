@@ -104,16 +104,16 @@
   .rank-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 14.5px; vertical-align: middle; }
   .rank-table tr:last-child td { border-bottom: 0; }
   .rank-table td.rank { font-weight: 900; color: var(--blue); font-variant-numeric: tabular-nums; width: 52px; }
-  .rank-table td.brand { font-weight: 800; color: var(--ink); }
+  .rank-table td.brand-cell { font-weight: 800; color: var(--ink); }
   /* Two explicit block elements so brand stacks above domain regardless of
      parent table-layout quirks (e.g. mobile's .rank-table{display:block}). */
-  .rank-table td.brand .brand-name { display: block; font-weight: 800; color: var(--ink); }
-  .rank-table td.brand .dom { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.3; }
+  .rank-table td.brand-cell .brand-name { display: block; font-weight: 800; color: var(--ink); }
+  .rank-table td.brand-cell .dom { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.3; }
   .rank-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .rank-table td .bar-wrap { display: inline-block; width: 80px; height: 6px; border-radius: 999px; background: rgba(15,23,42,.06); margin-right: 8px; vertical-align: middle; overflow: hidden; }
   .rank-table td .bar { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple)); border-radius: 999px; }
   .rank-table td.engine-tag { color: var(--ink-2); font-size: 13px; }
-  .rank-table tr.top-1 td.brand, .rank-table tr.top-1 td.rank { color: var(--success); }
+  .rank-table tr.top-1 td.brand-cell, .rank-table tr.top-1 td.rank { color: var(--success); }
 
   .source-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .source-pills span { font-size: 12px; padding: 5px 10px; background: white; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); font-weight: 600; }
@@ -171,7 +171,7 @@
     {% for b in brands %}
       <tr class="{% if loop.first %}top-1{% endif %}">
         <td class="rank">{{ b.rank_in_industry or loop.index }}</td>
-        <td class="brand">
+        <td class="brand-cell">
           <div class="brand-name">{{ b.brand_name }}</div>
           <div class="dom">{{ b.brand_domain }}</div>
         </td>
