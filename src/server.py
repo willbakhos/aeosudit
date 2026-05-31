@@ -317,7 +317,12 @@ hallucination risk per engine, and produces a prioritised action plan.
 ## Key concepts
 - [What is AEO?]({SITE_BASE_URL}/what-is-aeo): Answer Engine Optimisation — the practice of getting your brand named, cited and recommended in AI answers from ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews.
 - [What is GEO?]({SITE_BASE_URL}/what-is-geo): Generative Engine Optimisation — the technical and content layer that makes a site retrievable, parseable and quotable by generative AI systems.
+- [What is AI Overview?]({SITE_BASE_URL}/what-is-ai-overview): Google's inline AI-generated answer panel that appears above the regular search results on roughly 25–48% of queries. Distinct from AI Mode (the standalone full-page AI search experience).
 - [AEO vs SEO]({SITE_BASE_URL}/aeo-vs-seo): Where traditional SEO ends (ranking blue links) and AEO begins (winning the synthesised answer).
+- [Glossary]({SITE_BASE_URL}/glossary): Every AI search term defined — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice, brand hallucination and more.
+
+## Industry rankings
+- [AI visibility rankings by industry]({SITE_BASE_URL}/ai-visibility): Public ranking pages for the top brands in each industry, scored by how often AI engines name and cite them. Updated monthly. Each industry page (e.g. /ai-visibility/crm-software) is a Dataset with per-brand visibility and citation rates across Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini.
 
 ## Product
 - [How it works]({SITE_BASE_URL}/how-it-works): A monitoraeo audit takes a domain, runs 40 buyer-facing queries across 5 engines (200 AI answers), and scores how each engine describes the brand.
@@ -1560,6 +1565,223 @@ def api_teaser(req: TeaserRequest, request: Request) -> JSONResponse:
     """
     _require_teaser_token(request)
     return JSONResponse(_build_teaser_payload(req))
+
+
+# ---------------------------------------------------------------------------
+# Industry rankings API — programmatic seeding of /ai-visibility/{slug} pages
+# ---------------------------------------------------------------------------
+
+def _require_industry_token(request: Request) -> None:
+    """Bearer-token gate for /api/industries* endpoints. Same shape as
+    _require_teaser_token: 503 if INDUSTRY_API_TOKEN isn't set, 401 if the
+    caller sends a wrong/missing token. Constant-time compare prevents
+    timing-attack leakage."""
+    expected = os.environ.get("INDUSTRY_API_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(503, "INDUSTRY_API_TOKEN is not configured on the server")
+    header = request.headers.get("authorization", "").strip()
+    presented = ""
+    if header.lower().startswith("bearer "):
+        presented = header[7:].strip()
+    if not presented or not secrets.compare_digest(presented, expected):
+        raise HTTPException(401, "Invalid or missing bearer token")
+
+
+class IndustryBrandIn(BaseModel):
+    name: str
+    domain: str
+
+
+class IndustryCreateRequest(BaseModel):
+    slug: str
+    name: str
+    parent_category: str = ""
+    description: str = ""
+    brands: list[IndustryBrandIn]
+    # When true, schedule the industry for immediate cron pickup. Default true
+    # so a programmatic create→audit roundtrip is one POST.
+    refresh_immediately: bool = True
+
+
+def _industry_to_summary_dict(report) -> dict[str, Any]:
+    """Project an IndustryReport into the JSON shape we return from the API."""
+    return {
+        "slug": report.slug,
+        "name": report.name,
+        "parent_category": report.parent_category,
+        "description": report.description,
+        "url": f"{SITE_BASE_URL}/ai-visibility/{report.slug}",
+        "created_at": (report.created_at.isoformat() + "Z") if report.created_at else None,
+        "last_full_refresh": (report.last_full_refresh.isoformat() + "Z") if report.last_full_refresh else None,
+        "next_scheduled_refresh": (report.next_scheduled_refresh.isoformat() + "Z") if report.next_scheduled_refresh else None,
+        "refresh_interval_days": report.refresh_interval_days,
+    }
+
+
+@app.post("/api/industries")
+def api_industries_create(req: IndustryCreateRequest, request: Request) -> JSONResponse:
+    """Create a new industry ranking page. Idempotent on slug — repeat
+    POSTs with the same slug return 409. Brand list is replaced wholesale
+    on creation; use PATCH (TODO) to amend an existing list.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+
+    Example:
+        curl -X POST https://www.monitoraeo.com/api/industries \\
+          -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+          -H "Content-Type: application/json" \\
+          -d '{
+            "slug": "crm-software",
+            "name": "CRM software",
+            "parent_category": "SaaS",
+            "description": "CRM platforms used by sales and support teams.",
+            "brands": [
+              {"name": "HubSpot", "domain": "hubspot.com"},
+              {"name": "Salesforce", "domain": "salesforce.com"}
+            ]
+          }'
+
+    Returns 201 with the industry summary + public URL. Cron will refresh
+    within CHECK_INTERVAL seconds (default 5 min) when refresh_immediately=true.
+    """
+    _require_industry_token(request)
+
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryBrand, get_session
+
+    slug = re.sub(r"[^a-z0-9-]", "", (req.slug or "").strip().lower())
+    if not slug:
+        raise HTTPException(400, "slug must be lowercase alphanumeric with hyphens")
+    if not (req.name or "").strip():
+        raise HTTPException(400, "name is required")
+    if not req.brands:
+        raise HTTPException(400, "brands list cannot be empty")
+
+    # Normalise brand domains (strip http(s)://, www., trailing slash).
+    cleaned: list[tuple[str, str]] = []
+    for b in req.brands:
+        nm = (b.name or "").strip()
+        dom = (b.domain or "").strip().lower()
+        for prefix in ("https://", "http://"):
+            if dom.startswith(prefix):
+                dom = dom[len(prefix):]
+        if dom.startswith("www."):
+            dom = dom[4:]
+        dom = dom.rstrip("/")
+        if nm and dom:
+            cleaned.append((nm, dom))
+    if not cleaned:
+        raise HTTPException(400, "no valid brand entries (need both name and domain)")
+
+    try:
+        with get_session() as s:
+            existing = s.exec(_select(IndustryReport).where(IndustryReport.slug == slug)).first()
+            if existing:
+                raise HTTPException(409, f"industry already exists: {slug}")
+            report = IndustryReport(
+                slug=slug,
+                name=req.name.strip(),
+                parent_category=(req.parent_category or "").strip(),
+                description=(req.description or "").strip(),
+                next_scheduled_refresh=datetime.utcnow() if req.refresh_immediately else None,
+            )
+            s.add(report)
+            for nm, dom in cleaned:
+                s.add(IndustryBrand(industry_slug=slug, brand_name=nm, brand_domain=dom))
+            s.commit()
+            s.refresh(report)
+            payload = _industry_to_summary_dict(report)
+            payload["brands_added"] = len(cleaned)
+            payload["refresh_queued"] = bool(req.refresh_immediately)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+
+    return JSONResponse(payload, status_code=201)
+
+
+@app.post("/api/industries/{slug}/refresh")
+def api_industries_refresh(slug: str, request: Request) -> JSONResponse:
+    """Trigger an immediate re-audit of one industry. Runs the 8 category
+    queries against Apify, re-scores every brand, re-ranks. Synchronous —
+    returns the post-refresh summary when done. ~30-90s depending on Apify.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from src.industry_audit import refresh_industry
+    try:
+        summary = refresh_industry(slug)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"refresh failed: {type(exc).__name__}: {exc}")
+    return JSONResponse(summary)
+
+
+@app.get("/api/industries")
+def api_industries_list(request: Request) -> JSONResponse:
+    """List every published industry ranking with summary stats.
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select, func as _func
+    from src.db import IndustryReport, IndustryBrand, get_session
+    out: list[dict[str, Any]] = []
+    try:
+        with get_session() as s:
+            for r in s.exec(_select(IndustryReport).order_by(IndustryReport.name)):
+                cnt = s.exec(
+                    _select(_func.count(IndustryBrand.id))
+                    .where(IndustryBrand.industry_slug == r.slug)
+                ).one() or 0
+                row = _industry_to_summary_dict(r)
+                row["brand_count"] = int(cnt)
+                out.append(row)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    return JSONResponse({"industries": out, "count": len(out)})
+
+
+@app.get("/api/industries/{slug}")
+def api_industries_get(slug: str, request: Request) -> JSONResponse:
+    """Get one industry's full ranking — same data the public page renders
+    from, in JSON form. Useful for programmatic monitoring of changes.
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryBrand, get_session
+    try:
+        with get_session() as s:
+            report = s.exec(_select(IndustryReport).where(IndustryReport.slug == slug)).first()
+            if not report:
+                raise HTTPException(404, f"industry not found: {slug}")
+            brands = list(s.exec(
+                _select(IndustryBrand)
+                .where(IndustryBrand.industry_slug == slug)
+                .order_by(IndustryBrand.rank_in_industry.asc())
+            ))
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    payload = _industry_to_summary_dict(report)
+    payload["brands"] = [
+        {
+            "rank": b.rank_in_industry or None,
+            "name": b.brand_name,
+            "domain": b.brand_domain,
+            "visibility_pct": round(b.visibility_pct, 1),
+            "citation_pct": round(b.citation_pct, 1),
+            "visibility_score": round(b.visibility_score, 1),
+            "top_engine": b.top_engine or None,
+            "top_cited_sources": b.top_cited_sources or [],
+            "last_audited": (b.last_audited.isoformat() + "Z") if b.last_audited else None,
+            "last_audit_error": b.last_audit_error,
+        }
+        for b in brands
+    ]
+    return JSONResponse(payload)
 
 
 def _ensure_leading_capital(s: str) -> str:

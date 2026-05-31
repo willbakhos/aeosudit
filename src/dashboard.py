@@ -2596,6 +2596,80 @@ Zoho CRM | zoho.com
 
 <h2>Existing rankings</h2>
 {rows_html}
+
+<h2>Programmatic API</h2>
+<p>Same operations as this page, but as JSON endpoints. Set <code>INDUSTRY_API_TOKEN</code> on Railway then use the bearer token in the <code>Authorization</code> header. <strong>Do not share the token publicly.</strong></p>
+
+<details open style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">Create a new industry (POST)</summary>
+<pre style="margin:12px 0 0; overflow-x:auto; font-size:12.5px; line-height:1.55;">curl -X POST https://www.monitoraeo.com/api/industries \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "slug": "crm-software",
+    "name": "CRM software",
+    "parent_category": "SaaS",
+    "description": "CRM platforms used by sales and support teams.",
+    "brands": [
+      {{"name": "HubSpot",    "domain": "hubspot.com"}},
+      {{"name": "Salesforce", "domain": "salesforce.com"}},
+      {{"name": "Pipedrive",  "domain": "pipedrive.com"}}
+    ],
+    "refresh_immediately": true
+  }}'</pre>
+  <p style="margin:10px 0 0; color:#94a3b8; font-size:12.5px;">Returns 201 with the public URL and refresh schedule. 409 if the slug already exists. Cron will pick up the new industry within ~5 minutes when <code>refresh_immediately</code> is true.</p>
+</details>
+
+<details style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b; margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">Trigger an immediate refresh (POST)</summary>
+<pre style="margin:12px 0 0; overflow-x:auto; font-size:12.5px; line-height:1.55;">curl -X POST https://www.monitoraeo.com/api/industries/crm-software/refresh \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN"</pre>
+  <p style="margin:10px 0 0; color:#94a3b8; font-size:12.5px;">Synchronous — returns the summary when the audit completes (~30-90s). Use this after creating to skip the cron wait, or for one-off forced refreshes.</p>
+</details>
+
+<details style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b; margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">List all industries (GET)</summary>
+<pre style="margin:12px 0 0; overflow-x:auto; font-size:12.5px; line-height:1.55;">curl https://www.monitoraeo.com/api/industries \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN"</pre>
+</details>
+
+<details style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b; margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">Get one industry with its full ranking (GET)</summary>
+<pre style="margin:12px 0 0; overflow-x:auto; font-size:12.5px; line-height:1.55;">curl https://www.monitoraeo.com/api/industries/crm-software \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN"</pre>
+  <p style="margin:10px 0 0; color:#94a3b8; font-size:12.5px;">Returns the same data the public /ai-visibility/crm-software page renders from, in JSON form. Good for programmatic monitoring of ranking changes.</p>
+</details>
+
+<details style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b; margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">Python example (requests)</summary>
+<pre style="margin:12px 0 0; overflow-x:auto; font-size:12.5px; line-height:1.55;">import os, requests
+
+API = "https://www.monitoraeo.com/api/industries"
+TOKEN = os.environ["INDUSTRY_API_TOKEN"]
+HEADERS = {{"Authorization": f"Bearer {{TOKEN}}"}}
+
+# Create
+r = requests.post(API, headers=HEADERS, json={{
+    "slug": "crm-software",
+    "name": "CRM software",
+    "parent_category": "SaaS",
+    "description": "CRM platforms used by sales and support teams.",
+    "brands": [
+        {{"name": "HubSpot",    "domain": "hubspot.com"}},
+        {{"name": "Salesforce", "domain": "salesforce.com"}},
+    ],
+    "refresh_immediately": True,
+}})
+print(r.status_code, r.json())
+
+# Optional: wait for first audit + fetch results
+import time; time.sleep(120)
+r = requests.get(f"{{API}}/crm-software", headers=HEADERS)
+for b in r.json()["brands"]:
+    print(f"{{b['rank']:>2}}. {{b['name']:<25}} visibility={{b['visibility_pct']:>5.1f}}%")</pre>
+</details>
+
+<p style="margin-top:14px; color:#64748b; font-size:12.5px;">Status codes: <code>201</code> created · <code>400</code> bad request · <code>401</code> bad token · <code>404</code> slug not found · <code>409</code> slug already exists · <code>500</code> server error · <code>503</code> token not configured on server (set <code>INDUSTRY_API_TOKEN</code>).</p>
 """
 
 
