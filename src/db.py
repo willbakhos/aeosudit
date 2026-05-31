@@ -99,6 +99,16 @@ def init_db() -> None:
             except Exception as exc:  # noqa: BLE001
                 print(f"[init_db] migration skipped: {sql} -> {type(exc).__name__}: {exc}")
 
+    # Seed the 12 initial DB-backed glossary entries if the DB doesn't
+    # already have them. Idempotent: existing rows are left alone (so
+    # API/admin edits aren't reverted by deploys), only missing slugs
+    # are inserted.
+    try:
+        from src.glossary_seed import seed_glossary_pages
+        seed_glossary_pages()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[init_db] glossary seed skipped: {type(exc).__name__}: {exc}")
+
 
 class TrackedBrand(SQLModel, table=True):
     """A brand the user is monitoring. Holds everything the audit pipeline

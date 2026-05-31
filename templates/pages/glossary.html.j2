@@ -74,10 +74,19 @@
 <h1 class="page-title">AEO &amp; GEO glossary</h1>
 <p class="page-lede">Every term that matters in AI search — defined, with a link to the full explainer where one exists. New entries land here as we ship them.</p>
 
-{# Sections are hand-curated rather than auto-generated so the editorial
-   order (most foundational → most advanced) holds. Terms with no URL yet
-   are marked "upcoming" — leaving them visible signposts the gaps we're
-   filling without breaking links. #}
+{# Sections are hand-curated for editorial order (most foundational → most
+   advanced). Custom-Jinja pages are listed inline; DB-backed pages from
+   the content API auto-append to the matching parent_section. Unknown
+   parent_section values land in a catch-all "More" section at the bottom. #}
+
+{% macro db_cards(section_name) %}
+  {% for it in db_pages_by_section.get(section_name, []) %}
+    <a class="term-card" href="{{ it.url }}">
+      <span class="term-name">{{ it.name }}</span>
+      <span class="term-def">{{ it.short_definition or 'Read the full entry →' }}</span>
+    </a>
+  {% endfor %}
+{% endmacro %}
 
 <div class="glossary-section">
   <h2>Concepts</h2>
@@ -95,10 +104,7 @@
       <span class="term-name">AEO vs SEO</span>
       <span class="term-def">Where blue-link optimisation ends and answer-inclusion optimisation begins — and why the same site needs both.</span>
     </a>
-    <span class="term-card upcoming">
-      <span class="term-name">AI Search vs SEO <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Not a tactics comparison — how buyer behaviour itself has shifted away from scrolling blue links.</span>
-    </span>
+    {{ db_cards("Concepts") }}
   </div>
 </div>
 
@@ -114,6 +120,7 @@
       <span class="term-name">AI Mode</span>
       <span class="term-def">Google's standalone AI search experience (<code>?udm=50</code>). Always renders a full conversational answer with 15–30 citations.</span>
     </a>
+    {{ db_cards("Google AI surfaces") }}
   </div>
 </div>
 
@@ -121,26 +128,7 @@
   <h2>How each engine works</h2>
   <p class="section-sub">Engine-by-engine breakdowns of how citations get picked and why some brands consistently win.</p>
   <div class="term-grid">
-    <span class="term-card upcoming">
-      <span class="term-name">How ChatGPT chooses citations <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">The web_search tool ranking signals and what content makes the cut.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">How Claude Web Search works <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Anthropic's tool-use pipeline, retrieval pattern, and what gets quoted.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">How Perplexity ranks sources <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Sonar-native retrieval, citation density, and the live web grounding model.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">How Google AI Overviews pick sources <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">SGE's retrieval pipeline, the SERP layering, and why classic ranking signals still matter.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">How Gemini grounding works <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Vertex AI's groundingMetadata, citation extraction, and what shows up in user-facing Gemini.</span>
-    </span>
+    {{ db_cards("Engines") }}
   </div>
 </div>
 
@@ -148,22 +136,7 @@
   <h2>Metrics</h2>
   <p class="section-sub">The four numbers that matter when you measure your AI visibility.</p>
   <div class="term-grid">
-    <span class="term-card upcoming">
-      <span class="term-name">Visibility <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">The % of AI answers that name your brand by name in the prose.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">Citation rate <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">The % of AI answers that link to your domain as a clickable source.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">Share of voice in AI answers <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Your visibility relative to competitors in the same answer set.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">Brand hallucination <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">When AI engines fabricate false claims about your brand — what causes it and how to defend.</span>
-    </span>
+    {{ db_cards("Metrics") }}
   </div>
 </div>
 
@@ -175,14 +148,6 @@
       <span class="term-name">AEO checklist</span>
       <span class="term-def">The 20-item priority list — foundations, content, entity signals, ongoing tactics. Work in order.</span>
     </a>
-    <span class="term-card upcoming">
-      <span class="term-name">Structured data for AI engines <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Which schema types AI engines actually parse — and which ones are wasted effort.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">llms.txt examples + templates <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Working <code>/llms.txt</code> files from real sites, plus a template you can fork.</span>
-    </span>
     <a class="term-card" href="/what-is-llms-txt">
       <span class="term-name">What is llms.txt?</span>
       <span class="term-def">The emerging markdown manifest standard for AI crawlers, similar to robots.txt for search.</span>
@@ -191,28 +156,23 @@
       <span class="term-name">AEO tools comparison</span>
       <span class="term-def">Honest comparison of monitoraeo, Otterly.ai, Profound, Athena, Goodie and others.</span>
     </a>
+    {{ db_cards("Tactics") }}
   </div>
 </div>
 
-{# Auto-rendered section per parent_section for any DefinitionalPage rows
-   added via the content API. These appear after the hardcoded sections
-   above so the curated taxonomy stays editorial — but new entries land
-   automatically without a code change. #}
-{% if db_pages_by_section %}
-{% for section_name, items in db_pages_by_section.items() %}
+{# Catch-all for any DB entries whose parent_section doesn't match a curated
+   section above (e.g. a contractor types "tactics" lowercase or adds a new
+   section like "Workflows"). Keeps the UX self-healing. #}
+{% set known_sections = ['Concepts', 'Google AI surfaces', 'Engines', 'Metrics', 'Tactics'] %}
+{% set unknown_sections = db_pages_by_section.keys() | reject('in', known_sections) | list if db_pages_by_section else [] %}
+{% if unknown_sections %}
 <div class="glossary-section">
-  <h2>{{ section_name }}</h2>
-  <p class="section-sub">{{ items|length }} entr{{ 'y' if items|length == 1 else 'ies' }} · published via the content API</p>
+  <h2>More</h2>
+  <p class="section-sub">Recently added via the content API.</p>
   <div class="term-grid">
-    {% for it in items %}
-    <a class="term-card" href="{{ it.url }}">
-      <span class="term-name">{{ it.name }}</span>
-      <span class="term-def">{{ it.short_definition or 'Read the full entry →' }}</span>
-    </a>
-    {% endfor %}
+    {% for sec in unknown_sections %}{{ db_cards(sec) }}{% endfor %}
   </div>
 </div>
-{% endfor %}
 {% endif %}
 
 <h2 style="margin-top:48px;">See it on your own brand</h2>
