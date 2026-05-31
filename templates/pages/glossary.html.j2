@@ -110,10 +110,10 @@
       <span class="term-name">AI Overview</span>
       <span class="term-def">Google's inline AI panel that appears above the regular search results. Renders on ~25–48% of queries depending on intent.</span>
     </a>
-    <span class="term-card upcoming">
-      <span class="term-name">AI Mode <span class="upcoming-tag">upcoming</span></span>
+    <a class="term-card" href="/what-is-ai-mode">
+      <span class="term-name">AI Mode</span>
       <span class="term-def">Google's standalone AI search experience (<code>?udm=50</code>). Always renders a full conversational answer with 15–30 citations.</span>
-    </span>
+    </a>
   </div>
 </div>
 
@@ -171,10 +171,10 @@
   <h2>Tactics</h2>
   <p class="section-sub">What you actually do to move the metrics above.</p>
   <div class="term-grid">
-    <span class="term-card upcoming">
-      <span class="term-name">AEO checklist <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">The 20-item priority list every brand should run through before pushing AEO content live.</span>
-    </span>
+    <a class="term-card" href="/answer-engine-optimization-checklist">
+      <span class="term-name">AEO checklist</span>
+      <span class="term-def">The 20-item priority list — foundations, content, entity signals, ongoing tactics. Work in order.</span>
+    </a>
     <span class="term-card upcoming">
       <span class="term-name">Structured data for AI engines <span class="upcoming-tag">upcoming</span></span>
       <span class="term-def">Which schema types AI engines actually parse — and which ones are wasted effort.</span>
@@ -183,16 +183,37 @@
       <span class="term-name">llms.txt examples + templates <span class="upcoming-tag">upcoming</span></span>
       <span class="term-def">Working <code>/llms.txt</code> files from real sites, plus a template you can fork.</span>
     </span>
-    <span class="term-card upcoming">
-      <span class="term-name">What is llms.txt? <span class="upcoming-tag">upcoming</span></span>
+    <a class="term-card" href="/what-is-llms-txt">
+      <span class="term-name">What is llms.txt?</span>
       <span class="term-def">The emerging markdown manifest standard for AI crawlers, similar to robots.txt for search.</span>
-    </span>
-    <span class="term-card upcoming">
-      <span class="term-name">AEO tools comparison <span class="upcoming-tag">upcoming</span></span>
-      <span class="term-def">Every AEO-flavoured audit tool we know of, what each is good at, and where the gaps are.</span>
-    </span>
+    </a>
+    <a class="term-card" href="/aeo-tools">
+      <span class="term-name">AEO tools comparison</span>
+      <span class="term-def">Honest comparison of monitoraeo, Otterly.ai, Profound, Athena, Goodie and others.</span>
+    </a>
   </div>
 </div>
+
+{# Auto-rendered section per parent_section for any DefinitionalPage rows
+   added via the content API. These appear after the hardcoded sections
+   above so the curated taxonomy stays editorial — but new entries land
+   automatically without a code change. #}
+{% if db_pages_by_section %}
+{% for section_name, items in db_pages_by_section.items() %}
+<div class="glossary-section">
+  <h2>{{ section_name }}</h2>
+  <p class="section-sub">{{ items|length }} entr{{ 'y' if items|length == 1 else 'ies' }} · published via the content API</p>
+  <div class="term-grid">
+    {% for it in items %}
+    <a class="term-card" href="{{ it.url }}">
+      <span class="term-name">{{ it.name }}</span>
+      <span class="term-def">{{ it.short_definition or 'Read the full entry →' }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
 
 <h2 style="margin-top:48px;">See it on your own brand</h2>
 <p>The fastest way to understand any of these terms is to see them measured against your own domain. The free preview gives you a real-data snapshot in under a minute.</p>

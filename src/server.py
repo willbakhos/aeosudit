@@ -261,6 +261,10 @@ SITEMAP_PAGES: list[tuple[str, str, str]] = [
     ("/what-is-geo", "monthly", "0.8"),
     ("/aeo-vs-seo", "monthly", "0.8"),
     ("/what-is-ai-overview", "monthly", "0.8"),
+    ("/what-is-ai-mode", "monthly", "0.8"),
+    ("/what-is-llms-txt", "monthly", "0.8"),
+    ("/answer-engine-optimization-checklist", "monthly", "0.8"),
+    ("/aeo-tools", "monthly", "0.8"),
     ("/glossary", "monthly", "0.7"),
     ("/ai-visibility", "weekly", "0.9"),
     ("/product/audit", "monthly", "0.8"),
@@ -317,8 +321,12 @@ hallucination risk per engine, and produces a prioritised action plan.
 ## Key concepts
 - [What is AEO?]({SITE_BASE_URL}/what-is-aeo): Answer Engine Optimisation — the practice of getting your brand named, cited and recommended in AI answers from ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews.
 - [What is GEO?]({SITE_BASE_URL}/what-is-geo): Generative Engine Optimisation — the technical and content layer that makes a site retrievable, parseable and quotable by generative AI systems.
-- [What is AI Overview?]({SITE_BASE_URL}/what-is-ai-overview): Google's inline AI-generated answer panel that appears above the regular search results on roughly 25–48% of queries. Distinct from AI Mode (the standalone full-page AI search experience).
+- [What is AI Overview?]({SITE_BASE_URL}/what-is-ai-overview): Google's inline AI-generated answer panel that appears above the regular search results on roughly 25–48% of queries.
+- [What is AI Mode?]({SITE_BASE_URL}/what-is-ai-mode): Google's standalone full-page AI search experience (?udm=50). Always renders a complete conversational answer with 15–30 citations, unlike AI Overview which renders inline only on a subset of queries.
+- [What is llms.txt?]({SITE_BASE_URL}/what-is-llms-txt): An emerging standard (llmstxt.org) — a markdown manifest at /llms.txt that summarises a site for AI crawlers, similar to robots.txt for search engines.
 - [AEO vs SEO]({SITE_BASE_URL}/aeo-vs-seo): Where traditional SEO ends (ranking blue links) and AEO begins (winning the synthesised answer).
+- [AEO checklist]({SITE_BASE_URL}/answer-engine-optimization-checklist): The prioritised 20-item list for getting your brand named, cited and recommended by AI engines.
+- [AEO tools comparison]({SITE_BASE_URL}/aeo-tools): Honest comparison of the AEO tooling landscape — monitoraeo, Otterly.ai, Profound, Athena, Goodie and others.
 - [Glossary]({SITE_BASE_URL}/glossary): Every AI search term defined — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice, brand hallucination and more.
 
 ## Industry rankings
@@ -375,13 +383,16 @@ def sitemap_xml() -> Response:
     # entries still ship.
     try:
         from sqlmodel import select as _select
-        from src.db import IndustryReport, get_session
+        from src.db import IndustryReport, DefinitionalPage, get_session
         with get_session() as s:
             for r in s.exec(_select(IndustryReport).order_by(IndustryReport.slug)):
                 lastmod = (r.last_full_refresh or r.created_at or datetime.utcnow()).strftime("%Y-%m-%d")
                 entries.append((f"/ai-visibility/{r.slug}", lastmod, "monthly", "0.6"))
+            for p in s.exec(_select(DefinitionalPage).order_by(DefinitionalPage.slug)):
+                lastmod = (p.updated_at or p.published_at or datetime.utcnow()).strftime("%Y-%m-%d")
+                entries.append((f"/glossary/{p.slug}", lastmod, "monthly", "0.7"))
     except Exception as exc:  # noqa: BLE001
-        print(f"[sitemap] industry entries skipped: {type(exc).__name__}: {exc}")
+        print(f"[sitemap] dynamic entries skipped: {type(exc).__name__}: {exc}")
 
     urls = "\n".join(
         f"  <url>\n"
@@ -464,10 +475,99 @@ def page_what_is_ai_overview(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/what-is-ai-mode", response_class=HTMLResponse)
+def page_what_is_ai_mode(request: Request) -> HTMLResponse:
+    return _render(
+        "what_is_ai_mode.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "Glossary", "path": "/glossary"},
+            {"name": "What is AI Mode?", "path": "/what-is-ai-mode"},
+        ],
+    )
+
+
+@app.get("/what-is-llms-txt", response_class=HTMLResponse)
+def page_what_is_llms_txt(request: Request) -> HTMLResponse:
+    return _render(
+        "what_is_llms_txt.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "Glossary", "path": "/glossary"},
+            {"name": "What is llms.txt?", "path": "/what-is-llms-txt"},
+        ],
+    )
+
+
+@app.get("/answer-engine-optimization-checklist", response_class=HTMLResponse)
+def page_aeo_checklist(request: Request) -> HTMLResponse:
+    return _render(
+        "answer_engine_optimization_checklist.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "Glossary", "path": "/glossary"},
+            {"name": "AEO checklist", "path": "/answer-engine-optimization-checklist"},
+        ],
+    )
+
+
+@app.get("/aeo-tools", response_class=HTMLResponse)
+def page_aeo_tools(request: Request) -> HTMLResponse:
+    return _render(
+        "aeo_tools.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "Glossary", "path": "/glossary"},
+            {"name": "AEO tools", "path": "/aeo-tools"},
+        ],
+    )
+
+
 @app.get("/glossary", response_class=HTMLResponse)
 def page_glossary(request: Request) -> HTMLResponse:
-    return _render("glossary.html.j2", request=request,
-                   breadcrumbs=[{"name": "Glossary", "path": "/glossary"}])
+    # Pull DB-backed definitional pages so the glossary index can list them
+    # alongside the hardcoded custom pages. Fail-soft on DB error.
+    db_pages_by_section: dict[str, list[dict[str, Any]]] = {}
+    try:
+        from sqlmodel import select as _select
+        from src.db import DefinitionalPage, get_session
+        with get_session() as s:
+            for p in s.exec(_select(DefinitionalPage).order_by(DefinitionalPage.name)):
+                db_pages_by_section.setdefault(p.parent_section or "Other", []).append({
+                    "slug": p.slug,
+                    "name": p.name,
+                    "short_definition": p.short_definition,
+                    "url": f"/glossary/{p.slug}",
+                })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[glossary] DB pages skipped: {type(exc).__name__}: {exc}")
+    return _render(
+        "glossary.html.j2", request=request,
+        db_pages_by_section=db_pages_by_section,
+        breadcrumbs=[{"name": "Glossary", "path": "/glossary"}],
+    )
+
+
+@app.get("/glossary/{slug}", response_class=HTMLResponse)
+def page_glossary_entry(slug: str, request: Request) -> HTMLResponse:
+    """One DB-backed glossary entry. 404s on unknown slug so invented URLs
+    don't render thin pages Google would index."""
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    try:
+        with get_session() as s:
+            page = s.exec(_select(DefinitionalPage).where(DefinitionalPage.slug == slug)).first()
+            if not page:
+                raise HTTPException(404, "Glossary entry not found")
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        print(f"[glossary/{slug}] DB error: {type(exc).__name__}: {exc}")
+        raise HTTPException(503, "Glossary temporarily unavailable")
+    return _render(
+        "definitional_page.html.j2", request=request,
+        page=page,
+        breadcrumbs=[
+            {"name": "Glossary", "path": "/glossary"},
+            {"name": page.name, "path": f"/glossary/{page.slug}"},
+        ],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1740,6 +1840,232 @@ def api_industries_list(request: Request) -> JSONResponse:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
     return JSONResponse({"industries": out, "count": len(out)})
+
+
+# ---------------------------------------------------------------------------
+# Definitional pages API — programmatic seeding of /glossary/{slug} pages
+# Same bearer-token gate as the industries API (reuses INDUSTRY_API_TOKEN
+# since they're both content-management endpoints managed by the same
+# operator/contractor).
+# ---------------------------------------------------------------------------
+
+class DefinitionalSection(BaseModel):
+    heading: str = ""
+    body_html: str
+
+
+class DefinitionalFAQ(BaseModel):
+    q: str
+    a: str
+
+
+class DefinitionalPageRequest(BaseModel):
+    slug: str
+    name: str
+    parent_section: str = "Concepts"     # Concepts | Engines | Metrics | Tactics | Google AI surfaces
+    target_kw: str = ""
+    short_definition: str = ""
+    meta_description: str = ""
+    lede: str = ""
+    sections: list[DefinitionalSection] = []
+    faqs: list[DefinitionalFAQ] = []
+    related_slugs: list[str] = []
+    alternate_names: list[str] = []
+
+
+def _definitional_page_to_dict(p) -> dict[str, Any]:
+    return {
+        "slug": p.slug,
+        "name": p.name,
+        "parent_section": p.parent_section,
+        "target_kw": p.target_kw,
+        "short_definition": p.short_definition,
+        "meta_description": p.meta_description,
+        "lede": p.lede,
+        "sections": p.sections or [],
+        "faqs": p.faqs or [],
+        "related_slugs": p.related_slugs or [],
+        "alternate_names": p.alternate_names or [],
+        "url": f"{SITE_BASE_URL}/glossary/{p.slug}",
+        "published_at": (p.published_at.isoformat() + "Z") if p.published_at else None,
+        "updated_at": (p.updated_at.isoformat() + "Z") if p.updated_at else None,
+    }
+
+
+@app.post("/api/definitional-pages")
+def api_def_pages_create(req: DefinitionalPageRequest, request: Request) -> JSONResponse:
+    """Create a new glossary entry rendered at /glossary/{slug}. Idempotent
+    on slug (409 if it exists — use PATCH to update).
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+
+    Example body:
+        {
+          "slug": "share-of-voice-in-ai-answers",
+          "name": "Share of voice in AI answers",
+          "parent_section": "Metrics",
+          "target_kw": "ai share of voice",
+          "short_definition": "Your brand's visibility relative to competitors in the same AI answer set.",
+          "lede": "Share of voice in AI answers is your brand's visibility relative to the other brands the AI mentions in the same answer set...",
+          "sections": [
+            {"heading": "How it's calculated", "body_html": "<p>Formula: <code>your_visibility / total_visibility_across_set</code>...</p>"},
+            {"heading": "Why it beats raw visibility", "body_html": "<p>...</p>"}
+          ],
+          "faqs": [
+            {"q": "How is share of voice different from visibility?", "a": "Visibility is absolute — % of answers naming your brand. Share of voice is relative — your share of all brand mentions in the same answer set."}
+          ],
+          "related_slugs": ["visibility-metric", "citation-rate-meaning", "/what-is-aeo"]
+        }
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+
+    slug = re.sub(r"[^a-z0-9-]", "", (req.slug or "").strip().lower())
+    if not slug:
+        raise HTTPException(400, "slug must be lowercase alphanumeric with hyphens")
+    if not (req.name or "").strip():
+        raise HTTPException(400, "name is required")
+
+    try:
+        with get_session() as s:
+            if s.exec(_select(DefinitionalPage).where(DefinitionalPage.slug == slug)).first():
+                raise HTTPException(409, f"glossary page already exists: {slug}")
+            now = datetime.utcnow()
+            page = DefinitionalPage(
+                slug=slug, name=req.name.strip(),
+                parent_section=(req.parent_section or "Concepts").strip(),
+                target_kw=(req.target_kw or "").strip(),
+                short_definition=(req.short_definition or "").strip(),
+                meta_description=(req.meta_description or "").strip(),
+                lede=(req.lede or "").strip(),
+                sections=[s.model_dump() for s in req.sections],
+                faqs=[f.model_dump() for f in req.faqs],
+                related_slugs=req.related_slugs or [],
+                alternate_names=req.alternate_names or [],
+                published_at=now, updated_at=now,
+            )
+            s.add(page)
+            s.commit()
+            s.refresh(page)
+            payload = _definitional_page_to_dict(page)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    return JSONResponse(payload, status_code=201)
+
+
+@app.patch("/api/definitional-pages/{slug}")
+def api_def_pages_update(slug: str, req: DefinitionalPageRequest, request: Request) -> JSONResponse:
+    """Replace the content of an existing glossary entry. slug in the URL
+    wins (req.slug is ignored). updated_at is auto-bumped — drives sitemap
+    lastmod + Article dateModified.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    try:
+        with get_session() as s:
+            page = s.exec(_select(DefinitionalPage).where(DefinitionalPage.slug == slug)).first()
+            if not page:
+                raise HTTPException(404, f"glossary page not found: {slug}")
+            page.name = (req.name or page.name).strip()
+            page.parent_section = (req.parent_section or page.parent_section).strip()
+            page.target_kw = (req.target_kw or page.target_kw).strip()
+            page.short_definition = (req.short_definition or page.short_definition).strip()
+            page.meta_description = (req.meta_description or page.meta_description).strip()
+            page.lede = (req.lede or page.lede).strip()
+            if req.sections:
+                page.sections = [s.model_dump() for s in req.sections]
+            if req.faqs:
+                page.faqs = [f.model_dump() for f in req.faqs]
+            if req.related_slugs:
+                page.related_slugs = req.related_slugs
+            if req.alternate_names:
+                page.alternate_names = req.alternate_names
+            page.updated_at = datetime.utcnow()
+            s.add(page)
+            s.commit()
+            s.refresh(page)
+            payload = _definitional_page_to_dict(page)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    return JSONResponse(payload)
+
+
+@app.delete("/api/definitional-pages/{slug}")
+def api_def_pages_delete(slug: str, request: Request) -> JSONResponse:
+    """Permanently delete a glossary entry. Returns 204 on success, 404 if
+    the slug doesn't exist.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    try:
+        with get_session() as s:
+            page = s.exec(_select(DefinitionalPage).where(DefinitionalPage.slug == slug)).first()
+            if not page:
+                raise HTTPException(404, f"glossary page not found: {slug}")
+            s.delete(page)
+            s.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    return JSONResponse({"deleted": slug}, status_code=200)
+
+
+@app.get("/api/definitional-pages")
+def api_def_pages_list(request: Request) -> JSONResponse:
+    """List every published glossary entry (slug + name + parent_section +
+    timestamps). For full content of one entry use GET /api/definitional-pages/{slug}.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    out: list[dict[str, Any]] = []
+    try:
+        with get_session() as s:
+            for p in s.exec(_select(DefinitionalPage).order_by(DefinitionalPage.parent_section, DefinitionalPage.name)):
+                out.append({
+                    "slug": p.slug, "name": p.name,
+                    "parent_section": p.parent_section, "target_kw": p.target_kw,
+                    "url": f"{SITE_BASE_URL}/glossary/{p.slug}",
+                    "updated_at": (p.updated_at.isoformat() + "Z") if p.updated_at else None,
+                })
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    return JSONResponse({"pages": out, "count": len(out)})
+
+
+@app.get("/api/definitional-pages/{slug}")
+def api_def_pages_get(slug: str, request: Request) -> JSONResponse:
+    """Get one glossary entry with full content. Useful for backups / edits.
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+    """
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    try:
+        with get_session() as s:
+            page = s.exec(_select(DefinitionalPage).where(DefinitionalPage.slug == slug)).first()
+            if not page:
+                raise HTTPException(404, f"glossary page not found: {slug}")
+            payload = _definitional_page_to_dict(page)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+    return JSONResponse(payload)
 
 
 @app.get("/api/industries/{slug}")

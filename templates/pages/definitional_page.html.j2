@@ -1,0 +1,124 @@
+{# Generic template for DB-backed glossary pages at /glossary/{slug}.
+   Receives a `page` (DefinitionalPage row) and renders a uniform layout
+   with Article + DefinedTerm + FAQPage JSON-LD generated from the row.
+
+   Each section.body_html is rendered with |safe — these are admin-authored
+   so they can include any HTML. The contractor brief documents what tags
+   are conventional (h3, p, ul, ol, a, strong, em, code, pre, table). #}
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/glossary/" ~ page.slug %}
+{% set page_description = page.meta_description or page.short_definition %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = page.published_at.strftime('%Y-%m-%dT%H:%M:%SZ') if page.published_at else '' %}
+{% set page_modified_time = page.updated_at.strftime('%Y-%m-%dT%H:%M:%SZ') if page.updated_at else page_published_time %}
+{% block title %}{{ page.name }} | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": {{ page.name|tojson }},
+      "description": {{ page_description|tojson }},
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "{{ _canonical }}#term",
+      "name": {{ page.name|tojson }},
+      {% if page.alternate_names %}"alternateName": {{ page.alternate_names|tojson }},{% endif %}
+      "description": {{ (page.short_definition or page_description)|tojson }},
+      "url": "{{ _canonical }}",
+      "inDefinedTermSet": {"@type": "DefinedTermSet", "name": "AEO & GEO glossary", "url": "{{ _base_url }}/glossary"}
+    }
+    {%- if page.faqs %},
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {%- for f in page.faqs %}
+          {%- if not loop.first %},{% endif %}
+        {
+          "@type": "Question",
+          "name": {{ f.q|tojson }},
+          "acceptedAnswer": {"@type": "Answer", "text": {{ f.a|tojson }}}
+        }
+        {%- endfor %}
+      ]
+    }
+    {%- endif %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .def-section { margin: 28px 0; }
+  .def-section h2 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 8px; letter-spacing: -.025em; }
+  .def-section .body p { font-size: 15.5px; line-height: 1.7; color: var(--ink-2); margin: 0 0 14px; }
+  .def-section .body ul, .def-section .body ol { font-size: 15px; line-height: 1.7; color: var(--ink-2); padding-left: 22px; }
+  .def-section .body li { margin: 6px 0; }
+  .def-section .body a { color: var(--blue); font-weight: 700; }
+  .def-section .body code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; padding: 2px 6px; background: rgba(15,23,42,.06); border-radius: 6px; }
+  .def-section .body pre { background: #0b1220; color: #cbd5e1; padding: 16px 18px; border-radius: 12px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+  .def-section .body table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 14px 0; background: white; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 14px; }
+  .def-section .body th, .def-section .body td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .def-section .body th { background: #f8fafc; font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .def-section .body tr:last-child td { border-bottom: 0; }
+  .def-section .body blockquote { margin: 14px 0; padding: 14px 18px; background: rgba(37,99,235,.05); border-left: 3px solid var(--blue); border-radius: 0 12px 12px 0; color: var(--ink-2); font-size: 15px; line-height: 1.65; }
+  .def-section .body strong { color: var(--ink); }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary · {{ page.parent_section }}</span>
+<h1 class="page-title">{{ page.name }}</h1>
+{% if page.lede %}<p class="page-lede">{{ page.lede }}</p>{% endif %}
+
+{% for section in page.sections %}
+<div class="def-section">
+  {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+  <div class="body">{{ section.body_html|safe }}</div>
+</div>
+{% endfor %}
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/glossary" class="btn-secondary">Back to glossary</a>
+</div>
+
+{% if page.related_slugs %}
+<h2>Related concepts</h2>
+<ul class="bullets">
+  {% for slug_or_url in page.related_slugs %}
+    {# Allow either a bare slug ("what-is-aeo") for known root URLs OR an
+       absolute path ("/what-is-aeo", "/glossary/share-of-voice"). Bare slugs
+       default to /glossary/{slug} since custom-page URLs are individually
+       hardcoded in routes anyway. #}
+    {% set link = slug_or_url if slug_or_url.startswith('/') else ('/glossary/' ~ slug_or_url) %}
+    <li><a href="{{ link }}">{{ slug_or_url.replace('/glossary/', '').replace('/', '').replace('-', ' ').title() }}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if page.faqs %}
+<h2 id="faq">Frequently asked</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  {% for f in page.faqs %}
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">{{ f.q }}</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">{{ f.a }}</p>
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

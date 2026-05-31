@@ -83,6 +83,14 @@ def init_db() -> None:
         "UPDATE monitor_industry_brand SET brand_domain = 'salesforce.com' WHERE brand_name = 'Salesforce'  AND brand_domain = 'alesforce.com'",
         "UPDATE monitor_industry_brand SET brand_domain = 'pipedrive.com'  WHERE brand_name = 'Pipedrive'   AND brand_domain = 'ipedrive.com'",
         "UPDATE monitor_industry_brand SET brand_domain = 'sugarcrm.com'   WHERE brand_name = 'SugarCRM'    AND brand_domain = 'ugarcrm.com'",
+        # DefinitionalPage additive columns — create_all handles the table,
+        # ALTERs cover columns added after first deploy.
+        "ALTER TABLE monitor_definitional_page ADD COLUMN IF NOT EXISTS parent_section VARCHAR DEFAULT 'Concepts'",
+        "ALTER TABLE monitor_definitional_page ADD COLUMN IF NOT EXISTS target_kw VARCHAR DEFAULT ''",
+        "ALTER TABLE monitor_definitional_page ADD COLUMN IF NOT EXISTS short_definition VARCHAR DEFAULT ''",
+        "ALTER TABLE monitor_definitional_page ADD COLUMN IF NOT EXISTS meta_description VARCHAR DEFAULT ''",
+        "ALTER TABLE monitor_definitional_page ADD COLUMN IF NOT EXISTS related_slugs JSONB DEFAULT '[]'::jsonb",
+        "ALTER TABLE monitor_definitional_page ADD COLUMN IF NOT EXISTS alternate_names JSONB DEFAULT '[]'::jsonb",
     ]
     with eng.begin() as conn:
         for sql in migrations:
@@ -240,6 +248,40 @@ class IndustryReport(SQLModel, table=True):
     last_full_refresh: datetime | None = None     # most recent successful pass over all brands
     next_scheduled_refresh: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DefinitionalPage(SQLModel, table=True):
+    """A glossary / definitional content page rendered at /glossary/{slug}.
+    Built so editorial content can be published programmatically (via the
+    /api/definitional-pages endpoints) without code changes — same shape
+    as the IndustryReport pattern but for content rather than data.
+
+    The high-traffic glossary pages (what-is-aeo, what-is-ai-mode etc.) are
+    custom Jinja templates at root URLs for richer visual treatment. Pages
+    backed by this model live at /glossary/{slug} and use one generic
+    template — uniform shape, fast to populate, contractor-friendly."""
+    __tablename__ = "monitor_definitional_page"
+
+    slug: str = Field(primary_key=True)          # "share-of-voice-in-ai-answers"
+    name: str                                     # "Share of voice in AI answers"
+    parent_section: str = "Concepts"              # Concepts | Engines | Metrics | Tactics | Google AI surfaces
+    target_kw: str = ""                           # primary KW used in title + meta
+    short_definition: str = ""                    # ~30 words for glossary index card
+    meta_description: str = ""                    # ~155 chars — falls back to short_definition
+    lede: str = ""                                # ~50 words, displayed under H1
+    # Sections are [{heading: str, body_html: str}, ...]. body_html is trusted
+    # HTML (admin-authed) — supports any markup including <a>, lists, tables,
+    # <pre>, <strong>, <em>. The template wraps each section in H2 + the body.
+    sections: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSONB))
+    # FAQs are [{q: str, a: str}, ...]. Rendered as <details> and as FAQPage schema.
+    faqs: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSONB))
+    # Slugs of other glossary pages to cross-link from the "Related" footer.
+    # Can reference either custom pages (root URLs) or DB pages (/glossary/{slug}).
+    related_slugs: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
+    # Aliases for DefinedTerm.alternateName (e.g. "Generative AI Optimisation")
+    alternate_names: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
+    published_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 

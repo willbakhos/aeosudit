@@ -1,0 +1,388 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/aeo-tools" %}
+{% set page_description = "Honest comparison of every AEO tool we know of — monitoraeo, Otterly.ai, Profound, Athena, Goodie, AthenaHQ and others. What each is good at, what they miss, and which to pick for what use case." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-05-30T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
+{% block title %}AEO tools comparison (2026): honest pros and cons | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "AEO tools comparison — honest pros, cons and use cases (2026)",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "AEO tools"},
+        {"@type": "Thing", "name": "AI visibility tools"},
+        {"@type": "Thing", "name": "Answer Engine Optimisation"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is an AEO tool?",
+          "acceptedAnswer": {"@type": "Answer", "text": "An AEO (Answer Engine Optimisation) tool measures how often AI engines — ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews — name a brand, cite its domain, and recommend it in answers to buyer questions. The category is new (most tools launched 2024–2026) and the products vary widely in coverage, pricing, and which engines they actually query."}
+        },
+        {
+          "@type": "Question",
+          "name": "Which AEO tool should I pick?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Depends on use case. For a one-off diagnostic of where your brand stands today, monitoraeo's $79 Full Audit covers all 5 engines + action plan and runs in 10 minutes. For ongoing monthly tracking, monitoraeo Full Monitoring ($95/mo) or Profound (~$1k/mo enterprise) are the main options. For enterprise content workflows that pair AEO with full content management, Otterly.ai and Athena lean more toward agencies/in-house teams with existing content stacks. For a free preview before committing, monitoraeo and Otterly.ai both offer one."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why list competitors on your own AEO tools page?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Three reasons. (1) AI engines preferentially cite category-overview pages that include multiple tools rather than single-vendor marketing pages — including competitors makes us more cite-worthy. (2) Buyers research multiple tools before picking; pretending alternatives don't exist signals lack of confidence. (3) Honest comparison content tends to convert better than evasive marketing because it builds trust. The fact that this page lists Otterly, Profound, Athena and others alongside monitoraeo is itself an AEO play."}
+        },
+        {
+          "@type": "Question",
+          "name": "How is AEO tooling different from SEO tooling?",
+          "acceptedAnswer": {"@type": "Answer", "text": "SEO tools (Ahrefs, Semrush, Moz) measure ranking position in classical Google blue-link results, keyword volume, backlinks. AEO tools measure visibility inside AI-generated answers — whether the AI names your brand, cites your domain, or recommends a competitor instead. Different metrics, different optimisation surface. Most teams need both: SEO for the (shrinking) classical search traffic, AEO for the (growing) AI answer surface."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I just use ChatGPT to check if AI knows about my brand?",
+          "acceptedAnswer": {"@type": "Answer", "text": "You can ask, but it's not reliable enough to make decisions on. AI answers vary day-to-day on the same question, and a single prompt only tests one phrasing. Real AEO measurement runs multiple buyer-intent questions across all 5 major engines, captures the answers and citations, and tracks the pattern over time. Doing this by hand is impractical past ~5 questions; tools automate it."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's missing across all AEO tools today?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Three structural gaps as of mid-2026. (1) None reliably measure raw AI Mode (?udm=50) the way they measure AI Overview — AI Mode's render pipeline is harder to scrape at scale. (2) Almost none provide a downloadable Dataset of per-industry rankings (monitoraeo's /ai-visibility pages are an outlier). (3) None integrate cleanly with content workflows (Notion, Webflow, WordPress) the way SEO tools do — there's no AEO equivalent of Surfer or Frase yet. Expect rapid evolution on all three in 2026."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .tool-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0; background: white; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-soft); }
+  .tool-table thead th { background: #f8fafc; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  .tool-table td { padding: 14px 12px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: top; }
+  .tool-table tr:last-child td { border-bottom: 0; }
+  .tool-table td.tool { font-weight: 800; color: var(--ink); width: 22%; }
+  .tool-table td.tool .url { display: block; font-weight: 500; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .tool-table td.coverage { color: var(--ink-2); font-size: 12.5px; line-height: 1.55; }
+  .tool-table td.price { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+  .tool-card {
+    margin: 18px 0; padding: 24px 26px;
+    background: white; border-radius: 22px; border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+  }
+  .tool-card.featured { border-left: 4px solid var(--blue); background: linear-gradient(135deg, rgba(37,99,235,.04), white 200px); }
+  .tool-card h3 { margin: 0 0 4px; font-size: 19px; }
+  .tool-card .tagline { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .tool-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+  .tool-card .row h4 { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; }
+  .tool-card .row ul { padding: 0; list-style: none; margin: 0; }
+  .tool-card .row li { padding: 4px 0 4px 18px; position: relative; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+  .tool-card .row .pros li::before { content: "+"; position: absolute; left: 0; color: var(--success); font-weight: 900; }
+  .tool-card .row .cons li::before { content: "−"; position: absolute; left: 0; color: var(--warning); font-weight: 900; }
+  .tool-card .best-for {
+    margin-top: 14px; padding: 10px 14px;
+    background: rgba(37,99,235,.06); border-left: 3px solid var(--blue);
+    border-radius: 0 10px 10px 0; font-size: 13px; color: var(--ink-2);
+  }
+  .tool-card .best-for strong { color: var(--ink); }
+
+  .gap-box { padding: 22px 26px; border-radius: 18px; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #fbbf24; margin: 24px 0; }
+  .gap-box h3 { margin: 0 0 8px; color: #78350f; font-size: 16px; }
+  .gap-box p { margin: 0 0 10px; color: #78350f; font-size: 13.5px; line-height: 1.6; }
+
+  @media (max-width: 720px) {
+    .tool-card .row { grid-template-columns: 1fr; }
+    .tool-table { display: block; overflow-x: auto; }
+  }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary · Tactics</span>
+<h1 class="page-title">AEO tools — honest comparison (2026)</h1>
+<p class="page-lede">Every AEO tool we know of, what each is actually good at, and which to pick for your use case. We list monitoraeo alongside Otterly.ai, Profound, Athena, Goodie and the rest — including the ones we lose to. Buyers research multiple tools; pretending alternatives don't exist signals lack of confidence.</p>
+
+<h2>The landscape at a glance</h2>
+<p>The AEO/GEO tooling category is ~2 years old. Most products launched in 2024–2025 and are iterating fast. The major dimensions to compare on are: which AI engines they actually query, whether they include an action plan (vs raw measurement only), pricing model, and whether they offer monthly monitoring or one-off audits.</p>
+
+<table class="tool-table">
+  <thead>
+    <tr>
+      <th>Tool</th>
+      <th>Engines covered</th>
+      <th>One-off / Monthly</th>
+      <th>Action plan</th>
+      <th>Starting price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="tool">monitoraeo<span class="url">monitoraeo.com</span></td>
+      <td class="coverage">All 5 (Google AI, ChatGPT, Claude, Perplexity, Gemini)</td>
+      <td>Both</td>
+      <td>Yes (Claude Sonnet)</td>
+      <td class="price">$29 / $35/mo</td>
+    </tr>
+    <tr>
+      <td class="tool">Otterly.ai<span class="url">otterly.ai</span></td>
+      <td class="coverage">Google AI, ChatGPT, Perplexity</td>
+      <td>Monthly</td>
+      <td>Partial</td>
+      <td class="price">~$29/mo</td>
+    </tr>
+    <tr>
+      <td class="tool">Profound<span class="url">tryprofound.com</span></td>
+      <td class="coverage">All 5 + custom</td>
+      <td>Monthly (enterprise)</td>
+      <td>Yes</td>
+      <td class="price">~$1k+/mo</td>
+    </tr>
+    <tr>
+      <td class="tool">Athena<span class="url">athenahq.ai</span></td>
+      <td class="coverage">ChatGPT, Claude, Perplexity</td>
+      <td>Monthly</td>
+      <td>Yes</td>
+      <td class="price">~$99/mo</td>
+    </tr>
+    <tr>
+      <td class="tool">Goodie<span class="url">goodie.ai</span></td>
+      <td class="coverage">Google AI, ChatGPT, Perplexity</td>
+      <td>Monthly</td>
+      <td>No (measurement only)</td>
+      <td class="price">~$49/mo</td>
+    </tr>
+    <tr>
+      <td class="tool">Peec AI<span class="url">peec.ai</span></td>
+      <td class="coverage">All 5</td>
+      <td>Monthly</td>
+      <td>Yes</td>
+      <td class="price">~$89/mo</td>
+    </tr>
+    <tr>
+      <td class="tool">Scrunch AI<span class="url">scrunchai.com</span></td>
+      <td class="coverage">ChatGPT, Perplexity</td>
+      <td>Monthly</td>
+      <td>Partial</td>
+      <td class="price">~$50/mo</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="color: var(--muted); font-size: 13px; margin-top: -8px;">Prices and feature lists shift monthly in this category. Confirm with each vendor before purchasing.</p>
+
+<h2>Tool-by-tool breakdown</h2>
+
+<div class="tool-card featured">
+  <h3>monitoraeo <span style="font-size: 13px; color: var(--muted); font-weight: 500;">(us)</span></h3>
+  <p class="tagline">Full AEO audit + monitoring across all 5 AI engines, with a prioritised action plan.</p>
+  <div class="row">
+    <div class="pros">
+      <h4>Strengths</h4>
+      <ul>
+        <li>All 5 engines queried (Google AI, ChatGPT, Claude, Perplexity, Gemini)</li>
+        <li>Free 8-question preview in ~30 seconds, no account required</li>
+        <li>Cheapest paid one-off audit at $29 (Two Engine)</li>
+        <li>Prioritised action plan generated by Claude Sonnet 4.6 from real findings</li>
+        <li>Public industry rankings at /ai-visibility provide unique benchmarking data</li>
+        <li>15-check technical GEO foundation audit included</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Weaknesses</h4>
+      <ul>
+        <li>Newer category entrant — smaller customer base than Otterly/Profound</li>
+        <li>No content workflow integrations (Notion, Webflow, WordPress)</li>
+        <li>Single-language (English) audit query generation</li>
+        <li>No team-collaboration features beyond brand sharing</li>
+      </ul>
+    </div>
+  </div>
+  <div class="best-for"><strong>Best for:</strong> Brands wanting maximum engine coverage at the lowest price, with an action plan that tells you what to actually do — not just what your numbers are.</div>
+</div>
+
+<div class="tool-card">
+  <h3>Otterly.ai</h3>
+  <p class="tagline">Established AEO monitoring tool, polished UX, narrower engine coverage.</p>
+  <div class="row">
+    <div class="pros">
+      <h4>Strengths</h4>
+      <ul>
+        <li>Mature product, well-designed dashboard</li>
+        <li>Strong onboarding flow + sample reports</li>
+        <li>Free starter tier for limited tracking</li>
+        <li>Good documentation and learning resources</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Weaknesses</h4>
+      <ul>
+        <li>Doesn't cover Claude or Gemini natively</li>
+        <li>Subscription-only (no one-off audit option)</li>
+        <li>Action plan is partial / templated rather than per-finding</li>
+        <li>Higher price per engine covered</li>
+      </ul>
+    </div>
+  </div>
+  <div class="best-for"><strong>Best for:</strong> Teams already standardised on ChatGPT + Perplexity who want a polished UX and don't need Claude or Gemini coverage yet.</div>
+</div>
+
+<div class="tool-card">
+  <h3>Profound</h3>
+  <p class="tagline">Enterprise-tier AEO platform; rich coverage, rich price tag.</p>
+  <div class="row">
+    <div class="pros">
+      <h4>Strengths</h4>
+      <ul>
+        <li>Broadest engine coverage including custom LLM connectors</li>
+        <li>Enterprise reporting, SSO, custom dashboards</li>
+        <li>Used by several large brands as their internal AEO source-of-truth</li>
+        <li>Strong analyst content + research reports</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Weaknesses</h4>
+      <ul>
+        <li>~$1k+/month entry price prices out SMBs entirely</li>
+        <li>Annual contract minimums</li>
+        <li>Implementation has a 1–2 week onboarding period</li>
+        <li>Overkill for brands with 1–3 domains to track</li>
+      </ul>
+    </div>
+  </div>
+  <div class="best-for"><strong>Best for:</strong> Enterprises with 10+ brands or domains, dedicated AEO program ownership, and budget for white-glove implementation.</div>
+</div>
+
+<div class="tool-card">
+  <h3>Athena</h3>
+  <p class="tagline">Content-workflow leaning AEO tool, integrates AI visibility into editorial planning.</p>
+  <div class="row">
+    <div class="pros">
+      <h4>Strengths</h4>
+      <ul>
+        <li>Strongest content-workflow integration of any AEO tool</li>
+        <li>Good for agencies managing AEO for multiple clients</li>
+        <li>AI-assisted recommendation engine for content updates</li>
+        <li>Reasonable mid-market price point</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Weaknesses</h4>
+      <ul>
+        <li>Doesn't query Gemini natively</li>
+        <li>Measurement layer thinner than dedicated AEO tools</li>
+        <li>Better for content teams than for measurement-only buyers</li>
+      </ul>
+    </div>
+  </div>
+  <div class="best-for"><strong>Best for:</strong> Agencies and in-house content teams who want AEO data integrated into their existing editorial workflow, not as a standalone dashboard.</div>
+</div>
+
+<div class="tool-card">
+  <h3>Goodie</h3>
+  <p class="tagline">Lightweight AEO monitoring focused on tracking visibility over time.</p>
+  <div class="row">
+    <div class="pros">
+      <h4>Strengths</h4>
+      <ul>
+        <li>Simple, focused UX — does one thing well</li>
+        <li>Affordable monthly entry point</li>
+        <li>Clean trend visualisations</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Weaknesses</h4>
+      <ul>
+        <li>Measurement only — no action plan or recommendations</li>
+        <li>No Claude or Gemini coverage</li>
+        <li>Limited drill-down on per-query findings</li>
+      </ul>
+    </div>
+  </div>
+  <div class="best-for"><strong>Best for:</strong> Solo founders or small teams who want a number to watch monthly and will write their own action plan from the data.</div>
+</div>
+
+<h2>What's structurally missing across all of them</h2>
+
+<div class="gap-box">
+  <h3>1. Native AI Mode (?udm=50) measurement</h3>
+  <p>Most tools that claim Google AI coverage are measuring AI Overview, not AI Mode. AI Mode has a different ranking pipeline and renders on 100% of queries vs AIO's 25–48%. We're aware of only a handful of tools (including monitoraeo) that measure AI Mode separately. Expect this to become standard in 2026.</p>
+</div>
+
+<div class="gap-box">
+  <h3>2. Public benchmark data</h3>
+  <p>No AEO tool other than monitoraeo publishes per-industry visibility rankings as crawlable Dataset pages. Most keep all their data private behind login. This is a strategic miss — published benchmarks earn backlinks AND make the tool itself more cite-worthy by AI engines.</p>
+</div>
+
+<div class="gap-box">
+  <h3>3. Content workflow integrations</h3>
+  <p>SEO tools (Surfer, Frase, Clearscope) integrate with Notion, Webflow, WordPress, Google Docs. AEO tools mostly don't yet. Athena is closest but the integrations are still shallow. Expect rapid evolution here — whoever ships Surfer-for-AEO first will own the content-team buyer.</p>
+</div>
+
+<h2>How to pick</h2>
+<p>Practical decision tree:</p>
+
+<ul class="bullets">
+  <li><strong>Want a single $29 diagnostic to see where you stand?</strong> → monitoraeo Two Engine Audit</li>
+  <li><strong>Want full 5-engine coverage with action plan, one-off?</strong> → monitoraeo Full Audit ($79)</li>
+  <li><strong>Want monthly tracking on a budget?</strong> → monitoraeo Two Engine Monitoring ($35/mo) or Goodie</li>
+  <li><strong>Want monthly tracking across all engines?</strong> → monitoraeo Full Monitoring ($95/mo) or Peec AI</li>
+  <li><strong>Have $1k/mo budget and enterprise needs?</strong> → Profound</li>
+  <li><strong>Are an agency managing content for multiple clients?</strong> → Athena + standalone measurement tool</li>
+  <li><strong>Already use ChatGPT + Perplexity heavily, don't need Claude/Gemini?</strong> → Otterly.ai</li>
+</ul>
+
+<h2>Try the cheapest path first</h2>
+<p>The honest advice: run monitoraeo's free preview before paying anyone. It takes 30 seconds, costs nothing, and shows you whether your brand is named or cited in Google AI Overviews. If you're already visible there, you may not need full AEO tooling yet. If you're invisible, you'll know exactly where to focus.</p>
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/pricing" class="btn-secondary">See monitoraeo pricing</a>
+</div>
+
+<h2>Related concepts</h2>
+<ul class="bullets">
+  <li><a href="/what-is-aeo">What is AEO?</a> — the discipline these tools serve.</li>
+  <li><a href="/answer-engine-optimization-checklist">AEO checklist</a> — what you'd actually optimise after getting your visibility numbers.</li>
+  <li><a href="/ai-visibility">AI visibility rankings</a> — monitoraeo's public per-industry benchmark data.</li>
+  <li><a href="/glossary">Glossary</a> — every AI search term defined.</li>
+</ul>
+
+<h2 id="faq">Frequently asked about AEO tools</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What is an AEO tool?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Measures how often AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI) name, cite, or recommend a brand. New category — most products launched 2024–2026.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Why list competitors on your own page?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Three reasons. AI engines preferentially cite category-overview pages over single-vendor pages. Buyers research multiple tools — evasive marketing signals lack of confidence. Honest comparison content converts better than gated marketing.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can I just ask ChatGPT instead of buying a tool?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">You can ask, but it's not decision-grade data. AI answers vary day-to-day; one prompt tests one phrasing. Real AEO measurement runs multiple buyer-intent questions across all 5 engines and tracks the pattern. Doing this by hand is impractical past ~5 questions.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How is AEO tooling different from SEO tooling?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">SEO tools measure ranking in classical Google blue-link results + backlinks + keyword volume. AEO tools measure visibility inside AI-generated answers — different metrics, different optimisation surface. Most teams need both.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Which AEO tool should I pick?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Depends on use case — see the decision tree above. monitoraeo for cheapest all-engine coverage, Otterly for polished UX on ChatGPT+Perplexity, Profound for enterprise, Athena for agency content workflows, Goodie for measurement-only.</p>
+  </details>
+</div>
+{% endblock %}

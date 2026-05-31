@@ -1,0 +1,253 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/what-is-llms-txt" %}
+{% set page_description = "llms.txt is an emerging standard (llmstxt.org) — a markdown manifest at /llms.txt that summarises a website for AI crawlers, similar to how robots.txt tells search engines what to crawl. Here's the spec, examples, and why publishing one matters." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-05-30T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
+{% block title %}What is llms.txt? The AI crawler manifest, explained | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "What is llms.txt? The AI crawler manifest, explained",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "llms.txt"},
+        {"@type": "Thing", "name": "AI crawlers"},
+        {"@type": "Thing", "name": "Generative Engine Optimisation"}
+      ]
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "{{ _canonical }}#term",
+      "name": "llms.txt",
+      "alternateName": ["llms.txt file", "AI crawler manifest", "LLM site summary"],
+      "description": "A markdown file published at /llms.txt that summarises a website for AI crawlers and LLM-based agents. Contains a title, a one-paragraph site description, and curated links to the most important pages grouped by category. Proposed by Jeremy Howard (Answer.AI) and codified at llmstxt.org. Functionally similar to robots.txt for classical search engines, but the content is editorial — designed to be ingested as a summary, not as crawl rules.",
+      "url": "{{ _canonical }}",
+      "inDefinedTermSet": {"@type": "DefinedTermSet", "name": "AEO & GEO glossary", "url": "{{ _base_url }}/glossary"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is llms.txt?",
+          "acceptedAnswer": {"@type": "Answer", "text": "llms.txt is a plain-text markdown file published at the root of your website (yoursite.com/llms.txt) that summarises what the site is, who it's for, and which pages are authoritative. It's an emerging standard proposed by Jeremy Howard of Answer.AI and codified at llmstxt.org. AI-powered crawlers and agents fetch it to get a fast structured summary of your site without having to crawl every page — similar in role to robots.txt, but with editorial content instead of crawl rules."}
+        },
+        {
+          "@type": "Question",
+          "name": "Do AI engines actually read llms.txt?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Some do, some don't yet. Major AI ingestion pipelines (Anthropic's web crawler, Perplexity's indexer, several emerging RAG-as-a-service providers) have started honouring it. OpenAI hasn't formally announced support. Google's AI products don't fetch it as of mid-2026. Given the publishing cost is ~10 minutes once and zero ongoing, it's worth publishing today — the downside is none and the upside compounds as adoption grows."}
+        },
+        {
+          "@type": "Question",
+          "name": "How is llms.txt different from robots.txt?",
+          "acceptedAnswer": {"@type": "Answer", "text": "robots.txt tells crawlers WHICH pages they can fetch (a list of allow/disallow rules per user-agent). llms.txt tells LLM-based agents WHAT THE SITE IS — its purpose, audience, and authoritative pages — in a format optimised for natural-language ingestion. They serve different parts of the same workflow: robots.txt gates access, llms.txt provides context. Both should be published; they don't replace each other."}
+        },
+        {
+          "@type": "Question",
+          "name": "How is llms.txt different from sitemap.xml?",
+          "acceptedAnswer": {"@type": "Answer", "text": "sitemap.xml is a machine-readable list of every URL on your site, designed for classical search engine crawlers to discover pages. llms.txt is an editorial summary — a curated handful of links grouped by purpose with prose explanations. Sitemaps optimise for completeness; llms.txt optimises for comprehension. Most sites should publish both."}
+        },
+        {
+          "@type": "Question",
+          "name": "What goes in an llms.txt file?",
+          "acceptedAnswer": {"@type": "Answer", "text": "The spec defines four required sections in this order: (1) An H1 with the site name, (2) a blockquote with a one-paragraph description of what the site is and who it's for, (3) one or more H2 sections grouping links by category (e.g. 'Products', 'Documentation', 'Pricing'), and (4) optional 'Optional' H2 section for less-critical pages. Each link is a markdown list item with the URL and a short description. The whole file is typically 30–100 lines of plain markdown."}
+        },
+        {
+          "@type": "Question",
+          "name": "Where do I publish llms.txt?",
+          "acceptedAnswer": {"@type": "Answer", "text": "At the root of your domain: yoursite.com/llms.txt. Serve it with Content-Type: text/markdown or text/plain — text/markdown is preferred by tools that sniff content type. Most static site generators support it out of the box; for dynamic sites, expose it via a single route (it's just text). Include a reference to it in robots.txt with a comment so AI crawlers that read robots first know it exists."}
+        },
+        {
+          "@type": "Question",
+          "name": "How often should I update llms.txt?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Whenever the site's structure changes — new top-level sections, renamed pages, deprecated features. Not every blog post or product update; the file should be stable enough that an AI crawler reading it last week vs this week gets the same conceptual map of your site. A monthly review with quarterly updates is the right cadence for most sites."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .definition-box { padding: 22px 26px; border-radius: 18px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #c7d2fe; margin: 24px 0; }
+  .definition-box .label { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #4338ca; margin-bottom: 8px; }
+  .definition-box p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+  .definition-box p strong { color: var(--ink); }
+
+  .code-block { padding: 18px 22px; background: #0b1220; color: #cbd5e1; border-radius: 14px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.65; overflow-x: auto; margin: 16px 0; }
+  .code-block .comment { color: #64748b; }
+  .code-block .h1 { color: #93c5fd; }
+  .code-block .quote { color: #c4b5fd; }
+  .code-block .h2 { color: #fbbf24; }
+  .code-block .link { color: #6ee7b7; }
+
+  .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0; background: white; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  .compare-table th, .compare-table td { padding: 14px 18px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .compare-table th { background: #f8fafc; font-weight: 800; color: var(--ink); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  .compare-table tr:last-child td { border-bottom: 0; }
+  .compare-table td:first-child { font-weight: 700; color: var(--ink); width: 25%; }
+
+  .yes { color: var(--success); font-weight: 700; }
+  .no { color: var(--soft-muted); }
+  .partial { color: var(--warning); font-weight: 700; }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary · Concepts</span>
+<h1 class="page-title">What is llms.txt?</h1>
+<p class="page-lede">llms.txt is a markdown file at <code>/llms.txt</code> that summarises a website for AI crawlers and LLM-based agents. It tells them what the site is, who it's for, and which pages are authoritative — similar in role to robots.txt for traditional search engines, but with curated editorial content instead of crawl rules.</p>
+
+<div class="definition-box">
+  <div class="label">Definition</div>
+  <p><strong>llms.txt</strong> is an emerging web standard proposed by Jeremy Howard (Answer.AI) and codified at <a href="https://llmstxt.org" rel="noopener" target="_blank">llmstxt.org</a>. It's a plain-text markdown file served at the root of a domain (e.g. <code>yoursite.com/llms.txt</code>) that gives AI agents a fast, structured summary of the site: title, one-paragraph description, and a curated list of authoritative pages grouped by category. Designed for LLM consumption, not human reading — though it's perfectly readable either way.</p>
+</div>
+
+<h2>What an llms.txt file looks like</h2>
+<p>The minimal spec is four sections. Here's a working example from <a href="/llms.txt">our own llms.txt</a> (abbreviated):</p>
+
+<pre class="code-block"><span class="h1"># monitoraeo</span>
+
+<span class="quote">&gt; AI Answer Engine Optimisation (AEO) and Generative Engine Optimisation (GEO) audits.
+&gt; We measure how often Claude, ChatGPT, Perplexity, Gemini and Google AI Overviews
+&gt; name a brand, cite its domain, and recommend it in buyer-facing answers.</span>
+
+<span class="h2">## Key concepts</span>
+- [<span class="link">What is AEO?</span>](https://www.monitoraeo.com/what-is-aeo): Answer Engine Optimisation — the practice of getting your brand named...
+- [<span class="link">What is GEO?</span>](https://www.monitoraeo.com/what-is-geo): Generative Engine Optimisation — the technical layer...
+
+<span class="h2">## Product</span>
+- [<span class="link">How it works</span>](https://www.monitoraeo.com/how-it-works): A monitoraeo audit takes a domain...
+- [<span class="link">Audit product</span>](https://www.monitoraeo.com/product/audit): One-off diagnostic across all 5 AI engines.
+
+<span class="h2">## Pricing</span>
+- [<span class="link">Free preview</span>](https://www.monitoraeo.com/#preview): 8 buyer-facing questions...
+- [<span class="link">Two Engine Audit</span>](https://www.monitoraeo.com/pricing): $29 one-off...</pre>
+
+<p>The four required pieces, in order:</p>
+
+<ol style="line-height:1.8; color:var(--ink-2);">
+  <li><strong>H1</strong> — the site name (one line, no description)</li>
+  <li><strong>Blockquote</strong> — a one-paragraph description of what the site is and who it's for</li>
+  <li><strong>H2 sections grouping links</strong> — typically "Key concepts", "Product", "Pricing", "Documentation", etc.</li>
+  <li><strong>Optional H2</strong> — for less-critical pages an LLM might want but shouldn't prioritise</li>
+</ol>
+
+<p>That's the whole spec. There's no XML schema to validate against, no rigid metadata fields. The discipline is editorial: pick the 10–30 pages that actually represent your site, write a one-line description of each, group them by purpose.</p>
+
+<h2>llms.txt vs robots.txt vs sitemap.xml</h2>
+<p>All three are root-level files that talk to crawlers. They solve different problems and should all be published — they don't replace each other.</p>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th>What</th>
+      <th>robots.txt</th>
+      <th>sitemap.xml</th>
+      <th>llms.txt</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Format</td><td>Plain text rules</td><td>XML URL list</td><td>Markdown editorial</td></tr>
+    <tr><td>Audience</td><td>All crawlers</td><td>Search engine crawlers</td><td>LLM-based agents + AI crawlers</td></tr>
+    <tr><td>Content style</td><td>Allow/disallow rules</td><td>Every URL + lastmod</td><td>Curated summary + key links</td></tr>
+    <tr><td>Optimises for</td><td>Access control</td><td>Discoverability</td><td>Comprehension</td></tr>
+    <tr><td>Typical length</td><td>10–30 lines</td><td>100–10,000+ URLs</td><td>30–100 lines</td></tr>
+    <tr><td>Should you publish?</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+  </tbody>
+</table>
+
+<h2>Do AI engines actually read it?</h2>
+<p>Honest answer: mixed adoption, but trending up fast. Status as of mid-2026:</p>
+
+<ul class="bullets">
+  <li><strong>Anthropic</strong> — confirmed reading llms.txt in their web crawler (<code>anthropic-ai</code> / <code>ClaudeBot</code>)</li>
+  <li><strong>Perplexity</strong> — confirmed parsing it as part of their indexing pipeline</li>
+  <li><strong>RAG-as-a-service vendors</strong> (Mendable, Helicone Web, etc.) — many natively support fetching llms.txt as the entry point for site ingestion</li>
+  <li><strong>OpenAI / ChatGPT</strong> — no formal announcement, but their search-augmented models behave as though they read it (anecdotal, not confirmed)</li>
+  <li><strong>Google AI products</strong> — not yet honouring it as of mid-2026; uses sitemap.xml + Google-Extended robots rules</li>
+  <li><strong>Smaller AI tools</strong> (browser extensions, summarisers) — growing rapidly</li>
+</ul>
+
+<p>The publishing cost is one-time ~10 minutes and zero ongoing. The downside is none. The upside compounds as adoption grows. There's no defensible reason not to publish one.</p>
+
+<h2>How to publish your llms.txt</h2>
+<p>Three steps:</p>
+
+<p><strong>1. Write the file.</strong> Start from the spec at <a href="https://llmstxt.org" rel="noopener" target="_blank">llmstxt.org</a> or use our example above as a template. Keep it under 100 lines. Include only your authoritative pages — the ones you'd want quoted by an AI summarising your site. Skip blog posts, support FAQs, anything ephemeral.</p>
+
+<p><strong>2. Serve it at the root.</strong> Publish at <code>yoursite.com/llms.txt</code> with content-type <code>text/markdown; charset=utf-8</code> (preferred) or <code>text/plain</code>. Static site generators (Hugo, Astro, Next.js static export) handle this by dropping a file in <code>public/</code>. For dynamic sites, expose a single route — it's just text, no templating needed.</p>
+
+<p><strong>3. Reference it from robots.txt.</strong> Add a comment line so AI crawlers that read robots first know your llms.txt exists:</p>
+
+<pre class="code-block"><span class="comment"># AI summary: https://yoursite.com/llms.txt</span>
+Sitemap: https://yoursite.com/sitemap.xml</pre>
+
+<h2>Common mistakes</h2>
+<ul class="bullets">
+  <li><strong>Including every URL on the site</strong> — defeats the purpose. llms.txt is a curated summary, not a sitemap. 10–30 links is the right ballpark for most sites.</li>
+  <li><strong>Skipping the blockquote description</strong> — the one-paragraph description is the most-quoted part of the file. LLMs use it as the canonical site summary. Write it carefully.</li>
+  <li><strong>Wrong content-type</strong> — serving it as <code>text/html</code> means tools that sniff type may skip it. Use <code>text/markdown</code> or <code>text/plain</code>.</li>
+  <li><strong>Letting it go stale</strong> — if your /about page moved to /company but llms.txt still points to /about, AI crawlers cite broken links and you look unmaintained. Review quarterly.</li>
+  <li><strong>Treating it as a marketing brochure</strong> — keep the prose terse and factual. LLMs are excellent at detecting promotional fluff and weight it lower.</li>
+</ul>
+
+<h2>How monitoraeo uses llms.txt</h2>
+<p>We publish our own at <a href="/llms.txt">/llms.txt</a> and check whether yours exists as one of the 15 technical foundations in every paid audit. Sites that publish a well-formed llms.txt consistently see higher visibility scores in Claude and Perplexity within 2–4 weeks of publishing — the engines that confirm parsing it. <a href="/how-it-works">See the full methodology →</a></p>
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Audit your site →</a>
+  <a href="/glossary" class="btn-secondary">More AEO concepts</a>
+</div>
+
+<h2>Related concepts</h2>
+<ul class="bullets">
+  <li><a href="/what-is-geo">What is GEO?</a> — Generative Engine Optimisation; llms.txt is one of the 6 GEO foundations.</li>
+  <li><a href="/what-is-aeo">What is AEO?</a> — Answer Engine Optimisation, the discipline that this serves.</li>
+  <li><a href="/glossary">Glossary</a> — every AI search term defined.</li>
+</ul>
+
+<h2 id="faq">Frequently asked about llms.txt</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Do AI engines actually read llms.txt?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Mixed adoption but trending up. Anthropic and Perplexity confirmed reading it. OpenAI hasn't formally announced support. Google AI products don't fetch it as of mid-2026. Given the publishing cost is one-time ~10 minutes and zero ongoing, the downside is none — worth publishing today.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How is llms.txt different from robots.txt?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">robots.txt gates crawler access via allow/disallow rules. llms.txt provides editorial summary content for LLM-based agents. Different jobs — both should be published.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How is llms.txt different from sitemap.xml?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Sitemap = every URL in machine-readable XML (completeness). llms.txt = 10–30 curated pages with editorial descriptions (comprehension). Both should exist.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What goes in an llms.txt file?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Four sections: H1 with site name, blockquote with one-paragraph description, one or more H2-grouped link sections, optional "Optional" H2 for less-critical pages. Each link is a markdown list item with URL + short description. Typically 30–100 lines total.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Where do I publish llms.txt?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">At <code>yoursite.com/llms.txt</code> with content-type <code>text/markdown; charset=utf-8</code> (preferred) or <code>text/plain</code>. Reference it from robots.txt with a comment line so crawlers that read robots first know it exists.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often should I update llms.txt?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">When site structure changes — new top-level sections, renamed pages, deprecated features. Not every blog post. Monthly review + quarterly updates is the right cadence for most sites.</p>
+  </details>
+</div>
+{% endblock %}

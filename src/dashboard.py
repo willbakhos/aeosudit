@@ -2673,6 +2673,158 @@ for b in r.json()["brands"]:
 """
 
 
+# ---------------------------------------------------------------------------
+# Glossary admin — same shape as industries admin but for /glossary/{slug}
+# DB-backed definitional pages. Master-only. Includes inline API docs.
+# ---------------------------------------------------------------------------
+
+_GLOSSARY_ADMIN_HTML = """<!doctype html>
+<meta charset="utf-8">
+<title>Glossary pages · admin</title>
+<style>
+  body {{ font-family: Inter, system-ui, sans-serif; margin: 32px; max-width: 1100px; color: #0f172a; }}
+  h1 {{ font-size: 28px; letter-spacing: -.03em; }}
+  h2 {{ font-size: 20px; margin-top: 32px; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }}
+  th, td {{ padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }}
+  th {{ background: #f8fafc; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }}
+  code {{ font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }}
+  .flash {{ padding: 12px 16px; background: #ecfdf5; border: 1px solid #86efac; color: #166534; border-radius: 12px; margin-bottom: 16px; }}
+  .flash.err {{ background: #fef2f2; border-color: #fca5a5; color: #991b1b; }}
+  .pill {{ display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 800; }}
+  .pill.warn {{ background: #fef3c7; color: #92400e; }}
+  details pre {{ margin: 12px 0 0; overflow-x: auto; font-size: 12.5px; line-height: 1.55; }}
+</style>
+<h1>Glossary pages · admin</h1>
+<p><a href="/dashboard/admin">← back to admin</a> · <a href="/glossary" target="_blank">view public glossary ↗</a></p>
+{flash}
+
+<p>This page lists every DB-backed glossary entry (rendered at <code>/glossary/&#123;slug&#125;</code>). Custom Jinja pages (<code>/what-is-aeo</code>, <code>/what-is-ai-mode</code> etc.) are not managed here — they live in the codebase as individual templates.</p>
+
+<h2>Existing pages</h2>
+{rows_html}
+
+<h2>Programmatic API</h2>
+<p>Use the bearer token in <code>INDUSTRY_API_TOKEN</code> (same token as the industries API — single secret to manage). Hand the section below to a contractor or use it yourself.</p>
+
+<details open style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">Create a new glossary page (POST)</summary>
+<pre>curl -X POST https://www.monitoraeo.com/api/definitional-pages \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "slug": "share-of-voice-in-ai-answers",
+    "name": "Share of voice in AI answers",
+    "parent_section": "Metrics",
+    "target_kw": "ai share of voice",
+    "short_definition": "Your brand visibility relative to competitors in the same AI answer set.",
+    "meta_description": "Share of voice in AI answers is how often your brand is named relative to competitors in the same set of AI responses. The most defensible AEO metric — it normalises for query selection bias.",
+    "lede": "Share of voice in AI answers is your brand visibility relative to the other brands the AI mentions in the same answer set. The most defensible AEO metric because it normalises for query selection bias.",
+    "sections": [
+      {{
+        "heading": "How it is calculated",
+        "body_html": "<p>For a given query set: <code>share_of_voice = your_mentions / total_brand_mentions_across_all_brands_in_the_set</code>. Expressed as a percentage. Sums to 100 across all brands measured in the same set.</p><p>The denominator is the key — small denominator means small set, big swings.</p>"
+      }},
+      {{
+        "heading": "Why share of voice beats raw visibility",
+        "body_html": "<p>Raw visibility (% of answers naming your brand) shifts based on which questions you ask. Add a softball brand-name question and visibility jumps; add a hard category question and it drops. Share of voice normalises — it asks <em>across the same set</em>, what share did you win?</p>"
+      }}
+    ],
+    "faqs": [
+      {{"q": "How is share of voice different from visibility?",
+        "a": "Visibility is absolute (% of answers naming your brand). Share of voice is relative (your share of brand mentions across all brands in the same answer set)."}}
+    ],
+    "related_slugs": ["visibility-metric", "citation-rate-meaning", "/what-is-aeo"],
+    "alternate_names": ["SoV in AI", "AI share of voice"]
+  }}'</pre>
+</details>
+
+<details style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b; margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">Update an existing page (PATCH)</summary>
+<pre>curl -X PATCH https://www.monitoraeo.com/api/definitional-pages/share-of-voice-in-ai-answers \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{{"lede": "Updated lede sentence."}}'</pre>
+  <p style="margin:10px 0 0; color:#94a3b8; font-size:12.5px;">Only fields you include are updated. Omitted fields keep their existing values. <code>updated_at</code> is auto-bumped so sitemap <code>lastmod</code> + Article <code>dateModified</code> refresh.</p>
+</details>
+
+<details style="padding:16px 20px; background:#0b1220; color:#cbd5e1; border-radius:12px; border:1px solid #1e293b; margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:white; font-size:14px;">List + get + delete</summary>
+<pre>curl https://www.monitoraeo.com/api/definitional-pages \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN"
+
+curl https://www.monitoraeo.com/api/definitional-pages/share-of-voice-in-ai-answers \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN"
+
+curl -X DELETE https://www.monitoraeo.com/api/definitional-pages/share-of-voice-in-ai-answers \\
+  -H "Authorization: Bearer $INDUSTRY_API_TOKEN"</pre>
+</details>
+
+<h3 style="margin-top:24px;">Contractor brief — required content fields</h3>
+<table>
+  <thead><tr><th>Field</th><th>Purpose</th><th>Constraints</th></tr></thead>
+  <tbody>
+    <tr><td><code>slug</code></td><td>URL fragment: <code>/glossary/&#123;slug&#125;</code></td><td>Lowercase alphanumeric + hyphens. Unique.</td></tr>
+    <tr><td><code>name</code></td><td>Page H1 + title</td><td>Title-case. Concise.</td></tr>
+    <tr><td><code>parent_section</code></td><td>Which section on /glossary lists this entry</td><td>One of: <code>Concepts</code>, <code>Google AI surfaces</code>, <code>Engines</code>, <code>Metrics</code>, <code>Tactics</code></td></tr>
+    <tr><td><code>target_kw</code></td><td>Primary keyword (notes only, not rendered)</td><td>Lowercase. Used as a reminder of what the page targets.</td></tr>
+    <tr><td><code>short_definition</code></td><td>Glossary index card description</td><td>~30 words. Answer "what is X" in one breath.</td></tr>
+    <tr><td><code>meta_description</code></td><td><code>&lt;meta name=description&gt;</code></td><td>~155 chars. Falls back to <code>short_definition</code> if empty.</td></tr>
+    <tr><td><code>lede</code></td><td>Paragraph under the H1</td><td>~50 words. Direct answer to the target_kw. AI engines extract this.</td></tr>
+    <tr><td><code>sections</code></td><td>Body content</td><td>List of <code>{{heading, body_html}}</code>. body_html supports any standard HTML.</td></tr>
+    <tr><td><code>faqs</code></td><td>FAQPage schema + visible FAQ block</td><td>5–7 entries. <code>{{q, a}}</code> objects. Plain text only in <code>a</code>.</td></tr>
+    <tr><td><code>related_slugs</code></td><td>Cross-link footer</td><td>4–6 entries. Either bare slugs (<code>"visibility-metric"</code> → /glossary/visibility-metric) or absolute paths (<code>"/what-is-aeo"</code>).</td></tr>
+    <tr><td><code>alternate_names</code></td><td>DefinedTerm.alternateName schema</td><td>Synonyms / acronyms only. Optional.</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:14px; color:#64748b; font-size:12.5px;">Status codes: <code>201</code> created · <code>200</code> updated · <code>400</code> bad request · <code>401</code> bad token · <code>404</code> slug not found · <code>409</code> slug already exists · <code>500</code> server error · <code>503</code> <code>INDUSTRY_API_TOKEN</code> not set on server.</p>
+"""
+
+
+def _glossary_admin_render(flash: str = "") -> str:
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    rows_html = ""
+    try:
+        with get_session() as s:
+            pages = list(s.exec(_select(DefinitionalPage).order_by(DefinitionalPage.parent_section, DefinitionalPage.name)))
+            if not pages:
+                rows_html = "<p><em>No DB-backed glossary pages yet. Create one via the API below — they appear at <code>/glossary/{slug}</code>.</em></p>"
+            else:
+                rows_html = (
+                    "<table><thead><tr>"
+                    "<th>Slug</th><th>Name</th><th>Section</th>"
+                    "<th>Sections</th><th>FAQs</th><th>Updated</th><th></th>"
+                    "</tr></thead><tbody>"
+                )
+                for p in pages:
+                    upd = p.updated_at.strftime("%Y-%m-%d") if p.updated_at else "—"
+                    rows_html += (
+                        f"<tr>"
+                        f"<td><code>{p.slug}</code></td>"
+                        f"<td><a href='/glossary/{p.slug}' target='_blank'>{p.name}</a></td>"
+                        f"<td>{p.parent_section or '—'}</td>"
+                        f"<td>{len(p.sections or [])}</td>"
+                        f"<td>{len(p.faqs or [])}</td>"
+                        f"<td>{upd}</td>"
+                        f"<td><a href='/api/definitional-pages/{p.slug}' target='_blank' style='font-size:12px;'>JSON</a></td>"
+                        f"</tr>"
+                    )
+                rows_html += "</tbody></table>"
+    except Exception as exc:  # noqa: BLE001
+        rows_html = f"<p class='flash err'>DB unavailable: {type(exc).__name__}: {exc}</p>"
+    return _GLOSSARY_ADMIN_HTML.format(flash=flash, rows_html=rows_html)
+
+
+@router.get("/admin/glossary", response_class=HTMLResponse)
+def admin_glossary(request: Request):
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    return HTMLResponse(_glossary_admin_render())
+
+
 def _industries_admin_render(flash: str = "") -> str:
     """Render the admin page with the current industry list. Pulled out so
     GET and POST handlers share the same render path."""

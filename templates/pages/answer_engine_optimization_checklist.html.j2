@@ -1,0 +1,419 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/answer-engine-optimization-checklist" %}
+{% set page_description = "A practical 20-item AEO checklist for getting your brand named, cited and recommended by ChatGPT, Claude, Perplexity, Gemini and Google AI. Foundations first, then content, then entity signals, then tactics." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-05-30T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
+{% block title %}AEO checklist — the 20-item priority list for AI search visibility | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "Answer Engine Optimization Checklist (20 items, prioritised)",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "Answer Engine Optimisation"},
+        {"@type": "Thing", "name": "AI search visibility"},
+        {"@type": "Thing", "name": "Structured data"},
+        {"@type": "Thing", "name": "Entity signals"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "@id": "{{ _canonical }}#howto",
+      "name": "How to optimise a brand for AI answer engines (AEO)",
+      "description": "A 20-item priority list for getting your brand named, cited and recommended by ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews.",
+      "totalTime": "P30D",
+      "step": [
+        {"@type":"HowToStep","position":1,"name":"Allow AI crawlers in robots.txt","text":"Explicitly allow GPTBot, ClaudeBot, PerplexityBot, Google-Extended, anthropic-ai, cohere-ai. Test by curling /robots.txt and checking each user-agent has Allow: /."},
+        {"@type":"HowToStep","position":2,"name":"Publish sitemap.xml","text":"Every indexable page in sitemap.xml with current lastmod. AI crawlers use sitemaps the same way classical search engines do — they're the entry point for discovery."},
+        {"@type":"HowToStep","position":3,"name":"Publish /llms.txt","text":"Markdown manifest at yoursite.com/llms.txt summarising the site for AI agents. ~10 minutes to write, zero ongoing cost."},
+        {"@type":"HowToStep","position":4,"name":"Server-render HTML","text":"AI crawlers don't reliably execute JavaScript. If your site is SPA-only and the content needs JS to appear, AI engines see a blank page. Move to SSR, static export, or hybrid rendering."},
+        {"@type":"HowToStep","position":5,"name":"Add Organization JSON-LD","text":"Publish Organization schema on every page (via the layout). Include name, url, logo, sameAs links to verifiable profiles (LinkedIn, Wikipedia, Crunchbase). This is the canonical entity signal."},
+        {"@type":"HowToStep","position":6,"name":"Add FAQPage schema to content pages","text":"FAQPage is the schema most heavily favoured by AI Overview and ChatGPT for extracting passages. Wrap your FAQ blocks in FAQPage JSON-LD."},
+        {"@type":"HowToStep","position":7,"name":"Lead sections with the answer","text":"Each H2 section's first 1–2 sentences should directly answer the section heading. AI engines extract leading passages."},
+        {"@type":"HowToStep","position":8,"name":"Write quote-worthy 2–3 sentence chunks","text":"Break long paragraphs into 2–3 sentence chunks that work as standalone quotes. AI engines prefer extractable units."},
+        {"@type":"HowToStep","position":9,"name":"Keep dateModified current","text":"AI engines weight freshness heavily. Update dateModified (in schema AND visible byline) whenever you meaningfully revise a page."},
+        {"@type":"HowToStep","position":10,"name":"Use semantic HTML","text":"H1 once per page, H2 for major sections, lists for lists, tables for comparisons. AI engines parse the document structure to understand hierarchy."}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the AEO checklist?",
+          "acceptedAnswer": {"@type": "Answer", "text": "A prioritised 20-item list of changes to make on your site that improve how AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews) describe, cite and recommend your brand. Grouped into Foundations (1–5), Content (6–12), Entity signals (13–17) and Tactics (18–20) — work in order; most teams see results within 2–4 weeks of completing the foundations."}
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take to work through the AEO checklist?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Foundations (items 1–5) take 1–2 days of engineering. Content (6–12) takes 1–2 weeks of editorial. Entity (13–17) takes 2–4 weeks because most steps depend on external sources (Wikipedia, sameAs profiles, third-party listings). Tactics (18–20) are ongoing — they're the discipline you build after the checklist is done. Total: 4–6 weeks from zero to fully implemented."}
+        },
+        {
+          "@type": "Question",
+          "name": "Which item moves the needle fastest?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Item 6 — add FAQPage schema to your content pages. We routinely see brands improve their AI Overview citation rate within 7–10 days of shipping FAQPage schema, especially on informational queries. Items 1–5 are prerequisites (without them nothing else helps) but FAQPage is the highest-leverage individual addition."}
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to do all 20 items?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Items 1–5 are non-negotiable foundations. Skip any of these and the rest of the work won't compound. Items 6–17 are high-leverage — most brands should do all of them within the first 4 weeks. Items 18–20 are ongoing disciplines — they keep paying off as long as you maintain them."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I know if the checklist worked?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Audit your AI visibility before starting and again 30 days after completing the foundations. Headline metrics to watch: percentage of AI answers that name your brand (visibility), percentage that cite your domain (citation rate), and competitor share-of-voice (whether you're displacing the brands AI engines currently name instead of you). If the foundations work, you'll see citation rate move first, then visibility 2–3 weeks behind."}
+        },
+        {
+          "@type": "Question",
+          "name": "Is AEO different from SEO?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Overlapping foundations (fast pages, semantic HTML, canonical URLs, structured data) but different optimisation surface. SEO wants you to RANK in a list of links. AEO wants you NAMED IN THE ANSWER and CITED AS A SOURCE. The metrics are different, the ranking signals weight differently, and several AEO-specific moves (llms.txt, AI-favoured schema types, entity signals) don't help classical SEO directly."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .definition-box { padding: 22px 26px; border-radius: 18px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #c7d2fe; margin: 24px 0; }
+  .definition-box .label { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #4338ca; margin-bottom: 8px; }
+  .definition-box p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+  .definition-box p strong { color: var(--ink); }
+
+  .checklist-section {
+    margin: 28px 0;
+    padding: 24px 26px;
+    border-radius: 22px;
+    background: white;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+  }
+  .checklist-section.foundations { border-left: 4px solid var(--blue); }
+  .checklist-section.content { border-left: 4px solid var(--purple); }
+  .checklist-section.entity { border-left: 4px solid var(--cyan); }
+  .checklist-section.tactics { border-left: 4px solid var(--success); }
+  .checklist-section h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.025em; }
+  .checklist-section .stage-meta { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+  .checklist-section .stage-meta strong { color: var(--ink-2); }
+
+  .ck-item {
+    display: grid; grid-template-columns: 40px 1fr; gap: 16px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .ck-item:last-child { border-bottom: 0; }
+  .ck-num {
+    width: 32px; height: 32px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: white; display: grid; place-items: center;
+    font-weight: 900; font-size: 13px;
+  }
+  .ck-item.done .ck-num { background: var(--success); }
+  .ck-body h4 { margin: 0 0 4px; font-size: 16px; color: var(--ink); }
+  .ck-body p { margin: 0 0 6px; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+  .ck-body .why { display: block; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .ck-body .why strong { color: var(--ink-2); }
+
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+  .summary-row .stage {
+    padding: 14px; border-radius: 14px; background: white;
+    border: 1px solid var(--line); text-align: center;
+  }
+  .summary-row .stage .label {
+    display: block; font-size: 11px; font-weight: 800;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+  .summary-row .stage .num {
+    font-size: 28px; font-weight: 900; letter-spacing: -.03em;
+  }
+  .summary-row .stage.foundations .num { color: var(--blue); }
+  .summary-row .stage.content .num { color: var(--purple); }
+  .summary-row .stage.entity .num { color: var(--cyan); }
+  .summary-row .stage.tactics .num { color: var(--success); }
+
+  @media (max-width: 720px) { .summary-row { grid-template-columns: 1fr 1fr; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary · Tactics</span>
+<h1 class="page-title">The AEO checklist</h1>
+<p class="page-lede">A practical 20-item priority list for getting your brand named, cited and recommended by ChatGPT, Claude, Perplexity, Gemini and Google AI. Work in order — Foundations first (nothing else helps without them), then Content, then Entity signals, then ongoing Tactics. Most teams see visibility move within 30 days of completing Foundations + Content.</p>
+
+<div class="definition-box">
+  <div class="label">How to use this list</div>
+  <p>This is a <strong>strict-order priority list</strong>, not a menu. Items 1–5 are foundations — skip any of them and the work after won't compound. Items 6–12 are content moves that depend on the foundations. Items 13–17 are entity signals that take longer to land (external dependencies). Items 18–20 are ongoing tactics — start them once everything else is shipped.</p>
+</div>
+
+<div class="summary-row">
+  <div class="stage foundations"><span class="label">Foundations</span><div class="num">1–5</div></div>
+  <div class="stage content"><span class="label">Content</span><div class="num">6–12</div></div>
+  <div class="stage entity"><span class="label">Entity</span><div class="num">13–17</div></div>
+  <div class="stage tactics"><span class="label">Tactics</span><div class="num">18–20</div></div>
+</div>
+
+<div class="checklist-section foundations">
+  <h2>Foundations · items 1–5</h2>
+  <p class="stage-meta"><strong>Effort:</strong> 1–2 days engineering · <strong>Impact:</strong> non-negotiable prerequisites. Skip any of these and the rest of the checklist won't compound.</p>
+
+  <div class="ck-item">
+    <div class="ck-num">1</div>
+    <div class="ck-body">
+      <h4>Allow AI crawlers in robots.txt</h4>
+      <p>Explicitly allow GPTBot, ClaudeBot, PerplexityBot, Google-Extended, anthropic-ai, cohere-ai. If you're using a default robots.txt that blocks them (some hosts ship one), AI engines never see your site.</p>
+      <span class="why"><strong>Why:</strong> The most common reason a brand is invisible in AI search is that they're accidentally blocking the crawlers. Check this first.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">2</div>
+    <div class="ck-body">
+      <h4>Publish sitemap.xml</h4>
+      <p>Every indexable page in sitemap.xml with current <code>lastmod</code>. Reference the sitemap from robots.txt. Submit to Google Search Console + Bing Webmaster Tools.</p>
+      <span class="why"><strong>Why:</strong> AI crawlers use sitemaps the same way classical search engines do — as the discovery entry point.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">3</div>
+    <div class="ck-body">
+      <h4>Publish <code>/llms.txt</code></h4>
+      <p>Markdown manifest at <code>yoursite.com/llms.txt</code> summarising the site for AI agents. <a href="/what-is-llms-txt">Full spec here →</a></p>
+      <span class="why"><strong>Why:</strong> Anthropic, Perplexity and most RAG-as-a-service vendors honour it. ~10 minutes to write, zero ongoing cost, compounds as adoption grows.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">4</div>
+    <div class="ck-body">
+      <h4>Server-render your HTML</h4>
+      <p>AI crawlers don't reliably execute JavaScript. SPA-only sites that need JS to populate content appear blank to AI engines. Move to SSR (Next.js, Nuxt, Rails), static export, or hybrid rendering.</p>
+      <span class="why"><strong>Why:</strong> No content, no citation. This is the silent killer for modern JS-heavy sites.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">5</div>
+    <div class="ck-body">
+      <h4>Add Organization JSON-LD to every page</h4>
+      <p>Publish via the layout: name, url, logo, description, plus <code>sameAs</code> links to verifiable profiles (LinkedIn, Wikipedia, Crunchbase, X).</p>
+      <span class="why"><strong>Why:</strong> The canonical entity signal. AI engines use Organization + sameAs to disambiguate your brand from similarly-named competitors.</span>
+    </div>
+  </div>
+</div>
+
+<div class="checklist-section content">
+  <h2>Content · items 6–12</h2>
+  <p class="stage-meta"><strong>Effort:</strong> 1–2 weeks editorial · <strong>Impact:</strong> highest individual leverage in this whole list. Most brands see visibility move within 2–4 weeks of shipping this stage.</p>
+
+  <div class="ck-item">
+    <div class="ck-num">6</div>
+    <div class="ck-body">
+      <h4>Add FAQPage schema to content pages</h4>
+      <p>Wrap every FAQ block (and any Q&amp;A-style page) in FAQPage JSON-LD with <code>Question</code> + <code>acceptedAnswer</code> entities.</p>
+      <span class="why"><strong>Why:</strong> The highest-leverage individual addition. AI Overview and ChatGPT preferentially extract passages from FAQPage-marked content.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">7</div>
+    <div class="ck-body">
+      <h4>Lead every section with the answer</h4>
+      <p>First 1–2 sentences of each H2 section should directly answer the section heading. Setup and context go after the answer, not before.</p>
+      <span class="why"><strong>Why:</strong> AI engines extract leading passages. Burying the answer in paragraph 3 means it doesn't get cited.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">8</div>
+    <div class="ck-body">
+      <h4>Write quote-worthy 2–3 sentence chunks</h4>
+      <p>Break long paragraphs into 2–3 sentence chunks that work as standalone quotes. AI engines prefer extractable units that can be pasted into an answer without surgery.</p>
+      <span class="why"><strong>Why:</strong> Wall-of-text essays rarely get cited even when the content is excellent. Quotability is a function of structure, not just writing quality.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">9</div>
+    <div class="ck-body">
+      <h4>Keep <code>dateModified</code> current</h4>
+      <p>Update <code>dateModified</code> in both Article schema AND a visible byline whenever you meaningfully revise a page.</p>
+      <span class="why"><strong>Why:</strong> AI engines weight freshness heavily. A 2-year-old page often gets bypassed for AI Overview citations even when its claims are correct.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">10</div>
+    <div class="ck-body">
+      <h4>Use semantic HTML</h4>
+      <p>One H1 per page, H2 for major sections, H3 inside, lists for lists, tables for comparisons, <code>&lt;article&gt;</code> wrapping editorial content, <code>&lt;nav&gt;</code> for navigation.</p>
+      <span class="why"><strong>Why:</strong> AI engines parse document structure to understand hierarchy + importance. A &lt;div&gt; soup loses signal.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">11</div>
+    <div class="ck-body">
+      <h4>Add Product/Service schema where applicable</h4>
+      <p>If you have product or service pages, wrap each in Product or Service schema with name, description, brand reference, and Offer with price.</p>
+      <span class="why"><strong>Why:</strong> Product schema unlocks rich-result eligibility AND helps AI engines extract pricing claims accurately (a common hallucination vector when missing).</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">12</div>
+    <div class="ck-body">
+      <h4>Publish concrete factual claims</h4>
+      <p>Numbers, dates, named comparisons, specific feature lists. Avoid vague marketing prose ("industry-leading", "best in class") in favour of factual statements an AI can verify and quote.</p>
+      <span class="why"><strong>Why:</strong> AI engines de-weight pages that read as promotional. Factual density is a ranking signal.</span>
+    </div>
+  </div>
+</div>
+
+<div class="checklist-section entity">
+  <h2>Entity signals · items 13–17</h2>
+  <p class="stage-meta"><strong>Effort:</strong> 2–4 weeks (external dependencies) · <strong>Impact:</strong> slower to land but compounds permanently. These are how AI engines decide who you ARE — not just what your site SAYS.</p>
+
+  <div class="ck-item">
+    <div class="ck-num">13</div>
+    <div class="ck-body">
+      <h4>Add Person schema for authors</h4>
+      <p>Every editorial page gets a visible byline AND a Person schema in JSON-LD with sameAs links to the author's LinkedIn, X, GitHub, or other verifiable profiles.</p>
+      <span class="why"><strong>Why:</strong> E-E-A-T signal. Perplexity especially favours authored content over anonymous corporate content.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">14</div>
+    <div class="ck-body">
+      <h4>Build out Organization <code>sameAs</code></h4>
+      <p>Link to your LinkedIn company page, Crunchbase, X, Wikipedia (if you have a page), GitHub org, and any other verifiable profiles.</p>
+      <span class="why"><strong>Why:</strong> sameAs is how AI engines disambiguate your brand from similarly-named ones. Each verified link strengthens the entity graph entry.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">15</div>
+    <div class="ck-body">
+      <h4>Get listed on category aggregators</h4>
+      <p>G2, Capterra, Software Advice for SaaS. Crunchbase, PitchBook for funded companies. Whichever 2–3 aggregators dominate your category — make sure you exist there with current information.</p>
+      <span class="why"><strong>Why:</strong> AI engines disproportionately cite these sources. Not being listed = not being cited.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">16</div>
+    <div class="ck-body">
+      <h4>Earn mentions on AI-trusted sources</h4>
+      <p>Run an audit to see which domains AI engines cite for your category queries. Pitch those publications, get reviewed by them, contribute guest content.</p>
+      <span class="why"><strong>Why:</strong> Earned mentions on trusted sources compound into AI citations within 2–4 weeks. The reverse-engineered backlink strategy.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">17</div>
+    <div class="ck-body">
+      <h4>Establish presence on Reddit + Wikipedia</h4>
+      <p>Wikipedia (if eligible — needs notability). Reddit — relevant subreddits where your category is discussed.</p>
+      <span class="why"><strong>Why:</strong> Both are disproportionately weighted by AI engines as "trusted" community sources. Wikipedia citation alone often moves brand visibility 10–15%.</span>
+    </div>
+  </div>
+</div>
+
+<div class="checklist-section tactics">
+  <h2>Tactics · items 18–20</h2>
+  <p class="stage-meta"><strong>Effort:</strong> ongoing · <strong>Impact:</strong> the disciplines that keep paying off after the one-off work is done.</p>
+
+  <div class="ck-item">
+    <div class="ck-num">18</div>
+    <div class="ck-body">
+      <h4>Monitor monthly</h4>
+      <p>Re-audit your AI visibility every 30 days. Track the trend, not the snapshot — AI answers vary day-to-day so individual results are noisy.</p>
+      <span class="why"><strong>Why:</strong> AI engines change weekly. Without monitoring you only find out about a drop when traffic dies.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">19</div>
+    <div class="ck-body">
+      <h4>Watch competitor share-of-voice</h4>
+      <p>Track which competitors are getting named instead of you and on which queries. Their gains are your strategic priorities.</p>
+      <span class="why"><strong>Why:</strong> The fastest way to identify content gaps is to look at queries where competitors win and you don't.</span>
+    </div>
+  </div>
+
+  <div class="ck-item">
+    <div class="ck-num">20</div>
+    <div class="ck-body">
+      <h4>Defend against hallucinations</h4>
+      <p>AI engines occasionally fabricate claims about your brand (wrong pricing, invented features, made-up partnerships). Catch them in monitoring and fix the underlying information vacuum that caused them.</p>
+      <span class="why"><strong>Why:</strong> A hallucinated negative claim about your brand can spread across multiple AI engines simultaneously. Catching them early matters.</span>
+    </div>
+  </div>
+</div>
+
+<h2>How long until you see results</h2>
+<p>Honest timeline based on what we see across audits:</p>
+
+<ul class="bullets">
+  <li><strong>Week 1–2:</strong> Foundations (items 1–5) shipped. No visible improvement yet — these are prerequisites.</li>
+  <li><strong>Week 2–4:</strong> Content (items 6–12) shipped. Citation rate starts moving — AI engines re-crawl and find the new schema + extractable passages.</li>
+  <li><strong>Week 4–8:</strong> Visibility (named in answers) starts moving 2–3 weeks behind citation rate. Entity signals (13–17) start landing.</li>
+  <li><strong>Week 8+:</strong> Compound effects — the more the engines cite you, the more the entity graph reinforces, the more they cite. Ongoing tactics (18–20) keep this curve climbing.</li>
+</ul>
+
+<h2>Audit your starting point</h2>
+<p>The fastest way to know which items will give you the biggest gains is to measure where you are first. monitoraeo's free preview runs 8 buyer-facing questions for your brand and shows you visibility + citation rate + competitor share-of-voice. Paid audits add the full 40-question audit plus a prioritised action plan generated from this checklist applied to your actual gaps.</p>
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/pricing" class="btn-secondary">See pricing</a>
+</div>
+
+<h2>Related concepts</h2>
+<ul class="bullets">
+  <li><a href="/what-is-aeo">What is AEO?</a> — the discipline this checklist serves.</li>
+  <li><a href="/what-is-geo">What is GEO?</a> — Generative Engine Optimisation; the technical foundations checklist items 1–5 fall under.</li>
+  <li><a href="/what-is-llms-txt">What is llms.txt?</a> — full spec for item 3.</li>
+  <li><a href="/glossary">Glossary</a> — every AI search term defined.</li>
+</ul>
+
+<h2 id="faq">Frequently asked about the AEO checklist</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How long does it take to work through the whole checklist?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Foundations 1–5: 1–2 days engineering. Content 6–12: 1–2 weeks editorial. Entity 13–17: 2–4 weeks (external dependencies). Tactics 18–20: ongoing. Total: 4–6 weeks from zero to fully implemented.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Which item moves the needle fastest?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Item 6 — FAQPage schema. We routinely see citation rate move within 7–10 days of shipping it, especially on informational queries. Items 1–5 are prerequisites but FAQPage is the highest-leverage individual addition.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Do I need to do all 20 items?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Items 1–5 are non-negotiable foundations. Items 6–17 are high-leverage — most brands should do all of them within the first 4 weeks. Items 18–20 are ongoing disciplines you maintain forever.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How do I know if the checklist worked?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Audit your AI visibility before starting and again 30 days after completing Foundations + Content. Watch: visibility % (named in answers), citation rate (% citing your domain), competitor share-of-voice. Citation rate moves first, visibility 2–3 weeks behind.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Is AEO different from SEO?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Overlapping foundations (fast pages, semantic HTML, schema) but different optimisation surface. SEO wants you to RANK in a list of links. AEO wants you NAMED IN THE ANSWER and CITED AS A SOURCE. Several AEO-specific moves (llms.txt, AI-favoured schema, entity signals) don't help classical SEO directly.</p>
+  </details>
+</div>
+{% endblock %}

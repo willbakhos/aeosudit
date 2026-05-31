@@ -1,0 +1,243 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/what-is-ai-mode" %}
+{% set page_description = "Google AI Mode is Google's standalone full-page AI search experience, reached via the AI Mode tab or the URL parameter ?udm=50. Unlike AI Overview which renders inline, AI Mode always returns a full conversational answer with 15–30 citations." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-05-30T00:00:00Z' %}
+{% set page_modified_time = '2026-05-30T00:00:00Z' %}
+{% block title %}What is Google AI Mode? How it works + how to appear in it | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "What is Google AI Mode? The standalone AI search page, explained",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "Google AI Mode"},
+        {"@type": "Thing", "name": "Generative search"},
+        {"@type": "Thing", "name": "Answer Engine Optimisation"}
+      ]
+    },
+    {
+      "@type": "DefinedTerm",
+      "@id": "{{ _canonical }}#term",
+      "name": "Google AI Mode",
+      "alternateName": ["AI Mode", "udm=50", "Google AI search"],
+      "description": "Google's standalone full-page AI search experience. Reached via the AI Mode tab on google.com or the URL parameter ?udm=50. Always renders a full conversational answer with 15–30 source citations, unlike AI Overview which renders inline above the regular SERP and only on a subset of queries.",
+      "url": "{{ _canonical }}",
+      "inDefinedTermSet": {"@type": "DefinedTermSet", "name": "AEO & GEO glossary", "url": "{{ _base_url }}/glossary"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Google AI Mode?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Google AI Mode is Google's standalone AI search experience — a full page that returns a conversational AI-generated answer with 15–30 source citations, instead of a list of blue links. You reach it by clicking the AI Mode tab on Google search or by adding ?udm=50 to a Google search URL. Unlike AI Overview which renders inline above the regular search results on ~25–48% of queries, AI Mode always renders a full answer for every query."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's the difference between AI Mode and AI Overview?",
+          "acceptedAnswer": {"@type": "Answer", "text": "AI Mode is a separate full-page experience that always shows a complete conversational answer with rich citations (typically 15–30 source links). AI Overview is a small panel that appears above the standard Google results on roughly 25–48% of queries and shows a short summary with 3–10 citations. AI Mode is where Google is steering its product strategy; AI Overview is the transitional surface that exists on the classic SERP today."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I access Google AI Mode?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Three ways. (1) Click the AI Mode tab on google.com — it sits alongside All / Images / News / Maps. (2) Add ?udm=50 to any Google search URL — this is the canonical way and the one APIs use. (3) On mobile, the Google app surfaces AI Mode as a button in the search bar. AI Mode is rolling out by region; if you don't see the tab, the URL parameter still works."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why does AI Mode matter for my brand?",
+          "acceptedAnswer": {"@type": "Answer", "text": "AI Mode is the search surface that's most likely to define the next 24 months of Google's product. It also behaves more like ChatGPT, Claude and Perplexity than the classic SERP does — conversational answer + inline citations — so the same content optimisations work across all of them. Brands that win AI Mode citations win a structurally similar position across every AI search engine, not just Google's classic SERP."}
+        },
+        {
+          "@type": "Question",
+          "name": "How does AI Mode choose its citations?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Through a retrieval pipeline that streams results from /async/folif — Google's internal AI search endpoint. The model selects a candidate set of pages, synthesises an answer, and emits citations for the sources that materially contributed to the response. Signals that matter: structured data (Organization, FAQPage, Product schema), recency (dateModified is read directly), passage extractability (clear 2–3 sentence answers in the body), and inclusion on the sites Google's retrieval pipeline already trusts in the category (G2, Capterra, Wikipedia, Reddit, major trade publications)."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I get my brand into AI Mode answers?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. The optimisations are the same as for AI Overview, with two amplifications. (1) AI Mode's longer answer surface gives you more opportunities to be named — coverage matters even more than for AIO. (2) The richer citation list means more brands are cited per query, so PR/linkbuilding on the sites the AI trusts pays off more visibly. Start by auditing your current AI Mode visibility, identify which engines name your competitors instead of you, and pitch the trusted sources those engines cite."}
+        },
+        {
+          "@type": "Question",
+          "name": "How long does AI Mode take to generate an answer?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Roughly 6.5 seconds end-to-end. The streaming starts at ~500ms and the full response completes around 6500ms. This is server-side at Google — no client-side optimisation changes it. For brands measuring AI Mode visibility, this matters because it sets a floor on how fast any API or scraper can return AI Mode data."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .definition-box { padding: 22px 26px; border-radius: 18px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #c7d2fe; margin: 24px 0; }
+  .definition-box .label { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #4338ca; margin-bottom: 8px; }
+  .definition-box p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+  .definition-box p strong { color: var(--ink); }
+
+  .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0; background: white; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  .compare-table th, .compare-table td { padding: 14px 18px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .compare-table th { background: #f8fafc; font-weight: 800; color: var(--ink); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  .compare-table th.aim { background: #f5f3ff; color: var(--purple); }
+  .compare-table th.aio { background: #eff6ff; color: var(--blue); }
+  .compare-table tr:last-child td { border-bottom: 0; }
+  .compare-table td:first-child { font-weight: 700; color: var(--ink); width: 30%; }
+
+  .url-callout { margin: 18px 0; padding: 18px 22px; background: #0b1220; color: #cbd5e1; border-radius: 14px; font-family: ui-monospace, Menlo, monospace; font-size: 13.5px; line-height: 1.6; }
+  .url-callout strong { color: white; }
+  .url-callout .comment { color: #64748b; }
+
+  .checklist { padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); margin-top: 14px; }
+  .checklist h3 { margin: 0 0 4px; font-size: 16px; }
+  .checklist .why { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+  .checklist ul { padding: 0; list-style: none; margin: 0; }
+  .checklist li { padding: 6px 0 6px 24px; position: relative; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+  .checklist li::before { content: "✓"; position: absolute; left: 0; top: 6px; color: var(--success); font-weight: 900; }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Glossary · Google AI surfaces</span>
+<h1 class="page-title">What is Google AI Mode?</h1>
+<p class="page-lede">Google AI Mode is Google's standalone full-page AI search experience. Unlike AI Overview, which appears inline above the regular search results on ~25–48% of queries, AI Mode always renders a complete conversational AI answer with 15–30 source citations — for every query, every time.</p>
+
+<div class="definition-box">
+  <div class="label">Definition</div>
+  <p><strong>Google AI Mode</strong> is the dedicated AI search UI inside Google. Reached via the <strong>AI Mode tab</strong> on google.com or the URL parameter <strong><code>?udm=50</code></strong>. It returns a full AI-generated answer plus a rich citation list (typically 15–30 sources), and is the surface Google's product strategy is increasingly built around. AI Mode is structurally different from AI Overview (the smaller inline panel) — they have different ranking pipelines, different render rates, and different optimisation patterns.</p>
+</div>
+
+<h2>How to access AI Mode today</h2>
+<p>Three ways depending on where you're searching from:</p>
+
+<div class="url-callout">
+  <strong>Direct URL (works anywhere):</strong>
+  <br>https://www.google.com/search?q=<em>your+query</em>&amp;udm=50
+  <br><span class="comment"># udm=50 is the canonical parameter for AI Mode — used by every</span>
+  <br><span class="comment"># automation tool, browser extension and SERP API to hit AI Mode.</span>
+</div>
+
+<p>The other two paths are <strong>the AI Mode tab</strong> on google.com (alongside All / Images / News / Maps — rolling out by region) and the <strong>AI Mode button</strong> in the Google mobile app's search bar. If you don't see the tab yet in your region, the URL parameter still works.</p>
+
+<h2>AI Mode vs AI Overview — the comparison</h2>
+<p>These are two separate products with different ranking signals, render rates, and strategic positioning. The table makes the distinction concrete:</p>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th>What</th>
+      <th class="aim">AI Mode</th>
+      <th class="aio">AI Overview</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Where it renders</td><td>Standalone full page (separate from SERP)</td><td>Panel above the regular Google SERP</td></tr>
+    <tr><td>How you access it</td><td><code>?udm=50</code> or AI Mode tab</td><td>Standard Google search, no special action</td></tr>
+    <tr><td>Render rate</td><td>100% — always renders</td><td>~25–48% — depends on query intent</td></tr>
+    <tr><td>Answer length</td><td>Multi-paragraph + structured sections</td><td>1–3 paragraph summary</td></tr>
+    <tr><td>Average citation count</td><td>15–30 sources</td><td>3–10 sources</td></tr>
+    <tr><td>Generation time</td><td>~6.5s (streams in)</td><td>~1–3s (faster, less content)</td></tr>
+    <tr><td>Today's user adoption</td><td>Low — early-adopter tab</td><td>High — default for many users</td></tr>
+    <tr><td>Strategic direction</td><td>Where Google is heading (12–24mo horizon)</td><td>Transitional bridge on classic SERP</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:18px; padding: 16px 20px; background: rgba(124,58,237,.06); border-left: 3px solid var(--purple); border-radius: 0 12px 12px 0;">
+  <strong>The takeaway:</strong> AI Mode is where serious measurement should live. AI Overview is what most users see today, but the structural ceiling on AIO render rate (~48% even on info queries) means metrics built on AIO alone always have gaps. AI Mode's always-renders behaviour gives you reliable trend data — and the data maps cleanly to ChatGPT, Claude and Perplexity, which all behave the same way.
+</p>
+
+<h2>Why AI Mode matters strategically</h2>
+<p>Three reasons it's worth investing optimisation effort in even though adoption is still low:</p>
+
+<p><strong>1. Google has publicly committed to AI Mode as the future of search.</strong> Sundar Pichai has been explicit that AI Mode represents where Google search is going — the inline AI Overview panel is a transitional product, AI Mode is the destination. Realistic timeline: in 12–24 months AI Mode either becomes default on an increasing share of queries OR the AIO panel grows into something AI-Mode-shaped. Either way, the optimisation work compounds.</p>
+
+<p><strong>2. AI Mode is structurally similar to every other AI search engine.</strong> ChatGPT, Claude with web search, Perplexity and Gemini all return conversational answers with inline citations — the same pattern as Google AI Mode. Content that wins AI Mode citations tends to win across all of them, because the ranking signals overlap heavily. Optimising for AI Mode is the highest-leverage single-engine investment because the gains transfer.</p>
+
+<p><strong>3. The citation list is richer, so visibility is more achievable.</strong> AI Overview cites 3–10 sources per answer — winning a slot is binary and brutal. AI Mode cites 15–30, so the same brand can appear across more queries without needing to be the absolute top result. Easier to gain visibility, easier to track improvement.</p>
+
+<h2>How AI Mode chooses its citations</h2>
+<p>AI Mode runs on Google's <code>/async/folif</code> endpoint — a streaming retrieval-then-generate pipeline. The high-level flow:</p>
+
+<ol style="line-height:1.7; color:var(--ink-2);">
+  <li><strong>Query rewriting</strong> — the user's question is decomposed into 1–3 sub-queries</li>
+  <li><strong>Retrieval</strong> — Google's search index returns candidate pages for each sub-query (some classical ranking signals carry over, others don't)</li>
+  <li><strong>Re-ranking</strong> — a model re-ranks candidates based on AI-specific signals (structured data, passage extractability, recency, source authority on the topic)</li>
+  <li><strong>Synthesis</strong> — an LLM writes the answer, citing only the sources that materially fed the prose</li>
+  <li><strong>Streaming</strong> — the answer + citations stream to the user over ~500ms–6500ms</li>
+</ol>
+
+<p>This means a page that ranks #5 organically can be cited #1 in AI Mode if its structured data + passage extractability are stronger than the #1 organic page's. The AI Mode pipeline is NOT a re-rendering of classical PageRank — it's a parallel system.</p>
+
+<h2>How to get your brand into AI Mode citations</h2>
+<p>The optimisations that work for AI Overview also work for AI Mode, with two amplifications — coverage matters more (longer answers = more naming opportunities) and citation density matters more (more cited sources = more chances).</p>
+
+<div class="checklist">
+  <h3>The 5-move AI Mode citation playbook</h3>
+  <p class="why">In priority order — most brands need #1 and #2 fixed before anything else helps.</p>
+  <ul>
+    <li><strong>Make sure AI crawlers can read your site</strong> — allow <code>Google-Extended</code> in robots.txt, publish an llms.txt, server-render HTML, add Organization + FAQPage + Product JSON-LD schema</li>
+    <li><strong>Write quote-worthy passages</strong> — every section should lead with a 2–3 sentence answer to a specific buyer question, in a form an LLM can extract verbatim</li>
+    <li><strong>Earn mentions on the sites Google trusts in your category</strong> — typically G2, Capterra, Reddit, Wikipedia, and 2–3 trade publications. Audit which sources AI Mode cites for your category queries and pitch those.</li>
+    <li><strong>Keep <code>dateModified</code> current</strong> — AI Mode weights freshness heavily. Out-of-date content gets bypassed even when the underlying claims are still correct.</li>
+    <li><strong>Measure monthly, not weekly</strong> — AI Mode results regenerate per query so daily data is noisy. Track the trend over 4-week windows.</li>
+  </ul>
+</div>
+
+<h2>How monitoraeo measures AI Mode visibility</h2>
+<p>Our paid audits and monitoring tiers query AI Mode (via <code>?udm=50</code>) across 40 buyer-facing questions and report back per-engine visibility, citation rate, competitor share-of-voice and hallucination flags. AI Mode is also the canonical engine we use for the public industry rankings at <a href="/ai-visibility">/ai-visibility</a> because its always-renders behaviour gives consistent measurement across categories. <a href="/how-it-works">See the full methodology →</a></p>
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Run a free preview →</a>
+  <a href="/ai-visibility" class="btn-secondary">See industry rankings</a>
+</div>
+
+<h2>Related concepts</h2>
+<ul class="bullets">
+  <li><a href="/what-is-ai-overview">What is AI Overview?</a> — Google's inline AI panel (the sibling product to AI Mode).</li>
+  <li><a href="/what-is-aeo">What is AEO?</a> — Answer Engine Optimisation, the broader discipline.</li>
+  <li><a href="/what-is-geo">What is GEO?</a> — Generative Engine Optimisation, the technical foundations.</li>
+  <li><a href="/glossary">Glossary</a> — every AI search term defined.</li>
+</ul>
+
+<h2 id="faq">Frequently asked about Google AI Mode</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What's the difference between AI Mode and AI Overview?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">AI Mode is a standalone full-page experience that always shows a complete answer with 15–30 citations. AI Overview is a smaller panel that appears above standard Google results on roughly 25–48% of queries and shows 3–10 citations. Different ranking pipelines, different render rates, different strategic positioning.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How do I access AI Mode?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Three ways: (1) AI Mode tab on google.com, (2) add <code>?udm=50</code> to any Google search URL — the canonical way, (3) AI Mode button in the Google mobile app. The URL parameter works even in regions where the tab hasn't rolled out yet.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Why does AI Mode matter for my brand if adoption is still low?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Two reasons. First, Google has publicly committed to AI Mode as the future direction of search — optimising now positions you ahead of the adoption curve. Second, AI Mode behaves like every other AI search engine (ChatGPT, Claude, Perplexity) — content that wins AI Mode citations transfers to all of them. It's the highest-leverage single-engine investment.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How does AI Mode choose its citations?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">A retrieval pipeline at <code>/async/folif</code> picks candidate pages, re-ranks them on AI-specific signals (structured data, passage extractability, recency, topical authority), then an LLM synthesises the answer and cites only the sources that materially contributed. Classical PageRank carries over partially — structured data + passage quality matter more than raw rank.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How long does AI Mode take to generate an answer?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">~6.5 seconds end-to-end. Streaming starts at ~500ms and completes around 6500ms. This is server-side at Google — no scraper or API can speed it up. Sets the floor for how fast any AI Mode visibility check can return data.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can I get my brand into AI Mode answers?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Yes. Same optimisation playbook as AI Overview, amplified: AI Mode's longer answers and richer citation list mean more opportunities. Priority order: fix crawlability (robots.txt, llms.txt, schema), write quote-worthy 2–3 sentence answers in every section, earn mentions on the sites AI Mode cites in your category, keep <code>dateModified</code> current, and measure monthly to track the trend.</p>
+  </details>
+</div>
+{% endblock %}
