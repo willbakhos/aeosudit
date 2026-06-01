@@ -787,6 +787,66 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         s for s, _ in sorted(source_counts.items(), key=lambda kv: -kv[1])[:8]
     ]
 
+    # "At a glance" insights — programmatic, per-industry, no LLM. These
+    # always render so the page has unique factual content even on
+    # industries where the AI narrative hasn't generated yet (e.g. between
+    # a creation and the first cron tick, or if OPENROUTER_API_KEY is unset).
+    top_by_visibility = sorted(audited, key=lambda b: -b.visibility_pct)[:1]
+    top_by_citation = sorted(audited, key=lambda b: -b.citation_pct)[:1]
+    zero_visibility_count = sum(1 for b in audited if b.visibility_pct == 0)
+    visibility_spread = (
+        max(b.visibility_pct for b in audited) - min(b.visibility_pct for b in audited)
+        if len(audited) >= 2 else 0.0
+    )
+    quick_insights = {
+        "leader": top_by_visibility[0] if top_by_visibility else None,
+        "most_cited_brand": top_by_citation[0] if top_by_citation else None,
+        "top_source_domain": top_category_sources[0] if top_category_sources else None,
+        "top_source_count": (
+            max(source_counts.values()) if source_counts else 0
+        ),
+        "visibility_spread": visibility_spread,
+        "zero_visibility_count": zero_visibility_count,
+        "zero_visibility_pct": (
+            (zero_visibility_count / len(audited)) * 100 if audited else 0.0
+        ),
+    }
+
+    # Per-brand auto-insights for the top 3 — used as fallback when the AI
+    # narrative didn't generate per-brand text. Programmatic, deterministic,
+    # not hallucinated — just paraphrases the actual numbers.
+    auto_brand_insights: dict[str, str] = {}  # keyed by brand_name.lower()
+    by_rank = sorted(audited, key=lambda b: b.rank_in_industry or 999)[:3]
+    for b in by_rank:
+        # Distinct shape per rank position so insights don't all sound identical
+        if b.rank_in_industry == 1:
+            gap = (b.visibility_pct - (by_rank[1].visibility_pct if len(by_rank) > 1 else 0))
+            citation_msg = (
+                "wins both recommendation and trust"
+                if b.citation_pct >= avg_citation
+                else "is recommended more than cited as a source"
+            )
+            txt = (
+                f"Category leader at {b.visibility_pct:.0f}% visibility — "
+                f"named in roughly {round(b.visibility_pct/12.5)} of every 8 AI answers. "
+                f"Citation rate of {b.citation_pct:.0f}% means the brand {citation_msg}."
+                + (f" Leads #2 by {gap:.0f}pp." if gap >= 5 else "")
+            )
+        elif b.rank_in_industry == 2:
+            lead_gap = (by_rank[0].visibility_pct - b.visibility_pct) if by_rank else 0
+            txt = (
+                f"{lead_gap:.0f}pp behind the leader on visibility but "
+                f"{'with a higher' if b.citation_pct > by_rank[0].citation_pct else 'with a similar'} citation rate "
+                f"({b.citation_pct:.0f}% vs {by_rank[0].citation_pct:.0f}%) — "
+                f"closer to being the AI's trusted source than its top recommendation."
+            )
+        else:  # rank 3
+            txt = (
+                f"Third tier at {b.visibility_pct:.0f}% visibility. "
+                f"{'Outperforms' if b.citation_pct > avg_citation else 'Roughly tracks'} the category average on citation rate ({b.citation_pct:.0f}% vs {avg_citation:.0f}% average)."
+            )
+        auto_brand_insights[(b.brand_name or "").lower()] = txt
+
     return _render(
         "ai_visibility_industry.html.j2", request=request,
         report=report,
@@ -795,6 +855,8 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         avg_citation=avg_citation,
         top_category_sources=top_category_sources,
         audited_count=len(audited),
+        quick_insights=quick_insights,
+        auto_brand_insights=auto_brand_insights,
         breadcrumbs=[
             {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
             {"name": report.name, "path": f"/ai-visibility/{report.slug}"},

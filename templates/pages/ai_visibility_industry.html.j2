@@ -13,9 +13,11 @@
 {% set movers = narrative.get('movers', {}) %}
 {% set risers = movers.get('risers', []) %}
 {% set fallers = movers.get('fallers', []) %}
-{# Lookup table so we can attach an AI-written insight inline next to the
-   top-5 brand rows in the ranking table. Keyed by lowercased brand_name. #}
-{% set insight_by_brand = {} %}
+{# Lookup table so we can attach an insight inline next to the top brand
+   rows. Prefer AI-written narrative insights when present; fall back to
+   the deterministic auto_brand_insights computed in the route from the
+   raw scores so the page never reads bare. #}
+{% set insight_by_brand = dict(auto_brand_insights or {}) %}
 {% for bi in brand_insights %}{% set _ = insight_by_brand.update({bi.brand_name|lower: bi.text}) %}{% endfor %}
 {% block title %}Top {{ brands|length }} {{ report.name }} by AI search visibility (2026) | monitoraeo{% endblock %}
 
@@ -113,6 +115,19 @@
   .ind-stat .n { font-size: 24px; font-weight: 900; letter-spacing: -.04em; line-height: 1; color: var(--ink); }
   .ind-stat .l { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
 
+  .glance-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0 8px; }
+  .glance-card { padding: 16px 18px; background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-soft); }
+  .glance-card .label { display: block; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
+  .glance-card .value { display: block; font-size: 18px; font-weight: 900; color: var(--ink); letter-spacing: -.02em; line-height: 1.25; }
+  .glance-card .value strong { color: var(--blue); }
+  .glance-card .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+  .insight-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .insight-card { padding: 18px 20px; background: white; border: 1px solid var(--line); border-radius: 16px; }
+  .insight-card h4 { margin: 0 0 6px; font-size: 14px; color: var(--ink); }
+  .insight-card p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+  .insight-card p em { color: var(--ink-2); font-style: normal; font-weight: 700; }
+
   .narrative-section { margin: 28px 0; padding: 26px 28px; background: white; border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-soft); }
   .narrative-section h2 { margin: 0 0 12px; font-size: 22px; letter-spacing: -.025em; }
   .narrative-section p { font-size: 15.5px; line-height: 1.75; color: var(--ink-2); margin: 0 0 14px; }
@@ -156,7 +171,8 @@
   .mover-card .r { display: block; color: var(--muted); font-size: 11.5px; font-weight: 500; margin-top: 2px; }
 
   @media (max-width: 720px) {
-    .ind-stats, .movers-grid { grid-template-columns: 1fr; }
+    .ind-stats, .movers-grid, .insight-cards { grid-template-columns: 1fr; }
+    .glance-grid { grid-template-columns: 1fr 1fr; }
     .rank-table { display: block; overflow-x: auto; }
     .rank-table tr.insight-row td { padding-left: 16px; }
   }
@@ -178,6 +194,39 @@
     <div class="ind-stat"><div class="n">{{ audited_count }}/{{ brands|length }}</div><div class="l">Brands successfully audited</div></div>
   </div>
 </section>
+
+{# At a glance — programmatic factual highlights from the actual audit
+   data. Always renders (no LLM dependency) so the page has unique,
+   per-industry content even when the AI narrative hasn't generated yet. #}
+{% if quick_insights and quick_insights.leader %}
+<h2 style="margin-top:32px;">At a glance</h2>
+<div class="glance-grid">
+  <div class="glance-card">
+    <span class="label">Category leader</span>
+    <span class="value"><strong>{{ quick_insights.leader.brand_name }}</strong></span>
+    <span class="sub">{{ '%.0f' % quick_insights.leader.visibility_pct }}% visibility · named in {{ ((quick_insights.leader.visibility_pct / 12.5) | round | int) }} of 8 AI answers</span>
+  </div>
+  {% if quick_insights.most_cited_brand %}
+  <div class="glance-card">
+    <span class="label">Most cited brand</span>
+    <span class="value"><strong>{{ quick_insights.most_cited_brand.brand_name }}</strong></span>
+    <span class="sub">{{ '%.0f' % quick_insights.most_cited_brand.citation_pct }}% citation rate · the AI's most-trusted source brand in {{ report.name|lower }}</span>
+  </div>
+  {% endif %}
+  {% if quick_insights.top_source_domain %}
+  <div class="glance-card">
+    <span class="label">Top cited domain</span>
+    <span class="value"><strong>{{ quick_insights.top_source_domain }}</strong></span>
+    <span class="sub">Referenced by AI across the {{ report.name|lower }} query set — the highest-leverage PR target in this category</span>
+  </div>
+  {% endif %}
+  <div class="glance-card">
+    <span class="label">Visibility spread</span>
+    <span class="value"><strong>{{ '%.0f' % quick_insights.visibility_spread }}pp</strong></span>
+    <span class="sub">Gap between top and bottom of the ranking{% if quick_insights.zero_visibility_count %} · {{ quick_insights.zero_visibility_count }} brand{{ '' if quick_insights.zero_visibility_count == 1 else 's' }} at 0% (invisible to the AI){% endif %}</span>
+  </div>
+</div>
+{% endif %}
 
 {% if narrative_paragraphs %}
 <section class="narrative-section">
@@ -266,6 +315,27 @@
   {% for src in top_category_sources %}<span>{{ src }}</span>{% endfor %}
 </div>
 {% endif %}
+
+<h2>How to read this ranking</h2>
+<p>Four things worth knowing before you act on the numbers above. These are the same definitions across every industry page — for category-specific observations, see the <em>What we observed</em> section above (where available) and the per-brand insights inline in the ranking.</p>
+<div class="insight-cards">
+  <div class="insight-card">
+    <h4>Visibility = being <em>named</em></h4>
+    <p>A brand's visibility % is the share of AI answers that mention it by name in the response prose. This is who AI engines actively <em>recommend</em> to the buyer.</p>
+  </div>
+  <div class="insight-card">
+    <h4>Citation rate = being <em>trusted</em></h4>
+    <p>Citation rate is the share of AI answers that include the brand's domain as a clickable source link. This is what the AI treats as authoritative evidence — different from being named.</p>
+  </div>
+  <div class="insight-card">
+    <h4>Top engine differs by brand</h4>
+    <p>The "top engine" column shows which AI surface each brand performs best on. Big gaps between a brand's score across engines usually points to specific content or schema gaps.</p>
+  </div>
+  <div class="insight-card">
+    <h4>Rankings move month to month</h4>
+    <p>AI engines re-crawl and re-rank on shorter cycles than classical search. We re-audit every brand on this list at least every {{ report.refresh_interval_days }} days and refresh this page automatically.</p>
+  </div>
+</div>
 
 <h2>Get your own {{ report.name|lower }} brand audited</h2>
 <p>The brands above were curated from public market-leader lists. Want the same measurement against your own brand — including the queries you appear on, which competitors get named instead, and a prioritised fix list? Run a free preview.</p>
