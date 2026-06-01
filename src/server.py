@@ -267,6 +267,7 @@ SITEMAP_PAGES: list[tuple[str, str, str]] = [
     ("/aeo-tools", "monthly", "0.8"),
     ("/glossary", "monthly", "0.7"),
     ("/ai-visibility", "weekly", "0.9"),
+    ("/ai-visibility/methodology", "monthly", "0.6"),
     ("/product/audit", "monthly", "0.8"),
     ("/product/monitoring", "monthly", "0.6"),
     ("/how-it-works", "monthly", "0.7"),
@@ -590,6 +591,17 @@ INDUSTRY_PARENT_CATEGORIES = [
     "Legal & Compliance",
     "Other",
 ]
+
+
+@app.get("/ai-visibility/methodology", response_class=HTMLResponse)
+def page_ai_visibility_methodology(request: Request) -> HTMLResponse:
+    return _render(
+        "ai_visibility_methodology.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+            {"name": "Methodology", "path": "/ai-visibility/methodology"},
+        ],
+    )
 
 
 @app.get("/ai-visibility", response_class=HTMLResponse)

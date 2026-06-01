@@ -1,0 +1,155 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/ai-visibility/methodology" %}
+{% set page_description = "How monitoraeo's AI visibility rankings are produced — the 8 category queries, the composite scoring formula, the monthly refresh cadence, and the safeguards against gaming." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-01-15T00:00:00Z' %}
+{% set page_modified_time = '2026-06-01T00:00:00Z' %}
+{% block title %}AI visibility rankings methodology | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "AI visibility rankings methodology",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {"@type":"Question","name":"How often are the rankings refreshed?","acceptedAnswer":{"@type":"Answer","text":"Every 30 days by default — configurable per industry. Each refresh runs the full 8-query audit against every listed brand and recomputes the ranking. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated."}},
+        {"@type":"Question","name":"What is the composite visibility score?","acceptedAnswer":{"@type":"Answer","text":"A weighted average of two metrics: visibility (70%) — the percentage of AI answers naming the brand — plus citation rate (30%) — the percentage citing the brand's domain. The weighting reflects that being recommended in the prose is more valuable to a brand than being cited as a source, but both matter."}},
+        {"@type":"Question","name":"Which AI engines are queried?","acceptedAnswer":{"@type":"Answer","text":"Google AI Overviews via the Apify google-search-scraper, currently. The 5-engine model used by paid monitoraeo audits (adding ChatGPT, Claude, Perplexity, Gemini) is planned for the rankings later in 2026 — the per_engine breakdown column on every brand is already structured to accommodate this without re-architecting."}},
+        {"@type":"Question","name":"How are the 20 brands per industry chosen?","acceptedAnswer":{"@type":"Answer","text":"Hand-curated from public market-leader lists (G2 Grids, Crunchbase top-funded, trade-press 'top X' lists). The intent is broad coverage of the recognised category leaders, not a comprehensive list of every brand in the space. Brands missing from a ranking can request to be added via support."}},
+        {"@type":"Question","name":"Can rankings be gamed?","acceptedAnswer":{"@type":"Answer","text":"Not by us — we don't take payment for inclusion or position. Brands can improve their own ranking the way any AEO program does (better content, structured data, entity signals, earned mentions on sources AI engines trust). The 8 category queries are fixed, not influenced by individual brands."}}
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .definition-box { padding: 22px 26px; border-radius: 18px; background: linear-gradient(135deg, #eef2ff, #f0f9ff); border: 1px solid #c7d2fe; margin: 24px 0; }
+  .definition-box .label { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #4338ca; margin-bottom: 8px; }
+  .definition-box p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+  .definition-box p strong { color: var(--ink); }
+  .query-list { background: #0b1220; color: #cbd5e1; padding: 18px 22px; border-radius: 14px; font-family: ui-monospace, Menlo, monospace; font-size: 13.5px; line-height: 1.65; }
+  .query-list .n { color: #6ee7b7; }
+  .formula { background: #f8fafc; border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; margin: 14px 0; font-family: ui-monospace, Menlo, monospace; font-size: 14px; color: var(--ink-2); }
+  .formula strong { color: var(--blue); }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">AI Visibility Rankings · Methodology</span>
+<h1 class="page-title">How the rankings are produced</h1>
+<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed methodology: 8 category-level queries against Google AI Overviews per brand, scored monthly, with a composite ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
+
+<div class="definition-box">
+  <div class="label">In one sentence</div>
+  <p>For each industry, we run 8 buyer-intent queries against Google AI Overviews, count how often each brand is named in the prose and cited in the source list, compute a <strong>70% visibility + 30% citation</strong> composite score, and re-rank monthly. Same questions every month so the trend is comparable.</p>
+</div>
+
+<h2>The 8 queries we ask, per industry</h2>
+<p>Identical question shape across every industry — only the category name changes. These are buyer-intent prompts that mirror how AI engines are actually used in research:</p>
+
+<div class="query-list">
+<span class="n">1.</span> Best {industry}<br>
+<span class="n">2.</span> Top {industry} 2026<br>
+<span class="n">3.</span> Best {industry} for small business<br>
+<span class="n">4.</span> Top {industry} alternatives<br>
+<span class="n">5.</span> How do I choose the right {industry}?<br>
+<span class="n">6.</span> {industry} pricing comparison<br>
+<span class="n">7.</span> {industry} reviews<br>
+<span class="n">8.</span> What is the best {industry} on the market?
+</div>
+
+<p style="margin-top:14px;">Eight is the right number: enough to see real patterns (not just single-answer noise from one query), but small enough that the cost stays bounded at ~$0.03/refresh/industry. The shape mirrors the free-preview query set in our paid audits, so the methodology is consistent across products.</p>
+
+<h2>The scoring formula</h2>
+<p>For each brand in an industry, we compute two raw metrics:</p>
+
+<div class="formula"><strong>visibility_pct</strong> = (answers_naming_brand / 8) × 100</div>
+<div class="formula"><strong>citation_pct</strong> = (answers_citing_brand_domain / 8) × 100</div>
+
+<p>Then the composite that drives the ranking:</p>
+
+<div class="formula"><strong>visibility_score</strong> = visibility_pct × 0.7 + citation_pct × 0.3</div>
+
+<p>The 70/30 weighting reflects an editorial choice — for most brand owners, being named in the AI's prose recommendation matters more than being one of many cited sources. If you weight them differently (e.g. 50/50 because you're optimising for citations as a backlink-equivalent), the ranking shifts but rarely dramatically. The raw <code>visibility_pct</code> and <code>citation_pct</code> are visible on every brand row so you can re-rank with your own weighting.</p>
+
+<h2>Refresh cadence</h2>
+<p>Every 30 days by default per industry. The cron worker picks up to 3 industries per 5-minute tick whose <code>next_scheduled_refresh</code> is due, runs the 8 queries, re-scores every brand, snapshots the previous state into history (drives the Movers &amp; Shakers section), generates a fresh AI-written narrative + FAQ from the new data, and advances the schedule.</p>
+
+<ul class="bullets">
+  <li>Industries can have custom intervals (some categories shift faster than others) — set per-industry on creation.</li>
+  <li>Manual refresh is available via the admin form or <code>POST /api/industries/{slug}/refresh</code> when needed.</li>
+  <li>Newly-created industries get an immediate first refresh so the page is populated within ~6 minutes of creation.</li>
+</ul>
+
+<h2>What's stored and what's regenerated</h2>
+<p>Per refresh, the system updates: visibility + citation percentages per brand, the composite score, rank ordering, per-engine breakdown (currently just Google AI), top cited sources for the whole category, and a fresh AI-generated narrative (3 paragraphs of observations + per-top-5-brand context + 4–6 category-specific FAQs). The previous state is snapshotted into <code>monitor_industry_brand_history</code> so the next refresh can compute Movers &amp; Shakers.</p>
+
+<h2>How the brand list per industry is curated</h2>
+<p>We hand-pick ~20 brands per industry from public market-leader sources: G2 Grids for SaaS categories, Crunchbase top-funded lists, trade-press "best X" coverage. The intent is broad coverage of recognised leaders, not exhaustive coverage of every product in the space. If your brand is missing from a category you think you should be in, <a href="/support">send us a support ticket</a> with the industry slug and we'll review.</p>
+
+<h2>What we DON'T do</h2>
+<ul class="bullets">
+  <li><strong>Take payment for inclusion or position.</strong> Brands cannot pay to be added to a ranking or to rank higher. Period.</li>
+  <li><strong>Manipulate the query set per industry.</strong> The 8 queries are identical (modulo industry name) across every category. Brands can't get a friendlier query mix.</li>
+  <li><strong>Hide our methodology.</strong> Everything is on this page. The composite formula is reproducible from the raw data shown on every brand row.</li>
+  <li><strong>Promise visibility numbers.</strong> AI engines change weekly. We honestly measure where you are; we don't guarantee where you'll be.</li>
+</ul>
+
+<h2>How to improve your ranking</h2>
+<p>The same way any AEO program works — better content, structured data, entity signals, earned mentions on the sites AI engines trust in your category. The <a href="/answer-engine-optimization-checklist">20-item AEO checklist</a> is the practical playbook. The fastest single move is usually shipping FAQPage schema across your content library.</p>
+
+<div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
+  <a href="/#preview" class="btn-primary">Audit your brand →</a>
+  <a href="/ai-visibility" class="btn-secondary">Browse all industries</a>
+</div>
+
+<h2>Related</h2>
+<ul class="bullets">
+  <li><a href="/ai-visibility">AI visibility rankings index</a> — all published industries</li>
+  <li><a href="/how-it-works">How a monitoraeo audit works</a> — the paid-audit methodology (5 engines, 40 queries)</li>
+  <li><a href="/answer-engine-optimization-checklist">AEO checklist</a> — the practical playbook for improving your ranking</li>
+  <li><a href="/glossary">Glossary</a> — every AI search term defined</li>
+</ul>
+
+<h2 id="faq">Frequently asked</h2>
+<div style="display:grid; gap:14px; margin-top:14px;">
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often are the rankings refreshed?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Every 30 days by default — configurable per industry. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">What is the composite visibility score?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">A weighted average of visibility (70%, % of answers naming the brand) and citation rate (30%, % citing the brand's domain). Reflects that being recommended in the prose is more valuable than being cited as a source.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Which AI engines are queried?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Google AI Overviews currently. The 5-engine paid-audit model (ChatGPT, Claude, Perplexity, Gemini) is planned for the public rankings later in 2026.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How are the 20 brands per industry chosen?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Hand-curated from public market-leader sources (G2, Crunchbase, trade press). Broad coverage of recognised leaders, not exhaustive. Missing brands can request inclusion via support.</p>
+  </details>
+  <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can rankings be gamed?</summary>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Not by us — we don't take payment for inclusion or position. Brands can improve their ranking the way any AEO program does: better content, schema, entity signals, earned mentions on sources AI engines trust.</p>
+  </details>
+</div>
+{% endblock %}

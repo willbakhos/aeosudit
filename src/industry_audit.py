@@ -164,6 +164,35 @@ def refresh_industry(slug: str) -> dict[str, Any]:
             category_sources[d] = category_sources.get(d, 0) + 1
     top_category_sources = [d for d, _ in sorted(category_sources.items(), key=lambda kv: -kv[1])[:8]]
 
+    # Capture pre-refresh state (for the movers/shakers diff) and snapshot
+    # every brand's current scores into IndustryBrandHistory BEFORE we
+    # overwrite them. The narrative generator uses the previous scores to
+    # spot biggest visibility shifts since last refresh.
+    previous_scores: dict[str, dict[str, Any]] = {}  # keyed by brand_domain
+    with get_session() as s:
+        from src.db import IndustryBrandHistory
+        for brand in s.exec(select(IndustryBrand).where(IndustryBrand.industry_slug == slug)):
+            previous_scores[brand.brand_domain] = {
+                "brand_name": brand.brand_name,
+                "visibility_pct": brand.visibility_pct,
+                "citation_pct": brand.citation_pct,
+                "rank_in_industry": brand.rank_in_industry,
+            }
+            # Snapshot the existing scores (only if this brand has been
+            # audited at least once — first refresh has nothing to snapshot).
+            if brand.last_audited is not None:
+                s.add(IndustryBrandHistory(
+                    industry_slug=slug,
+                    brand_name=brand.brand_name,
+                    brand_domain=brand.brand_domain,
+                    visibility_pct=brand.visibility_pct,
+                    citation_pct=brand.citation_pct,
+                    visibility_score=brand.visibility_score,
+                    rank_in_industry=brand.rank_in_industry,
+                    audited_at=brand.last_audited,
+                ))
+        s.commit()
+
     # Now score every brand against the response set.
     successful_brand_scores: list[tuple[int, float]] = []  # (brand_id, composite) for ranking
     with get_session() as s:
@@ -224,5 +253,94 @@ def refresh_industry(slug: str) -> dict[str, Any]:
         s.add(report)
         s.commit()
 
+    # Generate the AI narrative + FAQs + per-brand insights using fresh
+    # post-refresh data + the previous_scores snapshot to compute movers.
+    # Failures here don't roll back the audit — we just leave the
+    # narrative empty and the template falls back to the bare ranking.
+    try:
+        from src.industry_narrative import generate as generate_narrative
+        with get_session() as s:
+            fresh_brands = list(
+                s.exec(
+                    select(IndustryBrand)
+                    .where(IndustryBrand.industry_slug == slug)
+                    .order_by(IndustryBrand.rank_in_industry.asc())
+                )
+            )
+            brand_dicts = [
+                {
+                    "brand_name": b.brand_name,
+                    "brand_domain": b.brand_domain,
+                    "rank_in_industry": b.rank_in_industry,
+                    "visibility_pct": b.visibility_pct,
+                    "citation_pct": b.citation_pct,
+                    "visibility_score": b.visibility_score,
+                    "top_engine": b.top_engine,
+                }
+                for b in fresh_brands
+            ]
+        movers = _compute_movers(brand_dicts, previous_scores)
+        narrative = generate_narrative(
+            industry_name=report.name,
+            parent_category=report.parent_category or "",
+            brands=brand_dicts,
+            top_cited_sources=top_category_sources,
+            movers=movers,
+        )
+        if narrative:
+            # Cache movers alongside the narrative so the template can
+            # render the Movers & Shakers section without recomputing.
+            narrative["movers"] = movers
+            with get_session() as s:
+                fresh_report = s.exec(select(IndustryReport).where(IndustryReport.slug == slug)).first()
+                if fresh_report:
+                    fresh_report.narrative = narrative
+                    s.add(fresh_report)
+                    s.commit()
+            summary["narrative_generated"] = True
+        else:
+            summary["narrative_generated"] = False
+    except Exception as exc:  # noqa: BLE001
+        print(f"[industry_audit] narrative generation failed: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
+        summary["narrative_error"] = f"{type(exc).__name__}: {exc}"
+
     summary["elapsed_sec"] = round(time.monotonic() - started, 1)
     return summary
+
+
+def _compute_movers(
+    current_brands: list[dict[str, Any]],
+    previous_scores: dict[str, dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Compare current vs previous brand scores. Returns top 3 risers and
+    top 3 fallers by visibility_pct delta. Brands without a previous
+    snapshot (first refresh) are excluded — they have no delta to compute.
+    Sub-threshold movements (<5pp absolute delta) are filtered out so we
+    don't show noise as a 'mover'."""
+    deltas: list[dict[str, Any]] = []
+    for b in current_brands:
+        prev = previous_scores.get(b["brand_domain"])
+        if not prev:
+            continue
+        delta_vis = b["visibility_pct"] - prev["visibility_pct"]
+        delta_cit = b["citation_pct"] - prev["citation_pct"]
+        delta_rank = prev["rank_in_industry"] - b["rank_in_industry"]  # positive = up
+        if abs(delta_vis) < 5:
+            continue
+        deltas.append({
+            "brand_name": b["brand_name"],
+            "brand_domain": b["brand_domain"],
+            "current_rank": b["rank_in_industry"],
+            "previous_rank": prev["rank_in_industry"],
+            "rank_change": delta_rank,
+            "visibility_delta": round(delta_vis, 1),
+            "citation_delta": round(delta_cit, 1),
+            "current_visibility": round(b["visibility_pct"], 1),
+            "previous_visibility": round(prev["visibility_pct"], 1),
+        })
+    risers = sorted([d for d in deltas if d["visibility_delta"] > 0],
+                    key=lambda d: -d["visibility_delta"])[:3]
+    fallers = sorted([d for d in deltas if d["visibility_delta"] < 0],
+                     key=lambda d: d["visibility_delta"])[:3]
+    return {"risers": risers, "fallers": fallers}
