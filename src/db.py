@@ -78,6 +78,18 @@ def init_db() -> None:
         # diff vs the previous refresh).
         "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS narrative JSONB DEFAULT '{}'::jsonb",
         "CREATE INDEX IF NOT EXISTS idx_industry_brand_history_slug_audited ON monitor_industry_brand_history (industry_slug, audited_at DESC)",
+        # Backfill refresh_interval_days for any rows that ended up with NULL
+        # or 0 (the original `int = 30` Python default didn't generate a SQL
+        # default, so rows inserted via raw paths could miss it). 30 days =
+        # 1 month, our canonical default.
+        "UPDATE monitor_industry_report SET refresh_interval_days = 30 WHERE refresh_interval_days IS NULL OR refresh_interval_days <= 0",
+        # Repair stale next_scheduled_refresh values: any row where
+        # next_scheduled_refresh ~= last_full_refresh shows the +0 days bug
+        # (cron ran but refresh_interval_days was effectively zero, so the
+        # 'now + days' arithmetic produced ~now). Recompute as
+        # last_full_refresh + 30 days so the cron stops infinite-looping
+        # over them. Safe: only touches rows where the bug signature matches.
+        "UPDATE monitor_industry_report SET next_scheduled_refresh = last_full_refresh + INTERVAL '30 days' WHERE last_full_refresh IS NOT NULL AND next_scheduled_refresh IS NOT NULL AND next_scheduled_refresh <= last_full_refresh + INTERVAL '1 hour'",
         # One-off repair: the admin form's old `lstrip('https://')` ate the
         # first character of any brand_domain whose first letter happened to
         # match h/t/p/s (the lstrip char set). Fix surgically by exact
@@ -259,7 +271,11 @@ class IndustryReport(SQLModel, table=True):
     parent_category: str = ""                     # "SaaS" | "Fintech" | "Productivity" | "Marketing" | "Creative"
     description: str = ""                         # 1-sentence category def for the page lede
     methodology_version: int = 1                  # bump when scoring math changes (invalidates trends)
-    refresh_interval_days: int = 30               # how often each brand re-audits
+    # 30 days = 1 month default refresh. Field(default=30) gives a SQL
+    # column-level default so rows added via raw SQL (or migrations that
+    # forget to set it) still get the right value — the bare `int = 30`
+    # form is Python-default only.
+    refresh_interval_days: int = Field(default=30)
     last_full_refresh: datetime | None = None     # most recent successful pass over all brands
     next_scheduled_refresh: datetime | None = None
     # Cached AI-generated insights for the public page. Shape:

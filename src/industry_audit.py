@@ -246,11 +246,17 @@ def refresh_industry(slug: str) -> dict[str, Any]:
             if row:
                 row.rank_in_industry = rank
                 s.add(row)
-        # Advance the schedule.
-        report.last_full_refresh = datetime.utcnow()
+        # Advance the schedule. `report` was loaded in an earlier session
+        # block and is now detached — modifying its attributes then calling
+        # s.add() can fail silently to persist the changes. Reload via
+        # s.get() so SQLAlchemy tracks the writes as dirty in THIS session.
         from datetime import timedelta
-        report.next_scheduled_refresh = datetime.utcnow() + timedelta(days=report.refresh_interval_days)
-        s.add(report)
+        fresh_report = s.get(IndustryReport, slug)
+        if fresh_report:
+            interval = fresh_report.refresh_interval_days or 30
+            fresh_report.last_full_refresh = datetime.utcnow()
+            fresh_report.next_scheduled_refresh = datetime.utcnow() + timedelta(days=interval)
+            s.add(fresh_report)
         s.commit()
 
     # Generate the AI narrative + FAQs + per-brand insights using fresh
