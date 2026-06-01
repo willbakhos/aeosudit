@@ -22,7 +22,13 @@ def capture(
     """Fetch a PNG screenshot from our screenshotsys instance and save it
     under output_dir. Returns the saved path, or None if env vars are missing
     or the call failed. Failures are non-fatal — the audit should still
-    produce a report without a screenshot."""
+    produce a report without a screenshot.
+
+    Uses screenshotsys's `skipBlocked=1` so sites that block us (Cloudflare,
+    WAFs returning a "Checking your browser..." challenge page) come back as
+    HTTP 422 instead of a useless 403-shape image. We return None on 422 so
+    the audit renders without a misleading screenshot.
+    """
     base = os.environ.get("SCREENSHOT_API_URL", "").strip().rstrip("/")
     token = os.environ.get("SCREENSHOT_API_TOKEN", "").strip()
     if not base or not token:
@@ -38,9 +44,31 @@ def capture(
         with httpx.Client(timeout=DEFAULT_TIMEOUT, follow_redirects=True) as client:
             r = client.get(
                 f"{base}/screenshot",
-                params={"url": url, "width": str(width), "height": str(height)},
+                params={
+                    "url": url,
+                    "width": str(width),
+                    "height": str(height),
+                    "skipBlocked": "1",
+                },
                 headers={"Authorization": f"Bearer {token}"},
             )
+            # 422 = site blocked us (Cloudflare / WAF). Distinct from a real
+            # error — log specifically so we can spot patterns ("most failures
+            # are blocked sites, not server issues") without grepping.
+            if r.status_code == 422:
+                err_log = output_dir / "errors.log"
+                with err_log.open("a") as f:
+                    f.write(f"[screenshot] {url} -> blocked by site (HTTP 422, Cloudflare/WAF)\n")
+                return None
+            # 429 = shared rate limit across the token. The screenshot is
+            # non-critical so don't retry — log the Retry-After hint and let
+            # the audit continue without an image.
+            if r.status_code == 429:
+                retry_after = r.headers.get("retry-after", "?")
+                err_log = output_dir / "errors.log"
+                with err_log.open("a") as f:
+                    f.write(f"[screenshot] {url} -> rate limited (HTTP 429, retry-after: {retry_after})\n")
+                return None
             r.raise_for_status()
             path.write_bytes(r.content)
         return path
