@@ -2,7 +2,15 @@
 {% set canonical_path = "/ai-visibility" %}
 {% set page_description = "AI search visibility rankings by industry — measured monthly across ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews. The top brands AI engines actually name and cite when buyers ask." %}
 {% set page_og_type = 'website' %}
-{% block title %}AI search visibility rankings by industry (2026) | monitoraeo{% endblock %}
+{# Noindex filtered/paginated views so they don't compete with the canonical index for SEO. #}
+{% if is_filtered or page > 1 %}{% set _ = page_description %}{% endif %}
+{% block title %}AI search visibility rankings by industry (2026){% if category_filter %} · {{ category_filter }}{% endif %}{% if q %} · "{{ q }}"{% endif %}{% if page > 1 %} · page {{ page }}{% endif %} | monitoraeo{% endblock %}
+{% block og_title %}AI search visibility rankings by industry (2026){% if category_filter %} · {{ category_filter }}{% endif %}{% endblock %}
+
+{# Filtered or paginated views are noindex,follow — duplicate-content
+   prevention. Crawlers still follow links to the canonical industry pages
+   from these views. #}
+{% if is_filtered or page > 1 %}{% set page_robots = 'noindex,follow' %}{% endif %}
 
 {% block schema %}
 <script type="application/ld+json">
@@ -98,9 +106,64 @@
     color: var(--muted);
   }
 
+  .filter-bar {
+    display: grid; grid-template-columns: 1fr auto; gap: 14px;
+    align-items: center; margin: 0 0 18px;
+    padding: 14px 18px; background: white; border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: var(--shadow-soft);
+  }
+  .filter-bar .search { display: flex; align-items: center; gap: 8px; }
+  .filter-bar .search input {
+    flex: 1; padding: 9px 14px; border: 1px solid var(--line);
+    border-radius: 999px; font: inherit; font-size: 14px; background: #f8fafc;
+  }
+  .filter-bar .search input:focus { outline: none; border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+  .filter-bar .search button {
+    padding: 9px 16px; border-radius: 999px; border: 0;
+    background: var(--ink); color: white; font-weight: 800; font-size: 13px; cursor: pointer;
+  }
+  .filter-bar .reset { color: var(--muted); font-size: 13px; text-decoration: none; }
+  .filter-bar .reset:hover { color: var(--blue); }
+  .category-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .category-pill {
+    display: inline-flex; align-items: center; padding: 7px 14px;
+    border-radius: 999px; background: white; border: 1px solid var(--line);
+    color: var(--ink-2); font-size: 13px; font-weight: 700;
+    text-decoration: none;
+  }
+  .category-pill:hover { border-color: var(--blue); color: var(--blue); }
+  .category-pill.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .category-pill .count { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: rgba(15,23,42,.08); color: var(--muted); font-size: 11px; font-weight: 800; }
+  .category-pill.active .count { background: rgba(255,255,255,.18); color: rgba(255,255,255,.86); }
+
+  .filter-status {
+    margin: 0 0 14px; padding: 10px 14px;
+    background: rgba(37,99,235,.06); border-left: 3px solid var(--blue);
+    border-radius: 0 12px 12px 0; font-size: 13.5px; color: var(--ink-2);
+  }
+  .filter-status a { color: var(--blue); font-weight: 700; text-decoration: none; }
+
+  .pagination {
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px; margin: 32px 0 12px; flex-wrap: wrap;
+  }
+  .pagination a, .pagination span {
+    display: inline-flex; align-items: center; padding: 7px 13px;
+    border-radius: 10px; border: 1px solid var(--line); background: white;
+    color: var(--ink-2); font-size: 13px; font-weight: 700; text-decoration: none;
+    min-width: 38px; justify-content: center;
+  }
+  .pagination a:hover { border-color: var(--blue); color: var(--blue); }
+  .pagination .current { background: var(--ink); color: white; border-color: var(--ink); }
+  .pagination .disabled { opacity: .42; pointer-events: none; }
+  .pagination .gap { border: 0; background: transparent; padding: 7px 4px; color: var(--soft-muted); }
+  .pagination .summary { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+
   @media (max-width: 720px) {
     .hero-stats { grid-template-columns: 1fr; }
     .industry-grid { grid-template-columns: 1fr; }
+    .filter-bar { grid-template-columns: 1fr; }
+    .filter-bar .search { flex-wrap: wrap; }
   }
 {% endblock %}
 
@@ -127,7 +190,66 @@
   </div>
 </section>
 
-{% if industries_by_category %}
+{# Filter bar — search + reset. Submits as GET so URLs are shareable. #}
+{% if total_industries %}
+<form class="filter-bar" method="get" action="/ai-visibility">
+  <div class="search">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search industry name… (e.g. CRM, payment, healthcare)" aria-label="Search industries">
+    {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
+    <button type="submit">Search</button>
+  </div>
+  {% if is_filtered %}<a class="reset" href="/ai-visibility">Clear filters ×</a>{% endif %}
+</form>
+
+{# Category pill bar — single-select. Each pill toggles ?category= for that
+   value (or clears it when clicked again). Preserves the active search q. #}
+{% if all_categories %}
+<div class="category-pills">
+  <a class="category-pill{% if not category_filter %} active{% endif %}" href="/ai-visibility{% if q %}?q={{ q|urlencode }}{% endif %}">
+    All <span class="count">{{ total_industries }}</span>
+  </a>
+  {% for cat in all_categories %}
+  <a class="category-pill{% if category_filter == cat %} active{% endif %}" href="/ai-visibility?category={{ cat|urlencode }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">
+    {{ cat }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
+{% if is_filtered %}
+  <p class="filter-status">
+    {% if total_filtered %}
+      Showing <strong>{{ total_filtered }}</strong> industr{{ 'y' if total_filtered == 1 else 'ies' }}
+      {% if q %}matching <strong>"{{ q }}"</strong>{% endif %}
+      {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}.
+    {% else %}
+      No industries match
+      {% if q %}<strong>"{{ q }}"</strong>{% endif %}
+      {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}.
+      <a href="/ai-visibility">Clear filters</a> to see all.
+    {% endif %}
+  </p>
+{% endif %}
+
+{% if is_filtered or page > 1 %}
+  {# Flat paginated grid for any filtered/page-2+ view. #}
+  {% if flat_results %}
+  <div class="industry-grid">
+    {% for it in flat_results %}
+      <a class="industry-card" href="/ai-visibility/{{ it.slug }}">
+        <span class="name">{{ it.name }}</span>
+        <div class="meta">
+          {% if it.top_brand_name %}<span class="top">Top brand: <strong>{{ it.top_brand_name }}</strong></span>{% endif %}
+          {% if it.brand_count %}<span class="updated">{{ it.brand_count }} brand{{ '' if it.brand_count == 1 else 's' }} audited</span>{% endif %}
+          {% if it.last_refresh %}<span class="updated">Updated {{ it.last_refresh.strftime('%b %Y') }}</span>{% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% elif industries_by_category %}
+  {# Unfiltered page-1: keep the grouped editorial feel. #}
   {% for category, items in industries_by_category %}
     <div class="category-section">
       <h2>{{ category }}</h2>
@@ -146,15 +268,53 @@
       </div>
     </div>
   {% endfor %}
-{% else %}
+{% elif not total_industries %}
   <div class="empty-card">
     <h3 style="margin:0 0 8px;">Rankings publishing soon</h3>
     <p style="margin:0;">We're auditing the first set of industries now. Check back in a few days — or <a href="/#preview" style="color:var(--blue); font-weight:700;">run a free preview on your own brand</a> in the meantime.</p>
   </div>
 {% endif %}
 
+{# Pagination footer — shows when there's more than one page of results in
+   the current view. Builds URLs preserving the active q + category. #}
+{% if total_pages > 1 %}
+  {% set base_qs %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}{% if category_filter %}category={{ category_filter|urlencode }}&amp;{% endif %}{% endset %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if page > 1 %}
+      <a href="/ai-visibility?{{ base_qs }}page={{ page - 1 }}" rel="prev">← Prev</a>
+    {% else %}
+      <span class="disabled">← Prev</span>
+    {% endif %}
+    {# Compact page list: first, last, current ±2, gaps for ranges #}
+    {% set window = [] %}
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+        {% set _ = window.append(p) %}
+      {% endif %}
+    {% endfor %}
+    {% set ns = namespace(prev=0) %}
+    {% for p in window %}
+      {% if ns.prev and p - ns.prev > 1 %}<span class="gap">…</span>{% endif %}
+      {% if p == page %}
+        <span class="current" aria-current="page">{{ p }}</span>
+      {% else %}
+        <a href="/ai-visibility?{{ base_qs }}page={{ p }}">{{ p }}</a>
+      {% endif %}
+      {% set ns.prev = p %}
+    {% endfor %}
+    {% if page < total_pages %}
+      <a href="/ai-visibility?{{ base_qs }}page={{ page + 1 }}" rel="next">Next →</a>
+    {% else %}
+      <span class="disabled">Next →</span>
+    {% endif %}
+    <span class="summary" style="margin-left:12px;">
+      Page {{ page }} of {{ total_pages }} · {{ total_filtered }} total
+    </span>
+  </nav>
+{% endif %}
+
 <h2 style="margin-top:48px;">How these rankings are produced</h2>
-<p>For each industry we pick 20 leading brands and run an 8-query AI Mode audit per brand monthly — that's the same query set the <a href="/#preview" style="color:var(--blue); font-weight:700;">free preview</a> uses, asked of Google's standalone AI Mode page. Brands are ranked by a composite score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/how-it-works" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+<p>For each industry we pick 20 leading brands and run an 8-query audit per brand monthly against Google AI Overviews. Brands are ranked by a composite score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
 
 <div style="display:flex; gap:14px; margin-top: 18px; flex-wrap:wrap;">
   <a href="/#preview" class="btn-primary">Audit your brand →</a>

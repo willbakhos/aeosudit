@@ -604,61 +604,146 @@ def page_ai_visibility_methodology(request: Request) -> HTMLResponse:
     )
 
 
+AI_VISIBILITY_PAGE_SIZE = 24  # 3 cols × 8 rows on desktop
+
+
 @app.get("/ai-visibility", response_class=HTMLResponse)
-def page_ai_visibility_index(request: Request) -> HTMLResponse:
-    """Index of every industry we publish rankings for, grouped by
-    parent_category. Falls back to an empty-state when no industries have
-    been published yet (early launch / dev environment without DB)."""
+def page_ai_visibility_index(
+    request: Request,
+    q: str = "",
+    category: str = "",
+    page: int = 1,
+) -> HTMLResponse:
+    """Index of every published industry ranking. Supports search (?q=)
+    on industry name, category filter (?category=), and pagination (?page=).
+    Unfiltered/first-page view is grouped by parent_category for editorial
+    feel; any active filter switches to a flat paginated grid for scale.
+    Falls back to an empty state when the DB is unreachable."""
+    q = (q or "").strip()[:120]
+    category = (category or "").strip()[:60]
+    if category and category not in INDUSTRY_PARENT_CATEGORIES:
+        category = ""  # ignore unknown values rather than returning empty
+    try:
+        page = max(1, int(page))
+    except (TypeError, ValueError):
+        page = 1
+
     industries_by_category: dict[str, list[dict[str, Any]]] = {}
+    flat_results: list[dict[str, Any]] = []
     total_brands = 0
-    total_industries = 0
+    total_industries_global = 0  # site-wide count, for hero stats
+    total_filtered = 0           # count after filters applied
     last_refresh: datetime | None = None
+    all_categories: list[str] = []  # categories that have at least one industry
+
+    is_filtered = bool(q or category)
 
     try:
-        from sqlmodel import select as _select, func as _func
+        from sqlmodel import select as _select, func as _func, or_
         from src.db import IndustryReport, IndustryBrand, get_session
         with get_session() as s:
-            reports = list(s.exec(_select(IndustryReport).order_by(IndustryReport.name)))
-            total_industries = len(reports)
-            for r in reports:
-                # Pull the #1 brand for the preview line ("top brand: X").
+            # Site-wide counts for the hero band — independent of filters.
+            total_industries_global = int(s.exec(
+                _select(_func.count(IndustryReport.slug))
+            ).one() or 0)
+            total_brands = int(s.exec(
+                _select(_func.count(IndustryBrand.id))
+            ).one() or 0)
+            most_recent = s.exec(
+                _select(IndustryReport.last_full_refresh)
+                .where(IndustryReport.last_full_refresh.is_not(None))
+                .order_by(IndustryReport.last_full_refresh.desc())
+                .limit(1)
+            ).first()
+            last_refresh = most_recent if isinstance(most_recent, datetime) else None
+            # Distinct categories that actually have industries (for the
+            # filter pill bar — don't render pills for empty buckets).
+            cats_present = {
+                r.parent_category for r in s.exec(
+                    _select(IndustryReport.parent_category).distinct()
+                )
+                if r and isinstance(r, str) and r
+            }
+            all_categories = [c for c in INDUSTRY_PARENT_CATEGORIES if c in cats_present]
+
+            # Build the filtered base query.
+            base = _select(IndustryReport)
+            if q:
+                base = base.where(IndustryReport.name.ilike(f"%{q}%"))
+            if category:
+                base = base.where(IndustryReport.parent_category == category)
+
+            if is_filtered:
+                # Flat, alphabetised, paginated. Count first (cheap), then slice.
+                count_q = _select(_func.count(IndustryReport.slug))
+                if q:
+                    count_q = count_q.where(IndustryReport.name.ilike(f"%{q}%"))
+                if category:
+                    count_q = count_q.where(IndustryReport.parent_category == category)
+                total_filtered = int(s.exec(count_q).one() or 0)
+                offset = (page - 1) * AI_VISIBILITY_PAGE_SIZE
+                results = list(s.exec(
+                    base.order_by(IndustryReport.name)
+                        .limit(AI_VISIBILITY_PAGE_SIZE).offset(offset)
+                ))
+            else:
+                # Unfiltered grouped view — still paginate to avoid 10k-row
+                # pages, but the first page shows everything if total fits.
+                total_filtered = total_industries_global
+                offset = (page - 1) * AI_VISIBILITY_PAGE_SIZE
+                results = list(s.exec(
+                    base.order_by(IndustryReport.name)
+                        .limit(AI_VISIBILITY_PAGE_SIZE).offset(offset)
+                ))
+
+            # Enrich each result with top brand + brand count for the card preview.
+            for r in results:
                 top = s.exec(
                     _select(IndustryBrand)
                     .where(IndustryBrand.industry_slug == r.slug)
                     .order_by(IndustryBrand.rank_in_industry.asc())
                     .limit(1)
                 ).first()
-                cnt = s.exec(
+                cnt = int(s.exec(
                     _select(_func.count(IndustryBrand.id))
                     .where(IndustryBrand.industry_slug == r.slug)
-                ).one()
-                total_brands += int(cnt or 0)
-                if r.last_full_refresh and (last_refresh is None or r.last_full_refresh > last_refresh):
-                    last_refresh = r.last_full_refresh
-                industries_by_category.setdefault(r.parent_category or "Other", []).append({
-                    "slug": r.slug,
-                    "name": r.name,
-                    "description": r.description,
+                ).one() or 0)
+                card = {
+                    "slug": r.slug, "name": r.name, "description": r.description,
                     "last_refresh": r.last_full_refresh,
                     "top_brand_name": top.brand_name if top else None,
-                    "brand_count": int(cnt or 0),
-                })
+                    "brand_count": cnt,
+                    "parent_category": r.parent_category or "Other",
+                }
+                flat_results.append(card)
+                if not is_filtered:
+                    industries_by_category.setdefault(card["parent_category"], []).append(card)
     except Exception as exc:  # noqa: BLE001
-        # DB unreachable (local CLI dev) — render the empty state rather than 500.
         print(f"[ai-visibility] index DB unavailable: {type(exc).__name__}: {exc}")
 
-    # Render categories in the canonical order, omitting empty buckets.
     ordered = [
         (cat, industries_by_category[cat])
         for cat in INDUSTRY_PARENT_CATEGORIES
         if cat in industries_by_category
     ]
+
+    # Pagination metadata for the template.
+    total_pages = max(1, (total_filtered + AI_VISIBILITY_PAGE_SIZE - 1) // AI_VISIBILITY_PAGE_SIZE)
+    page = min(page, total_pages)
+
     return _render(
         "ai_visibility_index.html.j2", request=request,
         industries_by_category=ordered,
-        total_industries=total_industries,
+        flat_results=flat_results,
+        is_filtered=is_filtered,
+        q=q, category_filter=category,
+        all_categories=all_categories,
+        total_industries=total_industries_global,
+        total_filtered=total_filtered,
         total_brands=total_brands,
         last_refresh=last_refresh,
+        page=page, total_pages=total_pages,
+        page_size=AI_VISIBILITY_PAGE_SIZE,
         breadcrumbs=[{"name": "AI Visibility Rankings", "path": "/ai-visibility"}],
     )
 

@@ -2595,6 +2595,10 @@ Zoho CRM | zoho.com
 </form>
 
 <h2>Existing rankings</h2>
+<form method="POST" action="/dashboard/admin/industries/refresh-all" style="margin:0 0 12px; padding:0; background:transparent; border:0; display:inline-block;"
+      onsubmit="return confirm('Queue every industry for cron refresh? Each takes ~60-90s of Apify time. The cron will process 3 per 5 min until they\\'re all updated.');">
+  <button type="submit" style="padding:8px 14px; font-size:13px; background: linear-gradient(135deg, #16a34a, #059669); border: 0; border-radius: 999px; color: white; font-weight: 800; cursor: pointer;">Refresh ALL industries now</button>
+</form>
 {rows_html}
 
 <h2>Programmatic API</h2>
@@ -2887,6 +2891,10 @@ def admin_industries(request: Request, status: str = "", detail: str = ""):
         flash = f"<div class='flash'>✓ Industry <code>{detail}</code> created. Cron will refresh it on next tick.</div>"
     elif status == "refresh_queued":
         flash = f"<div class='flash'>✓ <code>{detail}</code> queued for immediate refresh.</div>"
+    elif status == "refresh_all_queued":
+        flash = f"<div class='flash'>✓ Queued all <strong>{detail}</strong> industries for refresh. Cron will process them at 3 per ~5 min over the next hour or two.</div>"
+    elif status == "refresh_all_failed":
+        flash = f"<div class='flash err'>Refresh-all failed: {detail}. Check the Railway logs.</div>"
     elif status:
         flash = f"<div class='flash err'>Error: {status} — {detail}</div>"
     return HTMLResponse(_industries_admin_render(flash=flash))
@@ -3000,3 +3008,37 @@ def admin_industries_refresh(request: Request, slug: str):
         f"/dashboard/admin/industries?status=refresh_queued&detail={slug}",
         status_code=303,
     )
+
+
+@router.post("/admin/industries/refresh-all")
+def admin_industries_refresh_all(request: Request):
+    """Queue every existing industry for immediate cron pickup. Bumps
+    next_scheduled_refresh = now for all rows; the cron worker processes
+    INDUSTRY_BATCH_SIZE per CHECK_INTERVAL tick (default 3 per 5 min) so
+    a large set drains over the following hour or two without spiking
+    Apify load. Idempotent — calling twice just resets the same field
+    to a slightly newer 'now'."""
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+
+    try:
+        from src.db import IndustryReport, get_session
+        from sqlmodel import select as _select
+        with get_session() as s:
+            count = 0
+            now = datetime.utcnow()
+            for r in s.exec(_select(IndustryReport)):
+                r.next_scheduled_refresh = now
+                s.add(r)
+                count += 1
+            s.commit()
+        return RedirectResponse(
+            f"/dashboard/admin/industries?status=refresh_all_queued&detail={count}",
+            status_code=303,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return RedirectResponse(
+            f"/dashboard/admin/industries?status=refresh_all_failed&detail={type(exc).__name__}",
+            status_code=303,
+        )
