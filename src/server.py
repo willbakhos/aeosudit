@@ -611,13 +611,20 @@ AI_VISIBILITY_PAGE_SIZE = 24  # 3 cols × 8 rows on desktop
 # the nav still personalizes per request (Login vs Dashboard). Industries
 # refresh at most a few per day, so 60s staleness is invisible to users.
 _AI_VIZ_INDEX_CACHE: dict[tuple[str, str, int], tuple[float, dict[str, Any]]] = {}
+_AI_VIZ_DETAIL_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 _AI_VIZ_INDEX_TTL = 60  # seconds
+_AI_VIZ_DETAIL_TTL = 60  # seconds
 
 
-def invalidate_ai_visibility_cache() -> None:
-    """Public hook so refresh paths (admin actions, cron worker) can
-    drop the cached index data instead of waiting for natural TTL."""
+def invalidate_ai_visibility_cache(slug: str | None = None) -> None:
+    """Drop cached index + detail bundles. If slug given, only drop that
+    detail entry (index is always dropped since per-card top brand/count
+    could change). Public hook so refresh paths can call us."""
     _AI_VIZ_INDEX_CACHE.clear()
+    if slug:
+        _AI_VIZ_DETAIL_CACHE.pop(slug, None)
+    else:
+        _AI_VIZ_DETAIL_CACHE.clear()
 
 
 @app.get("/ai-visibility", response_class=HTMLResponse)
@@ -797,6 +804,19 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
     might index as thin content."""
     from sqlmodel import select as _select
     from src.db import IndustryReport, IndustryBrand, get_session
+    import time as _time
+
+    cached = _AI_VIZ_DETAIL_CACHE.get(slug)
+    if cached and (_time.monotonic() - cached[0]) < _AI_VIZ_DETAIL_TTL:
+        bundle = cached[1]
+        return _render(
+            "ai_visibility_industry.html.j2", request=request,
+            **bundle,
+            breadcrumbs=[
+                {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+                {"name": bundle["report"].name, "path": f"/ai-visibility/{bundle['report'].slug}"},
+            ],
+        )
 
     try:
         with get_session() as s:
@@ -812,6 +832,23 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
                     .order_by(IndustryBrand.rank_in_industry.asc())
                 )
             )
+            # Force-load every attribute the template reads while the
+            # session is still open. Detached SQLModel objects can lazy-load
+            # on attribute access; pre-touching avoids any surprise in the
+            # cached path. JSONB columns (narrative, top_cited_sources) come
+            # back as plain Python objects already, so no further work.
+            _ = (
+                report.name, report.slug, report.description,
+                report.parent_category, report.refresh_interval_days,
+                report.last_full_refresh, report.narrative,
+            )
+            for _b in brands:
+                _ = (
+                    _b.brand_name, _b.brand_domain, _b.visibility_pct,
+                    _b.citation_pct, _b.visibility_score, _b.rank_in_industry,
+                    _b.last_audited, _b.top_cited_sources,
+                    _b.visibility_per_engine, _b.top_engine,
+                )
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -897,8 +934,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
             )
         auto_brand_insights[(b.brand_name or "").lower()] = txt
 
-    return _render(
-        "ai_visibility_industry.html.j2", request=request,
+    bundle = dict(
         report=report,
         brands=brands,
         avg_visibility=avg_visibility,
@@ -907,6 +943,14 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         audited_count=len(audited),
         quick_insights=quick_insights,
         auto_brand_insights=auto_brand_insights,
+    )
+    _AI_VIZ_DETAIL_CACHE[slug] = (_time.monotonic(), bundle)
+    if len(_AI_VIZ_DETAIL_CACHE) > 500:  # ~industries cap; defensive
+        _AI_VIZ_DETAIL_CACHE.clear()
+
+    return _render(
+        "ai_visibility_industry.html.j2", request=request,
+        **bundle,
         breadcrumbs=[
             {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
             {"name": report.name, "path": f"/ai-visibility/{report.slug}"},
