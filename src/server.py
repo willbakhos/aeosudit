@@ -606,6 +606,19 @@ def page_ai_visibility_methodology(request: Request) -> HTMLResponse:
 
 AI_VISIBILITY_PAGE_SIZE = 24  # 3 cols × 8 rows on desktop
 
+# In-process cache for the public /ai-visibility index data bundle.
+# Keyed by (q, category, page). We cache the DATA, not the rendered HTML —
+# the nav still personalizes per request (Login vs Dashboard). Industries
+# refresh at most a few per day, so 60s staleness is invisible to users.
+_AI_VIZ_INDEX_CACHE: dict[tuple[str, str, int], tuple[float, dict[str, Any]]] = {}
+_AI_VIZ_INDEX_TTL = 60  # seconds
+
+
+def invalidate_ai_visibility_cache() -> None:
+    """Public hook so refresh paths (admin actions, cron worker) can
+    drop the cached index data instead of waiting for natural TTL."""
+    _AI_VIZ_INDEX_CACHE.clear()
+
 
 @app.get("/ai-visibility", response_class=HTMLResponse)
 def page_ai_visibility_index(
@@ -628,6 +641,17 @@ def page_ai_visibility_index(
     except (TypeError, ValueError):
         page = 1
 
+    import time as _time
+    cache_key = (q, category, page)
+    cached = _AI_VIZ_INDEX_CACHE.get(cache_key)
+    if cached and (_time.monotonic() - cached[0]) < _AI_VIZ_INDEX_TTL:
+        bundle = cached[1]
+        return _render(
+            "ai_visibility_index.html.j2", request=request,
+            **bundle,
+            breadcrumbs=[{"name": "AI Visibility Rankings", "path": "/ai-visibility"}],
+        )
+
     industries_by_category: dict[str, list[dict[str, Any]]] = {}
     flat_results: list[dict[str, Any]] = []
     total_brands = 0
@@ -637,6 +661,7 @@ def page_ai_visibility_index(
     all_categories: list[str] = []  # categories that have at least one industry
 
     is_filtered = bool(q or category)
+    db_ok = False
 
     try:
         from sqlmodel import select as _select, func as _func
@@ -717,6 +742,7 @@ def page_ai_visibility_index(
                 flat_results.append(card)
                 if not is_filtered:
                     industries_by_category.setdefault(card["parent_category"], []).append(card)
+        db_ok = True
     except Exception as exc:  # noqa: BLE001
         # Log with traceback so silent breakage doesn't repeat the "hero
         # stats render but no cards" failure mode I just fixed.
@@ -734,8 +760,7 @@ def page_ai_visibility_index(
     total_pages = max(1, (total_filtered + AI_VISIBILITY_PAGE_SIZE - 1) // AI_VISIBILITY_PAGE_SIZE)
     page = min(page, total_pages)
 
-    return _render(
-        "ai_visibility_index.html.j2", request=request,
+    bundle = dict(
         industries_by_category=ordered,
         flat_results=flat_results,
         is_filtered=is_filtered,
@@ -747,6 +772,20 @@ def page_ai_visibility_index(
         last_refresh=last_refresh,
         page=page, total_pages=total_pages,
         page_size=AI_VISIBILITY_PAGE_SIZE,
+    )
+
+    # Only cache successful DB fetches — never cache the empty fallback,
+    # otherwise a transient outage poisons all readers for 60s.
+    if db_ok:
+        _AI_VIZ_INDEX_CACHE[cache_key] = (_time.monotonic(), bundle)
+        # Bounded — combos are tiny (~50 realistic), but guard against
+        # bots probing with garbage query params.
+        if len(_AI_VIZ_INDEX_CACHE) > 200:
+            _AI_VIZ_INDEX_CACHE.clear()
+
+    return _render(
+        "ai_visibility_index.html.j2", request=request,
+        **bundle,
         breadcrumbs=[{"name": "AI Visibility Rankings", "path": "/ai-visibility"}],
     )
 
@@ -1960,6 +1999,7 @@ def api_industries_create(req: IndustryCreateRequest, request: Request) -> JSONR
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
 
+    invalidate_ai_visibility_cache()
     return JSONResponse(payload, status_code=201)
 
 

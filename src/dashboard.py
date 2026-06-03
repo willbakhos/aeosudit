@@ -2980,6 +2980,11 @@ def admin_industries_create(
             status_code=303,
         )
 
+    try:
+        from src.server import invalidate_ai_visibility_cache
+        invalidate_ai_visibility_cache()
+    except Exception:  # noqa: BLE001
+        pass
     return RedirectResponse(
         f"/dashboard/admin/industries?status=created&detail={slug}",
         status_code=303,
@@ -3000,6 +3005,11 @@ def admin_industries_refresh(request: Request, slug: str):
             from src.industry_audit import refresh_industry
             summary = refresh_industry(slug)
             print(f"[admin] manual refresh {slug}: {summary}")
+            try:
+                from src.server import invalidate_ai_visibility_cache
+                invalidate_ai_visibility_cache()
+            except Exception:  # noqa: BLE001
+                pass
         except Exception as exc:  # noqa: BLE001
             print(f"[admin] manual refresh {slug} raised: {type(exc).__name__}: {exc}")
 
@@ -3033,6 +3043,11 @@ def admin_industries_refresh_all(request: Request):
                 s.add(r)
                 count += 1
             s.commit()
+        try:
+            from src.server import invalidate_ai_visibility_cache
+            invalidate_ai_visibility_cache()
+        except Exception:  # noqa: BLE001
+            pass
         return RedirectResponse(
             f"/dashboard/admin/industries?status=refresh_all_queued&detail={count}",
             status_code=303,

@@ -312,6 +312,16 @@ def refresh_industry(slug: str) -> dict[str, Any]:
         summary["narrative_error"] = f"{type(exc).__name__}: {exc}"
 
     summary["elapsed_sec"] = round(time.monotonic() - started, 1)
+
+    # Drop the public index-page cache so newly refreshed rankings show
+    # up immediately instead of after the 60s TTL. Lazy import to dodge
+    # circular import at startup (server -> cron_worker -> industry_audit).
+    try:
+        from src.server import invalidate_ai_visibility_cache
+        invalidate_ai_visibility_cache()
+    except Exception:  # noqa: BLE001
+        pass
+
     return summary
 
 
