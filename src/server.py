@@ -681,26 +681,37 @@ def page_ai_visibility_index(
             offset = (page - 1) * AI_VISIBILITY_PAGE_SIZE
             page_results = filtered[offset : offset + AI_VISIBILITY_PAGE_SIZE]
 
-            # Enrich each on-page result with top brand + brand count.
+            # Bulk-fetch top brand + brand count for ALL page slugs in 2
+            # queries (was 2N round-trips — at 24 cards × ~50ms each that
+            # was 2-3s of pure network latency). For "top brand" we pull
+            # only rank=1 rows; for count we GROUP BY slug.
+            page_slugs = [r.slug for r in page_results]
+            top_brand_by_slug: dict[str, str] = {}
+            count_by_slug: dict[str, int] = {}
+            if page_slugs:
+                top_rows = list(s.exec(
+                    _select(IndustryBrand.industry_slug, IndustryBrand.brand_name)
+                    .where(IndustryBrand.industry_slug.in_(page_slugs))
+                    .where(IndustryBrand.rank_in_industry == 1)
+                ))
+                for row in top_rows:
+                    slug_val, name_val = (row if isinstance(row, tuple) else (row.industry_slug, row.brand_name))
+                    top_brand_by_slug[slug_val] = name_val
+                count_rows = list(s.exec(
+                    _select(IndustryBrand.industry_slug, _func.count(IndustryBrand.id))
+                    .where(IndustryBrand.industry_slug.in_(page_slugs))
+                    .group_by(IndustryBrand.industry_slug)
+                ))
+                for row in count_rows:
+                    slug_val, cnt_val = row if isinstance(row, tuple) else (row[0], row[1])
+                    count_by_slug[slug_val] = int(cnt_val or 0)
+
             for r in page_results:
-                top = s.exec(
-                    _select(IndustryBrand)
-                    .where(IndustryBrand.industry_slug == r.slug)
-                    .order_by(IndustryBrand.rank_in_industry.asc())
-                    .limit(1)
-                ).first()
-                cnt_row = s.exec(
-                    _select(_func.count(IndustryBrand.id))
-                    .where(IndustryBrand.industry_slug == r.slug)
-                ).first()
-                if isinstance(cnt_row, tuple):
-                    cnt_row = cnt_row[0] if cnt_row else 0
-                cnt = int(cnt_row or 0)
                 card = {
                     "slug": r.slug, "name": r.name, "description": r.description,
                     "last_refresh": r.last_full_refresh,
-                    "top_brand_name": top.brand_name if top else None,
-                    "brand_count": cnt,
+                    "top_brand_name": top_brand_by_slug.get(r.slug),
+                    "brand_count": count_by_slug.get(r.slug, 0),
                     "parent_category": r.parent_category or "Other",
                 }
                 flat_results.append(card)
