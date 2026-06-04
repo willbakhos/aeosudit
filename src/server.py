@@ -2065,9 +2065,29 @@ def api_industries_refresh(slug: str, request: Request) -> JSONResponse:
 
 
 @app.get("/api/industries")
-def api_industries_list(request: Request) -> JSONResponse:
-    """List every published industry ranking with summary stats.
+def api_industries_list(
+    request: Request,
+    audited_only: bool = False,
+) -> JSONResponse:
+    """List every published industry ranking with summary stats + top brand.
+
     Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+
+    Query params:
+      audited_only=true  — only return industries that have been refreshed
+                           at least once (skip newly-created, not-yet-audited).
+
+    Each entry returns:
+      slug, name, parent_category, description, url (public page),
+      top_brand {name, domain, visibility_pct, citation_pct, rank},
+      brand_count, last_full_refresh, next_scheduled_refresh,
+      refresh_interval_days, created_at.
+
+    top_brand is null when the industry hasn't been audited yet.
+
+    Example:
+        curl -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+          "https://www.monitoraeo.com/api/industries?audited_only=true"
     """
     _require_industry_token(request)
     from sqlmodel import select as _select, func as _func
@@ -2075,13 +2095,63 @@ def api_industries_list(request: Request) -> JSONResponse:
     out: list[dict[str, Any]] = []
     try:
         with get_session() as s:
-            for r in s.exec(_select(IndustryReport).order_by(IndustryReport.name)):
-                cnt = s.exec(
-                    _select(_func.count(IndustryBrand.id))
-                    .where(IndustryBrand.industry_slug == r.slug)
-                ).one() or 0
+            reports = list(s.exec(
+                _select(IndustryReport).order_by(IndustryReport.name)
+            ))
+            if audited_only:
+                reports = [r for r in reports if r.last_full_refresh is not None]
+            slugs = [r.slug for r in reports]
+
+            # Bulk top brand (rank=1) per slug — one query instead of N.
+            top_brand_by_slug: dict[str, dict[str, Any]] = {}
+            if slugs:
+                top_rows = list(s.exec(
+                    _select(
+                        IndustryBrand.industry_slug,
+                        IndustryBrand.brand_name,
+                        IndustryBrand.brand_domain,
+                        IndustryBrand.visibility_pct,
+                        IndustryBrand.citation_pct,
+                        IndustryBrand.rank_in_industry,
+                    )
+                    .where(IndustryBrand.industry_slug.in_(slugs))
+                    .where(IndustryBrand.rank_in_industry == 1)
+                ))
+                for row in top_rows:
+                    slug_val, name_val, dom_val, vis_val, cit_val, rank_val = (
+                        row if isinstance(row, tuple)
+                        else (row[0], row[1], row[2], row[3], row[4], row[5])
+                    )
+                    top_brand_by_slug[slug_val] = {
+                        "name": name_val,
+                        "domain": dom_val,
+                        "visibility_pct": round(float(vis_val or 0), 1),
+                        "citation_pct": round(float(cit_val or 0), 1),
+                        "rank": int(rank_val or 0),
+                    }
+
+                # Bulk brand counts (one GROUP BY query instead of N).
+                count_rows = list(s.exec(
+                    _select(
+                        IndustryBrand.industry_slug,
+                        _func.count(IndustryBrand.id),
+                    )
+                    .where(IndustryBrand.industry_slug.in_(slugs))
+                    .group_by(IndustryBrand.industry_slug)
+                ))
+                count_by_slug: dict[str, int] = {}
+                for row in count_rows:
+                    slug_val, cnt_val = (
+                        row if isinstance(row, tuple) else (row[0], row[1])
+                    )
+                    count_by_slug[slug_val] = int(cnt_val or 0)
+            else:
+                count_by_slug = {}
+
+            for r in reports:
                 row = _industry_to_summary_dict(r)
-                row["brand_count"] = int(cnt)
+                row["brand_count"] = count_by_slug.get(r.slug, 0)
+                row["top_brand"] = top_brand_by_slug.get(r.slug)
                 out.append(row)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
