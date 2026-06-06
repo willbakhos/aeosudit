@@ -2056,8 +2056,9 @@ def api_industries_create(req: IndustryCreateRequest, request: Request) -> JSONR
 @app.post("/api/industries/{slug}/refresh")
 def api_industries_refresh(slug: str, request: Request) -> JSONResponse:
     """Trigger an immediate re-audit of one industry. Runs the 8 category
-    queries against Apify, re-scores every brand, re-ranks. Synchronous —
-    returns the post-refresh summary when done. ~30-90s depending on Apify.
+    queries against the configured engine (Apify AIO or SearchApi AI Mode),
+    re-scores every brand, re-ranks. Synchronous — returns the post-refresh
+    summary when done. ~30-90s depending on engine + category complexity.
 
     Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
     """
@@ -2068,6 +2069,55 @@ def api_industries_refresh(slug: str, request: Request) -> JSONResponse:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, f"refresh failed: {type(exc).__name__}: {exc}")
     return JSONResponse(summary)
+
+
+@app.post("/api/industries/refresh-all")
+def api_industries_refresh_all(request: Request) -> JSONResponse:
+    """Queue EVERY industry for immediate cron pickup by bumping
+    next_scheduled_refresh = now on every row. The cron worker processes
+    CRON_INDUSTRY_BATCH_SIZE per CRON_CHECK_INTERVAL_SEC tick (default
+    3 per 5 min) so a large set drains over the following hour or two
+    without spiking engine load.
+
+    Returns immediately with the count of queued industries and a rough
+    estimate of total drain time. The cron does the actual refreshes
+    asynchronously; this endpoint does NOT block.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+
+    Example:
+        curl -X POST -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+          https://www.monitoraeo.com/api/industries/refresh-all
+    """
+    _require_industry_token(request)
+    from src.db import IndustryReport, get_session
+    from sqlmodel import select as _select
+    try:
+        with get_session() as s:
+            count = 0
+            now = datetime.utcnow()
+            for r in s.exec(_select(IndustryReport)):
+                r.next_scheduled_refresh = now
+                s.add(r)
+                count += 1
+            s.commit()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+
+    invalidate_ai_visibility_cache()
+
+    # Cron rate-limit lookup so the response is self-documenting.
+    batch = int(os.environ.get("CRON_INDUSTRY_BATCH_SIZE", "3"))
+    interval = int(os.environ.get("CRON_CHECK_INTERVAL_SEC", "300"))
+    rate_per_hour = (batch * 3600.0) / max(interval, 1)
+    estimated_hours = round(count / max(rate_per_hour, 1), 1)
+    return JSONResponse({
+        "queued": count,
+        "cron_batch_size": batch,
+        "cron_interval_seconds": interval,
+        "rate_per_hour": rate_per_hour,
+        "estimated_drain_hours": estimated_hours,
+    })
 
 
 @app.get("/api/industries")
