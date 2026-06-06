@@ -68,9 +68,10 @@ def _summarise_for_prompt(
 
 def _build_prompt(summary: dict[str, Any]) -> str:
     industry = summary["industry"]
+    engine_name = summary.get("engine_name") or "Google AI"
     return (
         f"You are an AEO (Answer Engine Optimisation) analyst. Below is fresh "
-        f"audit data showing how Google AI Overviews describe and cite the top "
+        f"audit data showing how {engine_name} describes and cites the top "
         f"brands in the '{industry}' category. Produce three things, grounded "
         f"strictly in the data — no fabricated facts, no generic AEO advice:\n\n"
         "1. 'narrative_paragraphs' — exactly 3 short paragraphs (60–90 words each) "
@@ -184,6 +185,7 @@ def generate(
     brands: list[dict[str, Any]],
     top_cited_sources: list[str],
     movers: dict[str, list[dict[str, Any]]] | None = None,
+    engine_name: str | None = None,
 ) -> dict[str, Any]:
     """Public entry point. Returns the narrative dict ready to store in
     IndustryReport.narrative. On any failure (missing API key, network,
@@ -193,6 +195,10 @@ def generate(
     `brands` is a list of dicts matching the IndustryBrand row shape with
     the keys this generator reads (brand_name, brand_domain, rank_in_industry,
     visibility_pct, citation_pct, visibility_score, top_engine).
+
+    `engine_name` flows into the prompt so the LLM knows which surface
+    produced the data (Google AI Mode vs Google AI Overviews). Default
+    "Google AI" stays correct regardless of the underlying backend.
     """
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
@@ -202,6 +208,7 @@ def generate(
         return {}
     movers = movers or {"risers": [], "fallers": []}
     summary = _summarise_for_prompt(industry_name, parent_category, brands, top_cited_sources, movers)
+    summary["engine_name"] = engine_name or "Google AI"
     try:
         result = asyncio.run(_call_narrator(summary, api_key))
     except Exception as exc:  # noqa: BLE001

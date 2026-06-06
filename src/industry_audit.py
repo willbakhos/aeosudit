@@ -19,6 +19,7 @@ down the whole industry's monthly update.
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import time
 import traceback
@@ -33,6 +34,74 @@ from urllib.parse import urlparse
 # matches the bias in the paid audit's headline score.
 VISIBILITY_WEIGHT = 0.7
 CITATION_WEIGHT = 0.3
+
+
+def _build_industry_engine():
+    """Pick the search engine for industry audits based on env var.
+    INDUSTRY_SEARCH_ENGINE=searchapi  → SearchApi.io google_ai_mode
+                                        (label "Google AI Mode")
+    INDUSTRY_SEARCH_ENGINE=apify (or unset) → Apify google-search-scraper
+                                        (label "Google AI Overviews")
+
+    The engine's `label` is what gets persisted to `brand.top_engine` and
+    shown on the public page / API — so distinct labels matter for
+    transparency once we flip the flag. Imported lazily inside
+    refresh_industry() so this module stays importable when neither
+    engine's auth env var is set (e.g. local tooling).
+    """
+    choice = (os.environ.get("INDUSTRY_SEARCH_ENGINE") or "apify").strip().lower()
+    if choice == "searchapi":
+        from src.engines.searchapi import SearchApiEngine
+        return SearchApiEngine(
+            label="Google AI Mode", country_code="us", language_code="en",
+        )
+    from src.engines.apify import ApifyEngine
+    from src.main import FREE_TIER_ENGINE
+    return ApifyEngine(
+        label=FREE_TIER_ENGINE, country_code="us", language_code="en",
+    )
+
+
+def _engine_display_name() -> str:
+    """Human-facing name for the current industry engine. Used to keep
+    template/JSON-LD/methodology copy in sync with what's actually scoring."""
+    choice = (os.environ.get("INDUSTRY_SEARCH_ENGINE") or "apify").strip().lower()
+    return "Google AI Mode" if choice == "searchapi" else "Google AI Overviews"
+
+
+def _advance_schedule_on_skip(session, report, days: int = 30) -> None:
+    """Skip-path schedule advance for the no-brands branch — sets both
+    last_full_refresh and next_scheduled_refresh so the cron doesn't keep
+    selecting this row every tick."""
+    from datetime import timedelta
+    now = datetime.utcnow()
+    report.last_full_refresh = now
+    report.next_scheduled_refresh = now + timedelta(days=days)
+    session.add(report)
+    session.commit()
+
+
+def _short_backoff_schedule(slug: str, days: int = 1) -> None:
+    """Failure-path schedule advance: push next_scheduled_refresh out by
+    `days` days so the cron stops hot-retrying the same stuck industry
+    every 5 minutes. Short backoff so the row retries soon once whatever
+    underlying issue (missing env var, vendor quota, etc.) is fixed.
+    Opens its own session — we're called from points where the prior
+    session may already be closed."""
+    from datetime import timedelta
+    from src.db import IndustryReport, get_session
+    from sqlmodel import select as _select
+    try:
+        with get_session() as s:
+            r = s.exec(_select(IndustryReport).where(IndustryReport.slug == slug)).first()
+            if r:
+                r.next_scheduled_refresh = datetime.utcnow() + timedelta(days=days)
+                s.add(r)
+                s.commit()
+    except Exception as exc:  # noqa: BLE001
+        # Last-line-of-defense: if we can't even advance the schedule, log
+        # but don't raise — the caller is already in an error-return path.
+        print(f"[industry_audit] short-backoff schedule advance failed for {slug}: {exc}")
 
 
 def _industry_queries(industry_name: str) -> list[str]:
@@ -66,19 +135,22 @@ def _brand_in_text(brand: str, text: str) -> bool:
 def _domain_in_citations(domain: str, citations: list[Any]) -> bool:
     """True if any citation URL is on the brand's domain (apex match,
     ignoring www prefix). Citations is a list of Citation pydantic models
-    OR plain dicts — handles both so we can call this on either shape."""
+    OR plain dicts — handles both so we can call this on either shape.
+
+    Uses str.removeprefix, NOT str.lstrip (which takes a character SET and
+    would corrupt any w-prefixed domain like webflow.com → ebflow.com)."""
     if not domain:
         return False
-    target = domain.lower().lstrip("www.")
+    target = domain.lower().removeprefix("www.")
     for c in citations or []:
         d = (getattr(c, "domain", None) or (c.get("domain") if isinstance(c, dict) else None) or "")
-        d = d.lower().lstrip("www.")
+        d = d.lower().removeprefix("www.")
         if d == target or d.endswith("." + target):
             return True
         # Fallback: parse the URL if domain wasn't pre-extracted
         url = getattr(c, "url", None) or (c.get("url") if isinstance(c, dict) else None) or ""
         if url:
-            netloc = urlparse(url).netloc.lower().lstrip("www.")
+            netloc = urlparse(url).netloc.lower().removeprefix("www.")
             if netloc == target or netloc.endswith("." + target):
                 return True
     return False
@@ -86,14 +158,18 @@ def _domain_in_citations(domain: str, citations: list[Any]) -> bool:
 
 def _extract_citation_domains(citations: list[Any]) -> list[str]:
     """Pull bare domain strings from a Citation list — used to build the
-    'sources AI trusts in this category' pill row on the public page."""
+    'sources AI trusts in this category' pill row on the public page.
+
+    Uses removeprefix to strip www, NOT lstrip (which would corrupt domains
+    starting with 'w' like wikipedia.org → ikipedia.org and write garbage
+    to brand.top_cited_sources on the public page)."""
     out: list[str] = []
     for c in citations or []:
-        d = (getattr(c, "domain", None) or (c.get("domain") if isinstance(c, dict) else None) or "").lower().lstrip("www.")
+        d = (getattr(c, "domain", None) or (c.get("domain") if isinstance(c, dict) else None) or "").lower().removeprefix("www.")
         if not d:
             url = getattr(c, "url", None) or (c.get("url") if isinstance(c, dict) else None) or ""
             if url:
-                d = urlparse(url).netloc.lower().lstrip("www.")
+                d = urlparse(url).netloc.lower().removeprefix("www.")
         if d:
             out.append(d)
     return out
@@ -108,7 +184,6 @@ def refresh_industry(slug: str) -> dict[str, Any]:
     # Inline imports so importing this module doesn't pull DB at startup.
     from sqlmodel import select
     from src.db import IndustryReport, IndustryBrand, get_session
-    from src.engines.apify import ApifyEngine
     from src.main import FREE_TIER_ENGINE
 
     started = time.monotonic()
@@ -127,33 +202,84 @@ def refresh_industry(slug: str) -> dict[str, Any]:
             return summary
         brands = list(s.exec(select(IndustryBrand).where(IndustryBrand.industry_slug == slug)))
         if not brands:
-            # No brands to score — still advance the schedule so we don't hot-loop.
-            report.last_full_refresh = datetime.utcnow()
-            s.add(report)
-            s.commit()
+            # No brands to score — still advance BOTH schedule fields so we
+            # don't hot-loop (the cron WHERE selects nulls_first; advancing
+            # only last_full_refresh would leave next_scheduled_refresh NULL
+            # forever, the exact bug db.py:85-92 had to retroactively repair).
+            _advance_schedule_on_skip(s, report, days=30)
             summary["errors"].append("no brands in industry — nothing to score")
             return summary
 
     queries = _industry_queries(report.name)
 
-    # Run all 8 queries against Apify Google AI Overviews. We do this OUTSIDE
-    # the DB session so the connection isn't held open during 60+ seconds of
-    # network I/O.
+    # Run all 8 queries against the configured search engine. We do this
+    # OUTSIDE the DB session so the connection isn't held open during 60+
+    # seconds of network I/O.
+    # INDUSTRY_SEARCH_ENGINE selects the backend:
+    #   - "searchapi" → SearchApi.io google_ai_mode (much higher render rate
+    #                    than AIO; preferred for niche/long-tail industries)
+    #   - anything else (incl. unset) → ApifyEngine (Google AI Overviews;
+    #                    historical default, kept for fallback / A/B)
     try:
-        engine = ApifyEngine(label=FREE_TIER_ENGINE, country_code="us", language_code="en")
+        engine = _build_industry_engine()
     except Exception as exc:  # noqa: BLE001
+        # Don't hot-loop on a missing env var or other init failure — push
+        # next_scheduled_refresh out by 1 day so the same 3 industries don't
+        # get retried every cron tick (5 min) until an operator fixes the env.
         summary["errors"].append(f"engine init failed: {type(exc).__name__}: {exc}")
+        _short_backoff_schedule(slug, days=1)
         return summary
 
     async def _gather():
-        return await asyncio.gather(*[engine.query(q, "category") for q in queries])
+        # return_exceptions=True so a single coroutine raising doesn't cancel
+        # all 8 sibling queries and trip the hot-loop. Each engine.query() is
+        # already wrapped to return an EngineResponse with error set on
+        # failure, but this defends against future bugs OR an exception path
+        # outside that try (e.g. malformed response surviving _parse).
+        return await asyncio.gather(
+            *[engine.query(q, "category") for q in queries],
+            return_exceptions=True,
+        )
 
     try:
-        responses = asyncio.run(_gather())
+        gathered = asyncio.run(_gather())
+        # Convert any raised exceptions into error-tagged EngineResponses so
+        # the rest of the audit treats them uniformly with engine-level errors.
+        from src.models import EngineResponse as _ER
+        responses = []
+        for q, r in zip(queries, gathered):
+            if isinstance(r, Exception):
+                responses.append(_ER(
+                    engine_label=engine.label, query=q, query_type="category",
+                    error=f"{type(r).__name__}: {r}",
+                ))
+            else:
+                responses.append(r)
         summary["queries_run"] = len(responses)
     except Exception as exc:  # noqa: BLE001
         summary["errors"].append(f"query batch failed: {type(exc).__name__}: {exc}")
+        _short_backoff_schedule(slug, days=1)
         return summary
+
+    # All-error guard: if most/every query errored (vendor quota, sustained
+    # 5xx, network outage), DON'T overwrite real scores with zeros. The
+    # scoring loop below would otherwise persist named=0, cited=0 for every
+    # brand and tie-rank them — wiping the public page for ~30 days until
+    # the next scheduled refresh. Bail out, log, and retry sooner.
+    successful_responses = [r for r in responses if not r.error]
+    err_count = len(responses) - len(successful_responses)
+    summary["queries_errored"] = err_count
+    if not successful_responses or len(successful_responses) < (len(responses) // 2):
+        err_msgs = [r.error for r in responses if r.error][:3]
+        summary["errors"].append(
+            f"too many engine errors ({err_count}/{len(responses)}); "
+            f"skipping write to preserve prior scores. sample errors: {err_msgs}"
+        )
+        _short_backoff_schedule(slug, days=1)
+        return summary
+    # From here on, score against `responses` — including the errored ones
+    # contribute named=0/cited=0 for their slot, which is the correct
+    # signal (we just refused to count THAT query, not all queries).
 
     # Collect category-level source rollup once (used for the page's "top
     # cited sources in this category" row, persisted per-brand as the same
@@ -223,7 +349,7 @@ def refresh_industry(slug: str) -> dict[str, Any]:
                         "citations": brand.citation_pct,
                     }
                 }
-                brand.top_engine = "Google AI Overviews"
+                brand.top_engine = engine.label
                 brand.top_cited_sources = top_category_sources
                 brand.last_audited = datetime.utcnow()
                 brand.last_audit_error = None
@@ -292,6 +418,7 @@ def refresh_industry(slug: str) -> dict[str, Any]:
             brands=brand_dicts,
             top_cited_sources=top_category_sources,
             movers=movers,
+            engine_name=engine.label,
         )
         if narrative:
             # Cache movers alongside the narrative so the template can

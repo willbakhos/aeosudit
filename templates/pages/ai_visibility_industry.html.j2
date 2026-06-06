@@ -1,6 +1,7 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility/" ~ report.slug %}
-{% set page_description = "Top " ~ (brands|length) ~ " " ~ report.name ~ " brands ranked by AI search visibility across Google AI Overviews. Composite score = 70% visibility + 30% citation rate. Refreshed monthly." %}
+{% set _engine_name = engine_display_name or "Google AI" %}
+{% set page_description = "Top " ~ (brands|length) ~ " " ~ report.name ~ " brands ranked by AI search visibility across " ~ _engine_name ~ ". Composite score = 70% visibility + 30% citation rate. Refreshed monthly." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
@@ -30,7 +31,7 @@
       "@type": "Dataset",
       "@id": "{{ _canonical }}#dataset",
       "name": "AI search visibility rankings — {{ report.name }} (2026)",
-      "description": "Per-brand AI visibility, citation rate and per-engine breakdown for the top {{ brands|length }} {{ report.name|lower }} brands. Audited via Google AI Overviews on an 8-query buyer-intent set, refreshed every {{ report.refresh_interval_days }} days.",
+      "description": "Per-brand AI visibility, citation rate and per-engine breakdown for the top {{ brands|length }} {{ report.name|lower }} brands. Audited via {{ _engine_name }} on an 8-query buyer-intent set, refreshed every {{ report.refresh_interval_days }} days.",
       "url": "{{ _canonical }}",
       "creator": { "@id": "{{ _base_url }}/#org" },
       "publisher": { "@id": "{{ _base_url }}/#org" },
@@ -310,7 +311,7 @@
 
 {% if top_category_sources %}
 <h2>Sources AI engines trust in this category</h2>
-<p>Across the 8 buyer-intent queries we ran on {{ report.name|lower }}, these are the domains Google AI Overviews cited most often. If you're not on this list — or if your competitors are — that's a concrete PR / linkbuilding target.</p>
+<p>Across the 8 buyer-intent queries we ran on {{ report.name|lower }}, these are the domains {{ _engine_name }} cited most often. If you're not on this list — or if your competitors are — that's a concrete PR / linkbuilding target.</p>
 <div class="source-pills">
   {% for src in top_category_sources %}<span>{{ src }}</span>{% endfor %}
 </div>

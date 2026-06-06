@@ -595,8 +595,10 @@ INDUSTRY_PARENT_CATEGORIES = [
 
 @app.get("/ai-visibility/methodology", response_class=HTMLResponse)
 def page_ai_visibility_methodology(request: Request) -> HTMLResponse:
+    from src.industry_audit import _engine_display_name
     return _render(
         "ai_visibility_methodology.html.j2", request=request,
+        engine_display_name=_engine_display_name(),
         breadcrumbs=[
             {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
             {"name": "Methodology", "path": "/ai-visibility/methodology"},
@@ -767,6 +769,7 @@ def page_ai_visibility_index(
     total_pages = max(1, (total_filtered + AI_VISIBILITY_PAGE_SIZE - 1) // AI_VISIBILITY_PAGE_SIZE)
     page = min(page, total_pages)
 
+    from src.industry_audit import _engine_display_name
     bundle = dict(
         industries_by_category=ordered,
         flat_results=flat_results,
@@ -779,6 +782,7 @@ def page_ai_visibility_index(
         last_refresh=last_refresh,
         page=page, total_pages=total_pages,
         page_size=AI_VISIBILITY_PAGE_SIZE,
+        engine_display_name=_engine_display_name(),
     )
 
     # Only cache successful DB fetches — never cache the empty fallback,
@@ -934,6 +938,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
             )
         auto_brand_insights[(b.brand_name or "").lower()] = txt
 
+    from src.industry_audit import _engine_display_name
     bundle = dict(
         report=report,
         brands=brands,
@@ -943,6 +948,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         audited_count=len(audited),
         quick_insights=quick_insights,
         auto_brand_insights=auto_brand_insights,
+        engine_display_name=_engine_display_name(),
     )
     _AI_VIZ_DETAIL_CACHE[slug] = (_time.monotonic(), bundle)
     if len(_AI_VIZ_DETAIL_CACHE) > 500:  # ~industries cap; defensive

@@ -31,7 +31,7 @@
       "mainEntity": [
         {"@type":"Question","name":"How often are the rankings refreshed?","acceptedAnswer":{"@type":"Answer","text":"Every 30 days by default — configurable per industry. Each refresh runs the full 8-query audit against every listed brand and recomputes the ranking. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated."}},
         {"@type":"Question","name":"What is the composite visibility score?","acceptedAnswer":{"@type":"Answer","text":"A weighted average of two metrics: visibility (70%) — the percentage of AI answers naming the brand — plus citation rate (30%) — the percentage citing the brand's domain. The weighting reflects that being recommended in the prose is more valuable to a brand than being cited as a source, but both matter."}},
-        {"@type":"Question","name":"Which AI engines are queried?","acceptedAnswer":{"@type":"Answer","text":"Google AI Overviews via the Apify google-search-scraper, currently. The 5-engine model used by paid monitoraeo audits (adding ChatGPT, Claude, Perplexity, Gemini) is planned for the rankings later in 2026 — the per_engine breakdown column on every brand is already structured to accommodate this without re-architecting."}},
+        {"@type":"Question","name":"Which AI engines are queried?","acceptedAnswer":{"@type":"Answer","text":"{{ engine_display_name }} currently. The 5-engine model used by paid monitoraeo audits (adding ChatGPT, Claude, Perplexity, Gemini) is planned for the rankings later in 2026 — the per_engine breakdown column on every brand is already structured to accommodate this without re-architecting."}},
         {"@type":"Question","name":"How are the 20 brands per industry chosen?","acceptedAnswer":{"@type":"Answer","text":"Hand-curated from public market-leader lists (G2 Grids, Crunchbase top-funded, trade-press 'top X' lists). The intent is broad coverage of the recognised category leaders, not a comprehensive list of every brand in the space. Brands missing from a ranking can request to be added via support."}},
         {"@type":"Question","name":"Can rankings be gamed?","acceptedAnswer":{"@type":"Answer","text":"Not by us — we don't take payment for inclusion or position. Brands can improve their own ranking the way any AEO program does (better content, structured data, entity signals, earned mentions on sources AI engines trust). The 8 category queries are fixed, not influenced by individual brands."}}
       ]
@@ -55,11 +55,11 @@
 {% block content %}
 <span class="eyebrow">AI Visibility Rankings · Methodology</span>
 <h1 class="page-title">How the rankings are produced</h1>
-<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed methodology: 8 category-level queries against Google AI Overviews per brand, scored monthly, with a composite ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
+<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed methodology: 8 category-level queries against {{ engine_display_name }} per brand, scored monthly, with a composite ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
 
 <div class="definition-box">
   <div class="label">In one sentence</div>
-  <p>For each industry, we run 8 buyer-intent queries against Google AI Overviews, count how often each brand is named in the prose and cited in the source list, compute a <strong>70% visibility + 30% citation</strong> composite score, and re-rank monthly. Same questions every month so the trend is comparable.</p>
+  <p>For each industry, we run 8 buyer-intent queries against {{ engine_display_name }}, count how often each brand is named in the prose and cited in the source list, compute a <strong>70% visibility + 30% citation</strong> composite score, and re-rank monthly. Same questions every month so the trend is comparable.</p>
 </div>
 
 <h2>The 8 queries we ask, per industry</h2>
@@ -141,7 +141,7 @@
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
     <summary style="cursor:pointer; font-weight:800; font-size:16px;">Which AI engines are queried?</summary>
-    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Google AI Overviews currently. The 5-engine paid-audit model (ChatGPT, Claude, Perplexity, Gemini) is planned for the public rankings later in 2026.</p>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">{{ engine_display_name }} currently. The 5-engine paid-audit model (ChatGPT, Claude, Perplexity, Gemini) is planned for the public rankings later in 2026.</p>
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
     <summary style="cursor:pointer; font-weight:800; font-size:16px;">How are the 20 brands per industry chosen?</summary>

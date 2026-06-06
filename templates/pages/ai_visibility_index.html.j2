@@ -314,7 +314,7 @@
 {% endif %}
 
 <h2 style="margin-top:48px;">How these rankings are produced</h2>
-<p>For each industry we pick 20 leading brands and run an 8-query audit per brand monthly against Google AI Overviews. Brands are ranked by a composite score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+<p>For each industry we pick 20 leading brands and run an 8-query audit per brand monthly against {{ engine_display_name or "Google AI" }}. Brands are ranked by a composite score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
 
 <div style="display:flex; gap:14px; margin-top: 18px; flex-wrap:wrap;">
   <a href="/#preview" class="btn-primary">Audit your brand →</a>
