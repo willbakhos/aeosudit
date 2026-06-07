@@ -291,21 +291,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .card {
     position: relative;
     min-height: 158px;
-    overflow: hidden;
+    /* Decorative blue glow rendered as a background-image (was a
+       clipped ::after pseudo-element). The old approach needed
+       overflow:hidden on the card to clip the blob, which also
+       clipped the tooltip popping out the side of the card. */
     padding: 24px;
     border-radius: var(--radius);
-    background: var(--panel-solid);
+    background:
+      radial-gradient(circle 66px at calc(100% - 38px) calc(100% - 24px), rgba(37,99,235,.13), transparent 100%),
+      var(--panel-solid);
     border: 1px solid var(--line);
     box-shadow: var(--shadow-soft);
-  }
-  .card::after {
-    content: "";
-    position: absolute;
-    inset: auto -28px -42px auto;
-    width: 132px;
-    height: 132px;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(37,99,235,.13), transparent 66%);
   }
   .card .label {
     position: relative;
