@@ -1151,7 +1151,21 @@ def _generate_paid_queries(brand: str, competitors: list[str] | None = None) -> 
     import sys as _sys
     print(f"[gen_queries] entered brand={brand!r} comps={competitors!r}", flush=True)
     _sys.stdout.flush()
-    competitors = [c for c in (competitors or []) if c and c.strip()]
+    # Competitors arrive in two shapes depending on the caller:
+    #   - SiteConfig.competitors  → list[str]   ("Stripe", "Adyen")
+    #   - TrackedBrand.competitors → list[dict] ({"name": "Stripe", "domain": "stripe.com"})
+    # Normalise to clean non-empty strings (names only). The bare 'c.strip()'
+    # version we had here crashed dashboard audits with
+    # AttributeError: 'dict' object has no attribute 'strip'.
+    _norm: list[str] = []
+    for c in (competitors or []):
+        if isinstance(c, dict):
+            name = (c.get("name") or "").strip()
+        else:
+            name = (c or "").strip()
+        if name:
+            _norm.append(name)
+    competitors = _norm
     queries: list[Query] = []
 
     # Brand (12) — direct questions about this brand.

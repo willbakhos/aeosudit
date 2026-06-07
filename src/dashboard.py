@@ -2254,7 +2254,15 @@ def _resolve_brand_queries(brand: TrackedBrand) -> list:
     texts = [q.strip() for q in (brand.monitored_queries or []) if q and q.strip()]
     if not texts:
         from src.server import _generate_paid_queries
-        comps = [c for c in (brand.competitors or []) if c and c.strip()]
+        # brand.competitors is list[{"name", "domain"}] — pull names only.
+        # _generate_paid_queries also normalises but extract here so the
+        # log line above shows the actual competitor names not raw dicts.
+        comps = [
+            (c.get("name") or "").strip()
+            for c in (brand.competitors or [])
+            if isinstance(c, dict)
+        ]
+        comps = [c for c in comps if c]
         return _generate_paid_queries(brand.name, comps)
     return [Query(query=t, type=_classify_query(t)) for t in texts]
 
