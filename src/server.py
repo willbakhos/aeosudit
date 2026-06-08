@@ -82,7 +82,7 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "price_usd": 29,
         "stripe_mode": "payment",
         "stripe_env": "STRIPE_PRICE_TWO_ENGINE",
-        "engines": ["Google AI Overviews", CHATGPT_LABEL],
+        "engines": ["Google AI Mode", CHATGPT_LABEL],
         "llm_scoring": True,
         "action_plan": True,
         "monitored_query_limit": 0,  # one-shot tier — n/a
@@ -102,7 +102,7 @@ TIER_PLANS: dict[str, dict[str, Any]] = {
         "price_usd": 35,
         "stripe_mode": "subscription",
         "stripe_env": "STRIPE_PRICE_TWO_ENGINE_MONTHLY",
-        "engines": ["Google AI Overviews", CHATGPT_LABEL],
+        "engines": ["Google AI Mode", CHATGPT_LABEL],
         "llm_scoring": True,
         "action_plan": True,
         "monitored_query_limit": 20,
@@ -1403,11 +1403,12 @@ def _run_preview_job(
             )
         except OSError:
             pass
+        from src.engines.factory import build_default_engine
         engine_objs = [
-            ApifyEngine(
-                label=FREE_TIER_ENGINE,
+            build_default_engine(
                 country_code=site.locale.country,
                 language_code=site.locale.language,
+                label=FREE_TIER_ENGINE,
             )
         ]
         run_dir = OUTPUT_ROOT / run_id
@@ -1799,12 +1800,11 @@ def _build_teaser_payload(req: TeaserRequest) -> dict[str, Any]:
         brand_in_text = False
         brand_in_citations = False
     else:
-        apify = ApifyEngine(
-            label=FREE_TIER_ENGINE,
-            country_code="US",
-            language_code="en",
+        from src.engines.factory import build_default_engine
+        engine = build_default_engine(
+            country_code="US", language_code="en", label=FREE_TIER_ENGINE,
         )
-        response = asyncio.run(apify.query(teaser_query, "category" if category else "brand"))
+        response = asyncio.run(engine.query(teaser_query, "category" if category else "brand"))
 
         # Did the brand appear in the response?
         text_lower = (response.response_text or "").lower()
@@ -3465,14 +3465,17 @@ def _fulfil_order_inner(meta: dict[str, Any]) -> None:
         if only_labels and cfg.label not in only_labels:
             continue
         engine_objs.append(OpenRouterEngine(model=cfg.model, label=cfg.label))
+    # site.engines.apify is misnamed post-migration — it's the list of
+    # "Google AI" engine slots, picked up by the factory.
+    from src.engines.factory import build_default_engine
     for cfg in site.engines.apify:
         if only_labels and cfg.label not in only_labels:
             continue
         engine_objs.append(
-            ApifyEngine(
-                label=cfg.label,
+            build_default_engine(
                 country_code=site.locale.country,
                 language_code=site.locale.language,
+                label=cfg.label,
             )
         )
     print(f"[fulfil] step=engines_resolved count={len(engine_objs)} labels={[e.label for e in engine_objs]}")

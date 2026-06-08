@@ -37,36 +37,19 @@ CITATION_WEIGHT = 0.3
 
 
 def _build_industry_engine():
-    """Pick the search engine for industry audits based on env var.
-    INDUSTRY_SEARCH_ENGINE=searchapi  → SearchApi.io google_ai_mode
-                                        (label "Google AI Mode")
-    INDUSTRY_SEARCH_ENGINE=apify (or unset) → Apify google-search-scraper
-                                        (label "Google AI Overviews")
-
-    The engine's `label` is what gets persisted to `brand.top_engine` and
-    shown on the public page / API — so distinct labels matter for
-    transparency once we flip the flag. Imported lazily inside
-    refresh_industry() so this module stays importable when neither
-    engine's auth env var is set (e.g. local tooling).
-    """
-    choice = (os.environ.get("INDUSTRY_SEARCH_ENGINE") or "apify").strip().lower()
-    if choice == "searchapi":
-        from src.engines.searchapi import SearchApiEngine
-        return SearchApiEngine(
-            label="Google AI Mode", country_code="us", language_code="en",
-        )
-    from src.engines.apify import ApifyEngine
-    from src.main import FREE_TIER_ENGINE
-    return ApifyEngine(
-        label=FREE_TIER_ENGINE, country_code="us", language_code="en",
-    )
+    """Picks the search engine for industry audits. Thin wrapper around the
+    shared factory so industry audits use the exact same impl as the rest
+    of the app — no separate INDUSTRY_SEARCH_ENGINE flag needed anymore,
+    but the legacy env var is honoured by the factory for back-compat."""
+    from src.engines.factory import build_default_engine
+    return build_default_engine(country_code="us", language_code="en")
 
 
 def _engine_display_name() -> str:
-    """Human-facing name for the current industry engine. Used to keep
-    template/JSON-LD/methodology copy in sync with what's actually scoring."""
-    choice = (os.environ.get("INDUSTRY_SEARCH_ENGINE") or "apify").strip().lower()
-    return "Google AI Mode" if choice == "searchapi" else "Google AI Overviews"
+    """Human-facing engine name for template/JSON-LD/methodology copy.
+    Delegates to the factory so it always matches the live impl."""
+    from src.engines.factory import engine_display_name
+    return engine_display_name()
 
 
 def _advance_schedule_on_skip(session, report, days: int = 30) -> None:

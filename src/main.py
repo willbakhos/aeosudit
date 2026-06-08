@@ -60,20 +60,28 @@ def _build_engines(
         if only_labels and cfg.label not in only_labels:
             continue
         engines.append(OpenRouterEngine(model=cfg.model, label=cfg.label))
+    # The `engines.apify` config field is misnamed post-SearchApi migration —
+    # it's the list of "Google AI" engine slots. The factory picks the
+    # underlying impl (SearchApi by default, Apify on rollback).
     for cfg in config.engines.apify:
         if only_labels and cfg.label not in only_labels:
             continue
+        from src.engines.factory import build_default_engine
         engines.append(
-            ApifyEngine(
-                label=cfg.label,
+            build_default_engine(
                 country_code=config.locale.country,
                 language_code=config.locale.language,
+                label=cfg.label,
             )
         )
     return engines
 
 
-FREE_TIER_ENGINE = "Google AI Overviews"
+# Canonical engine label, used everywhere we filter by engine, render the
+# engine name, or assign brand.top_engine. Was "Google AI Overviews" when
+# the underlying impl was Apify's google-search-scraper; now points at
+# SearchApi.io's google_ai_mode (the better, higher-render-rate surface).
+FREE_TIER_ENGINE = "Google AI Mode"
 CHATGPT_LABEL = "ChatGPT"
 # CLI tiers — mirror the paid tier shape so a `--tier two_engine` run produces
 # the same data the customer would get. Monthly tiers behave the same as

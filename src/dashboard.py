@@ -45,7 +45,7 @@ _jinja = Environment(
 # Default engines for a brand with no monitoring tier (free dashboard usage).
 # Subscribers' tier (two_engine_monthly / full_monthly) overrides this — see
 # _engines_for_brand below.
-DEFAULT_ENGINES = ["Google AI Overviews"]
+DEFAULT_ENGINES = ["Google AI Mode"]
 CHATGPT_LABEL = "ChatGPT"
 
 # Per-tier run quota (scheduled cron + manual reruns, combined).
@@ -65,16 +65,16 @@ def _engines_for_brand(brand: TrackedBrand) -> set[str] | None:
     """Resolve which engines should run for a brand based on its tier.
     Returns None to mean "no filter / all configured engines".
 
-    two_engine_monthly -> {Google AI Overviews, ChatGPT}
+    two_engine_monthly -> {Google AI Mode, ChatGPT}
     full_monthly       -> all engines
-    no tier            -> Google AI Overviews only (free dashboard view)
+    no tier            -> Google AI Mode only (free dashboard view)
     """
     if brand.tier == "full_monthly":
         return None  # no filter — all configured engines
     if brand.tier == "two_engine_monthly":
-        return {"Google AI Overviews", CHATGPT_LABEL}
-    # Free dashboard usage: just Google AI Overviews
-    return {"Google AI Overviews"}
+        return {"Google AI Mode", CHATGPT_LABEL}
+    # Free dashboard usage: just Google AI Mode
+    return {"Google AI Mode"}
 
 
 def _compute_next_scheduled_run(now: datetime | None = None) -> datetime:
@@ -536,8 +536,8 @@ async def brand_update(
 
 # Engine-set keys master accounts can pick from when starting a manual run.
 ENGINE_SETS: dict[str, set[str] | None] = {
-    "google_only": {"Google AI Overviews"},
-    "two_engine": {"Google AI Overviews", CHATGPT_LABEL},
+    "google_only": {"Google AI Mode"},
+    "two_engine": {"Google AI Mode", CHATGPT_LABEL},
     "full": None,  # None means "no filter / all configured engines"
 }
 
@@ -2350,8 +2350,8 @@ def _run_audit_for_brand(
             if labels is None or lbl in labels
         ]
         apify_configs = (
-            [ApifyEngineConfig(label="Google AI Overviews")]
-            if labels is None or "Google AI Overviews" in labels
+            [ApifyEngineConfig(label="Google AI Mode")]
+            if labels is None or "Google AI Mode" in labels
             else []
         )
 
@@ -2375,12 +2375,15 @@ def _run_audit_for_brand(
         engine_objs: list = []
         for cfg in openrouter_configs:
             engine_objs.append(OpenRouterEngine(model=cfg.model, label=cfg.label))
+        # `apify_configs` is the legacy field name — picked up by the factory,
+        # which returns SearchApiEngine by default (Apify only on rollback).
+        from src.engines.factory import build_default_engine
         for cfg in apify_configs:
             engine_objs.append(
-                ApifyEngine(
-                    label=cfg.label,
+                build_default_engine(
                     country_code=brand_snapshot["country"],
                     language_code=brand_snapshot["language"],
+                    label=cfg.label,
                 )
             )
         queries = resolved_queries
