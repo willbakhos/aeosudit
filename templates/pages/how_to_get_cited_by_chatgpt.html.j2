@@ -1,0 +1,264 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/how-to-get-cited-by-chatgpt" %}
+{% set page_description = "How to get cited by ChatGPT search: 8 concrete steps covering robots.txt, schema, content shape, third-party mentions and llms.txt — plus what ChatGPT citations actually are." %}
+{% set page_og_type = 'article' %}
+{% set page_published_time = '2026-06-08T00:00:00Z' %}
+{% set page_modified_time = '2026-06-08T00:00:00Z' %}
+{% block title %}How to get cited by ChatGPT search: a practical playbook | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "{{ _canonical }}#article",
+      "headline": "How to get cited by ChatGPT search: a practical playbook",
+      "description": "{{ page_description }}",
+      "url": "{{ _canonical }}",
+      "mainEntityOfPage": "{{ _canonical }}",
+      "publisher": {"@id": "{{ _base_url }}/#org"},
+      "author": {"@id": "{{ _base_url }}/#org"},
+      "image": "{{ _og_image }}",
+      "datePublished": "{{ page_published_time }}",
+      "dateModified": "{{ page_modified_time }}",
+      "inLanguage": "en",
+      "about": [
+        {"@type": "Thing", "name": "ChatGPT Search"},
+        {"@type": "Thing", "name": "AI citation"},
+        {"@type": "Thing", "name": "Answer Engine Optimisation"},
+        {"@type": "Thing", "name": "OAI-SearchBot"}
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "@id": "{{ _canonical }}#howto",
+      "name": "How to get cited by ChatGPT search",
+      "description": "Eight steps to lift your brand's citation rate in ChatGPT search, in priority order — from robots.txt fixes to third-party mentions and ongoing measurement.",
+      "url": "{{ _canonical }}",
+      "totalTime": "PT2H",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Audit your current ChatGPT citation footprint",
+          "text": "Before changing anything, measure where you stand. Run a brand-aware query set against ChatGPT search (monitoraeo paid audits use 40 brand-aware queries × 5 engines, 8 in the free preview) and record three numbers: visibility rate (how often your brand is mentioned at all), citation rate (how often your domain appears as a numbered source), and competitor share-of-voice. Without this baseline you cannot tell which of the changes below actually worked."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Unblock GPTBot and OAI-SearchBot in robots.txt",
+          "text": "ChatGPT search uses two crawlers: GPTBot for training and OAI-SearchBot for live retrieval. If either is blocked in robots.txt, you cannot be cited. Check yourdomain.com/robots.txt and confirm neither User-agent is disallowed. Also confirm your CDN or WAF (Cloudflare, AWS WAF) is not silently rate-limiting them. This is the single most common reason brands disappear from ChatGPT citations entirely."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Server-render the content you want cited",
+          "text": "ChatGPT's retrieval crawler reads the initial HTML response. Content injected by client-side JavaScript after page load is invisible to it. If your stats, comparison tables or feature lists only appear after React hydrates, they will not be extracted. Move the cite-worthy content into the SSR or static HTML payload. Test with curl -A 'OAI-SearchBot' yourdomain.com and confirm the text you want quoted is in the raw response."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Publish FAQPage and Article JSON-LD on every page",
+          "text": "ChatGPT search disproportionately cites pages with valid FAQPage, Article and HowTo schema because the structured Q&A pairs map directly to the way users phrase queries. Add JSON-LD blocks where the schema genuinely matches the content — fake FAQ schema gets penalised. Also add Organization schema sitewide with sameAs links to your LinkedIn, Crunchbase and Wikidata entries to disambiguate your entity."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 5,
+          "name": "Write in extractable chunks — 2 to 3 sentences per point",
+          "text": "ChatGPT extracts short, self-contained passages it can quote without surrounding context. Long flowing paragraphs are skipped. Restructure key pages so each claim sits in a 2-3 sentence chunk with a clear subject, a concrete fact and a number where possible. Use descriptive H2s and H3s that match how buyers actually phrase the question (What is X, How much does X cost, X vs Y)."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 6,
+          "name": "Earn third-party citations on the domains ChatGPT trusts",
+          "text": "Across most categories, the top-cited domains in ChatGPT search are Reddit, G2, Capterra, Wikipedia, TechCrunch and the relevant trade publications. Your own site usually appears once per answer; the other 4-7 citations come from these third parties. Get listed on G2 and Capterra (B2B SaaS), participate in genuine Reddit threads in your category, ensure your Wikipedia entity is correct, and pitch the trade pubs ChatGPT already cites for your topic."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 7,
+          "name": "Publish an llms.txt file at your root",
+          "text": "llms.txt is an emerging convention (similar to robots.txt or sitemap.xml) that tells LLM-based search engines which pages on your site are canonical and what they cover. While not all engines honour it yet, it is cheap to publish and we see citation lift on engines that do consume it. Point to your highest-quality, most extractable pages — comparison guides, pricing, definitive how-tos."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 8,
+          "name": "Re-measure every 4 to 6 weeks",
+          "text": "ChatGPT updates its retrieval pipeline and index continuously. A change that worked in March may not move citations in June, and competitors are making the same changes you are. Schedule a recurring audit so you can see which interventions actually shifted citation rate, catch regressions early (a redeploy that breaks SSR is the classic), and adapt as the cited-domain mix in your category shifts."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{ _canonical }}#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How does ChatGPT cite sources?",
+          "acceptedAnswer": {"@type": "Answer", "text": "ChatGPT search returns an answer plus a numbered list of 3 to 8 source links per response. The crawler (OAI-SearchBot) retrieves pages in real time, the model selects passages it can directly quote, and the cited domains appear as numbered references next to the relevant claims in the answer text."}
+        },
+        {
+          "@type": "Question",
+          "name": "What are the most cited domains in ChatGPT search?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Across most categories the consistent top-cited domains are Reddit, G2, Capterra, Wikipedia, TechCrunch and the relevant trade publications, alongside the brand's own site. The exact mix shifts by industry — financial services lean on Investopedia and Bloomberg, SaaS leans on G2 and Capterra, consumer leans on Reddit and YouTube."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I get cited in ChatGPT results?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Unblock GPTBot and OAI-SearchBot in robots.txt, server-render your cite-worthy content, publish valid FAQPage and Article JSON-LD schema, write in 2-3 sentence extractable chunks, earn presence on the third-party domains ChatGPT already trusts in your category (Reddit, G2, Wikipedia), and re-measure monthly to see what is working."}
+        },
+        {
+          "@type": "Question",
+          "name": "What is ChatGPT citation analysis?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Citation analysis means running a fixed set of buyer questions through ChatGPT search and measuring three things: visibility rate (how often your brand is mentioned), citation rate (how often your domain appears as a numbered source), and competitor share-of-voice. It is the equivalent of a SERP rank report, but for AI answers."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why is my site not cited by ChatGPT even though we rank #1 on Google?",
+          "acceptedAnswer": {"@type": "Answer", "text": "ChatGPT uses a different retrieval pipeline that weighs domain authority less heavily than Google does. Common reasons a #1 Google result is not cited by ChatGPT: a WAF rule blocking OAI-SearchBot, client-side-rendered content the crawler cannot read, missing or invalid schema, or prose written in long paragraphs rather than extractable 2-3 sentence chunks."}
+        },
+        {
+          "@type": "Question",
+          "name": "How quickly do changes show up in ChatGPT citations?",
+          "acceptedAnswer": {"@type": "Answer", "text": "ChatGPT's retrieval index refreshes continuously but unevenly — new content is typically cited within 1-3 weeks if the page is well-structured and the domain has prior citation history. Technical fixes like unblocking the crawler can show effects in days; entity-level changes like a new Wikipedia entry can take 4-8 weeks to fully propagate."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .step-card {
+    padding: 24px;
+    border-radius: 18px;
+    background: white;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+    margin: 14px 0;
+    position: relative;
+  }
+  .step-card .step-num {
+    display: inline-block;
+    width: 32px; height: 32px; line-height: 32px;
+    border-radius: 999px; background: var(--blue); color: white;
+    font-weight: 900; text-align: center; font-size: 14px;
+    margin-right: 10px; vertical-align: middle;
+  }
+  .step-card h3 {
+    display: inline-block; vertical-align: middle;
+    margin: 0; font-size: 19px; letter-spacing: -.02em;
+  }
+  .step-card p { margin: 12px 0 0; color: var(--ink-2); font-size: 15.5px; line-height: 1.65; }
+  .step-card .tip {
+    margin-top: 12px; padding: 10px 14px; border-radius: 12px;
+    background: #f0f9ff; border: 1px solid #bae6fd;
+    font-size: 13.5px; color: var(--ink-2); line-height: 1.55;
+  }
+  .step-card .tip strong { color: var(--blue); }
+
+  .lede-box {
+    padding: 22px 26px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #eef2ff, #f0f9ff);
+    border: 1px solid #c7d2fe;
+    margin: 24px 0;
+  }
+  .lede-box p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink-2); }
+  .lede-box p strong { color: var(--ink); }
+
+  .related-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+  .related-cards a {
+    display: block; padding: 18px 20px; border-radius: 14px;
+    background: white; border: 1px solid var(--line);
+    text-decoration: none; color: var(--ink); font-weight: 700;
+    font-size: 14.5px; line-height: 1.5;
+  }
+  .related-cards a:hover { border-color: var(--blue); }
+  @media (max-width: 820px) { .related-cards { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Guide · ChatGPT Search</span>
+<h1 class="page-title">How to get cited by ChatGPT search: a practical playbook</h1>
+
+<div class="lede-box">
+  <p>ChatGPT search cites a small set of pages per answer — typically 3 to 8 — and the same handful of domains dominate most categories (Reddit, G2, Capterra, Wikipedia and the brand's own site). Getting cited isn't about ranking #1 on Google; it's about being the cleanest, most extractable source for a specific buyer question. This page walks through the practical changes that move the needle, in priority order.</p>
+</div>
+
+<h2>The 8 steps, in priority order</h2>
+
+<div class="step-card">
+  <span class="step-num">1</span><h3>Audit your current ChatGPT citation footprint</h3>
+  <p>Before changing anything, measure where you stand. Run a brand-aware query set against ChatGPT search and record three numbers: visibility rate (how often your brand is mentioned at all), citation rate (how often your domain appears as a numbered source), and competitor share-of-voice. Without this baseline you can't tell which of the changes below actually worked.</p>
+  <div class="tip"><strong>Tip —</strong> A <a href="/product/audit">monitoraeo paid audit</a> runs 40 brand-aware questions across 5 AI engines (8 in the free preview) and returns the visibility rate, citation rate, and cited-domain leaderboard per engine.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">2</span><h3>Unblock GPTBot and OAI-SearchBot in robots.txt</h3>
+  <p>ChatGPT search uses two crawlers: <code>GPTBot</code> for training and <code>OAI-SearchBot</code> for live retrieval. If either is blocked in robots.txt, you cannot be cited. Check <code>yourdomain.com/robots.txt</code> and confirm neither User-agent is disallowed. Also confirm your CDN or WAF (Cloudflare, AWS WAF) isn't silently rate-limiting them. This is the single most common reason brands disappear from ChatGPT citations entirely.</p>
+  <div class="tip"><strong>Tip —</strong> Add an explicit <code>Allow: /</code> line for both bots to make intent unambiguous.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">3</span><h3>Server-render the content you want cited</h3>
+  <p>ChatGPT's retrieval crawler reads the initial HTML response. Content injected by client-side JavaScript after page load is invisible to it. If your stats, comparison tables or feature lists only appear after React hydrates, they won't be extracted. Move the cite-worthy content into the SSR or static HTML payload. Test with <code>curl -A 'OAI-SearchBot' yourdomain.com</code> and confirm the text you want quoted is in the raw response.</p>
+  <div class="tip"><strong>Tip —</strong> Next.js: use <code>generateStaticParams</code> or server components. Avoid <code>useEffect</code>-only data fetching for cite-worthy facts.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">4</span><h3>Publish FAQPage and Article JSON-LD on every page</h3>
+  <p>ChatGPT search disproportionately cites pages with valid <code>FAQPage</code>, <code>Article</code> and <code>HowTo</code> schema because the structured Q&amp;A pairs map directly to the way users phrase queries. Add JSON-LD blocks where the schema genuinely matches the content — fake FAQ schema gets penalised. Also add <code>Organization</code> schema sitewide with <code>sameAs</code> links to your LinkedIn, Crunchbase and Wikidata entries to disambiguate your entity.</p>
+  <div class="tip"><strong>Tip —</strong> Validate every block with Google's Rich Results Test before deploying.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">5</span><h3>Write in extractable chunks — 2 to 3 sentences per point</h3>
+  <p>ChatGPT extracts short, self-contained passages it can quote without surrounding context. Long flowing paragraphs are skipped. Restructure key pages so each claim sits in a 2-3 sentence chunk with a clear subject, a concrete fact and a number where possible. Use descriptive H2s and H3s that match how buyers actually phrase the question ("What is X", "How much does X cost", "X vs Y").</p>
+  <div class="tip"><strong>Tip —</strong> Read your page aloud — if a chunk can't stand alone as a quote, ChatGPT won't use it as one.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">6</span><h3>Earn third-party citations on the domains ChatGPT trusts</h3>
+  <p>Across most categories, the top-cited domains in ChatGPT search are Reddit, G2, Capterra, Wikipedia, TechCrunch and the relevant trade publications. Your own site usually appears once per answer; the other 4-7 citations come from these third parties. Get listed on G2 and Capterra (B2B SaaS), participate in genuine Reddit threads in your category, ensure your Wikipedia entity is correct, and pitch the trade pubs ChatGPT already cites for your topic.</p>
+  <div class="tip"><strong>Tip —</strong> Run a ChatGPT audit and note which non-brand domains appear in answers about your category — that's your target media list.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">7</span><h3>Publish an llms.txt file at your root</h3>
+  <p>llms.txt is an emerging convention (similar to robots.txt or sitemap.xml) that tells LLM-based search engines which pages on your site are canonical and what they cover. While not all engines honour it yet, it's cheap to publish and we've seen citation lift on the engines that do consume it. Point to your highest-quality, most extractable pages — comparison guides, pricing, definitive how-tos. See our <a href="/glossary/llms-txt-examples">llms.txt examples</a> for working templates.</p>
+  <div class="tip"><strong>Tip —</strong> Keep it under 50 entries; quality over quantity. Markdown bullet list with absolute URLs.</div>
+</div>
+
+<div class="step-card">
+  <span class="step-num">8</span><h3>Re-measure every 4 to 6 weeks</h3>
+  <p>ChatGPT updates its retrieval pipeline and index continuously. A change that worked in March may not move citations in June, and competitors are making the same changes you are. Schedule a recurring audit so you can see which interventions actually shifted citation rate, catch regressions early (a redeploy that breaks SSR is the classic), and adapt as the cited-domain mix in your category shifts.</p>
+  <div class="tip"><strong>Tip —</strong> monitoraeo's monitoring tier re-runs the same query set monthly and trends visibility, citation rate and competitor share-of-voice.</div>
+</div>
+
+<h2 style="margin-top:48px;">What "being cited by ChatGPT" actually means</h2>
+<p>ChatGPT search returns an answer plus a numbered list of source links — typically 3 to 8 per response. A "citation" means your domain appears in that numbered list, and ideally your specific URL is the one ChatGPT quotes from in the answer text. This is distinct from being <em>mentioned</em> (your brand name appears in the prose but no link is given) and distinct from a Google AI Overview citation, which uses a different retrieval pipeline.</p>
+<p>The bar for citation is different from ranking on Google. ChatGPT doesn't reward backlinks or domain authority the way classical SEO does. It rewards extractable content on a crawlable page from a domain it has seen cited before in similar contexts. That's why a clean, well-structured page on a smaller site can outrank a Forbes article that buries the answer 12 paragraphs deep.</p>
+
+<h2>Why ChatGPT cites Reddit, G2 and Wikipedia so often</h2>
+<p>Across nearly every category we audit, the top-cited domains in ChatGPT search are remarkably consistent: Reddit, G2, Capterra, Wikipedia, TechCrunch and the relevant trade publications. The reason is structural — these sites publish the cleanest, most directly-quotable answers to the questions users ask ChatGPT. Reddit threads are literally Q&amp;A pairs. G2 and Capterra pages are structured comparison data. Wikipedia is canonical entity definition.</p>
+<p>The practical implication: getting cited isn't purely about optimising your own site. It's about ensuring you have a presence on the third-party domains ChatGPT already trusts in your category. A single accurate G2 listing or a well-researched Reddit comment often drives more ChatGPT citation lift than a month of on-site changes.</p>
+
+<h2>How ChatGPT search differs from Google AI Overviews</h2>
+<p>Google's AI Overview renders on roughly 25-48% of queries (varying by category and intent) and pulls from the classical Google index, biased heavily toward existing top-10 organic results. ChatGPT search runs on a different retrieval stack, weighs domain authority less heavily, and renders on every query by definition. The overlap in cited domains is real but partial — winning AIO does not guarantee winning ChatGPT, and vice versa.</p>
+<p>This is why measuring both matters. A brand might be cited in 60% of ChatGPT answers in their category and 10% of AI Overviews, or the reverse. <a href="/ai-visibility">monitoraeo's free industry rankings</a> show the split per engine for 30+ categories.</p>
+
+<h2>Common mistakes that kill ChatGPT citation rate</h2>
+<p>Four mistakes account for most of the "why aren't we cited?" cases we see. First: a Cloudflare WAF rule that blocks OAI-SearchBot as a "bad bot" — the brand has no idea, the crawler can't reach the page, citations stop. Second: a JS-only React or Vue site where the cite-worthy content never appears in the initial HTML. Third: thin pages with no FAQPage schema and walls of marketing prose instead of extractable chunks. Fourth: an Organization entity that's ambiguous — no sameAs to Wikidata, no Wikipedia entry, no consistent brand string across the web.</p>
+<p>None of these are hard to fix. They're just rarely caught without a structured audit. A <a href="/product/audit">paid monitoraeo audit</a> runs a 15-check GEO scan that flags all four classes of issue with the specific URL and fix.</p>
+
+<h2>Related guides</h2>
+<div class="related-cards">
+  <a href="/glossary/how-chatgpt-chooses-citations">How ChatGPT chooses citations — deeper technical breakdown</a>
+  <a href="/what-is-ai-mode">What is AI Mode — the conversational AI search surface</a>
+  <a href="/aeo-vs-seo">AEO vs SEO — what's different and what carries over</a>
+  <a href="/product/audit">Run a paid ChatGPT citation audit</a>
+</div>
+{% endblock %}

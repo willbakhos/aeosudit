@@ -60,7 +60,27 @@
       "@type": "Question",
       "name": "What is llms.txt and do I need one?",
       "acceptedAnswer": {"@type": "Answer", "text": "llms.txt is an emerging standard (llmstxt.org) — a markdown file at /llms.txt that summarises the site for AI crawlers, similar to how robots.txt summarises crawl rules. It tells LLMs what the site is, who it's for, and which pages are authoritative content. Major AI ingestion pipelines are starting to honour it. Yes, publish one — it's a five-minute task with measurable upside."}
-        }
+    },
+    {
+      "@type": "Question",
+      "name": "What is GEO in AI search?",
+      "acceptedAnswer": {"@type": "Answer", "text": "GEO (Generative Engine Optimisation) is what gets your site into the candidate set the AI considers when it answers a search query — across Google AI Overviews (which renders on roughly 25–48% of queries), Google AI Mode, ChatGPT Search, Perplexity, Claude and Gemini. Where SEO targets the ten blue links, GEO targets the retrieval step that happens before an AI writes its answer: crawl, parse, extract claims, decide which sources to cite. The work is mostly technical — robots.txt rules for GPTBot/ClaudeBot/PerplexityBot, server-rendered HTML, JSON-LD schema, llms.txt and clean entity signals. You can see where your site stands with a free preview at /product/audit."}
+    },
+    {
+      "@type": "Question",
+      "name": "What is the full form of GEO?",
+      "acceptedAnswer": {"@type": "Answer", "text": "GEO stands for Generative Engine Optimisation. The term was popularised by a 2023 academic paper (\"GEO: Generative Engine Optimization\", Aggarwal et al.) and refers to optimising for AI engines that generate answers rather than list links. You will also see it written as 'Generative AI Optimisation' or grouped with AEO (Answer Engine Optimisation) and LLMO (Large Language Model Optimisation) — these overlap but are not identical. On monitoraeo we use GEO for the technical/foundation layer and AEO for the measured outcome (whether the AI actually names your brand)."}
+    },
+    {
+      "@type": "Question",
+      "name": "How does GEO work, step by step?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Four mechanical stages. First, the AI engine's crawler (GPTBot, ClaudeBot, PerplexityBot, plus Googlebot controlled by the Google-Extended token in robots.txt) fetches your page — so robots.txt must allow it and the HTML must render server-side. Second, the parser extracts structured signals: JSON-LD schema, headings, FAQ blocks, meta tags, llms.txt. Third, the retrieval layer indexes those signals against a query and picks candidate sources. Fourth, the model writes an answer and decides which sources to cite. GEO optimises every stage; a free monitoraeo audit at /product/audit checks the first three on your domain."}
+    },
+    {
+      "@type": "Question",
+      "name": "How do AI engines decide whether they can read my site?",
+      "acceptedAnswer": {"@type": "Answer", "text": "AI crawlers run three checks in sequence before they will use your page. (1) Is the bot allowed? They read /robots.txt and look for their specific user-agent (GPTBot, ClaudeBot, PerplexityBot, Google-Extended) — a wildcard Disallow blocks them. (2) Does the HTML contain real content? They fetch the page and look at the raw response; if it's a near-empty shell that needs JavaScript to render, most AI crawlers give up — they do not execute JS the way Googlebot does. (3) Can structure be extracted at parse time? They parse headings, schema and meta tags on a tight crawl budget; slow servers and missing schema mean your content is skipped in favour of a competitor's. See your scores at /ai-visibility."}
+    }
       ]
     }
   ]

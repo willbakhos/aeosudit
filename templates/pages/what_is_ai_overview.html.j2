@@ -78,6 +78,36 @@
           "@type": "Question",
           "name": "How often do AI Overviews change?",
           "acceptedAnswer": {"@type": "Answer", "text": "Day to day. Google regenerates an AI Overview on every fresh query, so two searches for the same question 10 minutes apart can return different prose, sometimes different cited sources, and occasionally no AI Overview at all. The signal you should track is the pattern over time, not the snapshot — which is why audits should run repeatedly and look at the trend, not single results."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I turn on Google AI Overview for my searches?",
+          "acceptedAnswer": {"@type": "Answer", "text": "There isn't a user-facing toggle. Google decides per query whether to render an AI Overview based on the query type, your signed-in account, and your region. It's on by default for most signed-in users in supported regions (US, UK, Australia, Canada, India and a growing set of EU countries as of mid-2026). If you don't see an AI Overview, your query likely didn't trigger one — informational and comparative queries get them most; navigational and pure transactional queries rarely do."}
+        },
+        {
+          "@type": "Question",
+          "name": "Is there a public API for Google AI Overview?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No — Google doesn't publish an AI Overview API. Programmatic access goes through third-party Google search APIs that scrape the rendered SERP: SearchApi.io, SerpApi, Apify's google-search-scraper, DataForSEO. Expect $2–10 per 1,000 queries depending on provider. Gemini API and Vertex AI grounding use the same Google Search retrieval backend but return through a different developer surface — responses are not identical to what a user sees in AI Overview. For a buyer-side breakdown of the providers, see our /glossary/ai-overview-api entry."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's the difference between AI Overview and a Knowledge Panel?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Different surfaces. A Knowledge Panel is a structured entity card — a persistent fact-box about a brand, person or place, mostly sourced from Wikipedia, Wikidata and Google's Knowledge Graph. AI Overview is a generated answer to a specific query, written fresh each time, with a different citation list per question. Knowledge Panels show on entity searches ('monitoraeo'). AI Overviews show on question-shaped searches ('what is monitoraeo for'). Optimising each is different: Knowledge Panel needs strong entity signals (Organization schema, sameAs links, Wikipedia presence). AI Overview needs extractable answer-shape content and schema."}
+        },
+        {
+          "@type": "Question",
+          "name": "What does it mean for my brand to be 'mentioned' in an AI Overview?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Two distinct things. A 'mention' means your brand name appears in the AI Overview's prose — Google's AI is recommending you to the user reading the answer. A 'citation' means your domain appears in the small source list under the answer — Google's AI is using your content as evidence. They move at different rates and respond to different fixes: mentions need stronger entity recognition; citations need on-page schema and 2–3 sentence extractable answers. Most brands track both separately."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I opt out of seeing AI Overviews?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Not cleanly. Google does not provide a setting to disable AI Overview entirely. The working workarounds are: use the 'Web' filter (adds &udm=14 to the search URL) which returns classical 10-blue-link results without an AI Overview, search while signed out, or use a region where AI Overview hasn't rolled out yet. If you're a publisher concerned about your content being summarised, blocking the Google-Extended user-agent in robots.txt prevents your content training future models — but doesn't remove the AI Overview surface itself."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I measure whether AI Overview is driving traffic to my site?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Indirectly. Google doesn't pass an AI Overview referrer parameter, so analytics tools can't directly attribute clicks. The signal is in Search Console: filter for queries where you have impressions but average position above 10, and watch click-through rate over time as you add structured data. A rising CTR on those queries usually indicates AI Overview citation clicks. The upstream signal is more actionable: audit whether your domain appears in the AI Overview citation list across N representative queries — that's the leading indicator before downstream traffic materialises."}
         }
       ]
     }

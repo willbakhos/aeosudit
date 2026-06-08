@@ -263,6 +263,7 @@ SITEMAP_PAGES: list[tuple[str, str, str]] = [
     ("/what-is-ai-overview", "monthly", "0.8"),
     ("/what-is-ai-mode", "monthly", "0.8"),
     ("/what-is-llms-txt", "monthly", "0.8"),
+    ("/how-to-get-cited-by-chatgpt", "monthly", "0.8"),
     ("/answer-engine-optimization-checklist", "monthly", "0.8"),
     ("/aeo-tools", "monthly", "0.8"),
     ("/glossary", "monthly", "0.7"),
@@ -328,6 +329,7 @@ hallucination risk per engine, and produces a prioritised action plan.
 - [AEO vs SEO]({SITE_BASE_URL}/aeo-vs-seo): Where traditional SEO ends (ranking blue links) and AEO begins (winning the synthesised answer).
 - [AEO checklist]({SITE_BASE_URL}/answer-engine-optimization-checklist): The prioritised 20-item list for getting your brand named, cited and recommended by AI engines.
 - [AEO tools comparison]({SITE_BASE_URL}/aeo-tools): Honest comparison of the AEO tooling landscape — monitoraeo, Otterly.ai, Profound, Athena, Goodie and others.
+- [How to get cited by ChatGPT]({SITE_BASE_URL}/how-to-get-cited-by-chatgpt): Eight-step practical playbook covering robots.txt, schema, content shape, third-party mentions and llms.txt for getting your domain into ChatGPT search citations.
 - [Glossary]({SITE_BASE_URL}/glossary): Every AI search term defined — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice, brand hallucination and more.
 
 ## Industry rankings
@@ -494,6 +496,17 @@ def page_what_is_llms_txt(request: Request) -> HTMLResponse:
         breadcrumbs=[
             {"name": "Glossary", "path": "/glossary"},
             {"name": "What is llms.txt?", "path": "/what-is-llms-txt"},
+        ],
+    )
+
+
+@app.get("/how-to-get-cited-by-chatgpt", response_class=HTMLResponse)
+def page_how_to_get_cited_by_chatgpt(request: Request) -> HTMLResponse:
+    return _render(
+        "how_to_get_cited_by_chatgpt.html.j2", request=request,
+        breadcrumbs=[
+            {"name": "Guides", "path": "/glossary"},
+            {"name": "How to get cited by ChatGPT", "path": "/how-to-get-cited-by-chatgpt"},
         ],
     )
 
