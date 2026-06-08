@@ -952,6 +952,15 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         auto_brand_insights[(b.brand_name or "").lower()] = txt
 
     from src.industry_audit import _engine_display_name
+    from src.local_services import detect_local_services
+    # Local-services detection drives typed-ItemList schema. When this is
+    # not None, the template swaps Organization items for LegalService /
+    # Dentist / Physician / etc. + adds areaServed. When None (non-local
+    # industry), the schema stays exactly as it was — purely additive
+    # change with no rollback path needed.
+    local_meta = detect_local_services(
+        slug=report.slug, name=report.name, parent_category=report.parent_category,
+    )
     bundle = dict(
         report=report,
         brands=brands,
@@ -962,6 +971,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         quick_insights=quick_insights,
         auto_brand_insights=auto_brand_insights,
         engine_display_name=_engine_display_name(),
+        local_meta=local_meta,
     )
     _AI_VIZ_DETAIL_CACHE[slug] = (_time.monotonic(), bundle)
     if len(_AI_VIZ_DETAIL_CACHE) > 500:  # ~industries cap; defensive

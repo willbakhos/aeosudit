@@ -61,9 +61,37 @@
           "@type": "ListItem",
           "position": {{ b.rank_in_industry or loop.index }},
           "item": {
-            "@type": "Organization",
-            "name": {{ b.brand_name|tojson }},
+            "@type": "{{ local_meta.schema_type if local_meta else 'Organization' }}",
+            "name": {{ b.brand_name|tojson }}
+            {%- if b.brand_domain %},
             "url": "https://{{ b.brand_domain }}"
+            {%- endif %}
+            {%- if local_meta %},
+            "areaServed":
+            {%- if local_meta.area_type == 'State' %}
+              {
+                "@type": "State",
+                "name": {{ local_meta.state_full|tojson }}
+                {%- if local_meta.state_abbr %},
+                "alternateName": {{ local_meta.state_abbr|tojson }}
+                {%- endif %}
+              }
+            {%- else %}
+              {
+                "@type": "City",
+                "name": {{ local_meta.city_name|tojson }}
+                {%- if local_meta.state_full %},
+                "containedInPlace": {
+                  "@type": "State",
+                  "name": {{ local_meta.state_full|tojson }}
+                  {%- if local_meta.state_abbr %},
+                  "alternateName": {{ local_meta.state_abbr|tojson }}
+                  {%- endif %}
+                }
+                {%- endif %}
+              }
+            {%- endif %}
+            {%- endif %}
           }
         }
         {%- endfor %}
