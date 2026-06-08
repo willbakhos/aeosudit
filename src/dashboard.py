@@ -2976,6 +2976,7 @@ def admin_industries_create(
                 parent_category=parent_category.strip(),
                 description=description.strip(),
                 next_scheduled_refresh=datetime.utcnow(),  # eligible immediately
+                noindex=True,  # cleared by first successful refresh that finds scores
             )
             s.add(report)
             for brand_name, brand_domain in brand_rows:

@@ -389,6 +389,13 @@ def sitemap_xml() -> Response:
         from src.db import IndustryReport, DefinitionalPage, get_session
         with get_session() as s:
             for r in s.exec(_select(IndustryReport).order_by(IndustryReport.slug)):
+                # Empty-page guardrail: industries flagged noindex (no
+                # brand scored on the last refresh) are excluded from
+                # sitemap so Google doesn't waste crawl budget rediscovering
+                # them. The page still returns 200 with a noindex meta;
+                # this just stops us advertising it.
+                if getattr(r, "noindex", False):
+                    continue
                 lastmod = (r.last_full_refresh or r.created_at or datetime.utcnow()).strftime("%Y-%m-%d")
                 entries.append((f"/ai-visibility/{r.slug}", lastmod, "monthly", "0.6"))
             for p in s.exec(_select(DefinitionalPage).order_by(DefinitionalPage.slug)):
@@ -695,9 +702,15 @@ def page_ai_visibility_index(
             # column-vs-row return-shape ambiguity; this is the boring,
             # correct version. If we ever cross ~10k industries we can swap
             # in DB-side pagination here without changing anything else.
+            # Empty-page guardrail: exclude noindex industries from the
+            # public directory. Their detail pages still render (so direct
+            # links work) but they don't appear in the browseable index
+            # or factor into the hero stats. Admin sees them at
+            # /dashboard/admin/industries instead.
             all_reports = list(
                 s.exec(_select(IndustryReport).order_by(IndustryReport.name))
             )
+            all_reports = [r for r in all_reports if not getattr(r, "noindex", False)]
             total_industries_global = len(all_reports)
 
             # Site-wide brand count (one aggregate). first() is more tolerant
@@ -2003,6 +2016,7 @@ def _industry_to_summary_dict(report) -> dict[str, Any]:
         "last_full_refresh": (report.last_full_refresh.isoformat() + "Z") if report.last_full_refresh else None,
         "next_scheduled_refresh": (report.next_scheduled_refresh.isoformat() + "Z") if report.next_scheduled_refresh else None,
         "refresh_interval_days": report.refresh_interval_days,
+        "noindex": bool(getattr(report, "noindex", False)),
     }
 
 
@@ -2072,6 +2086,12 @@ def api_industries_create(req: IndustryCreateRequest, request: Request) -> JSONR
                 parent_category=(req.parent_category or "").strip(),
                 description=(req.description or "").strip(),
                 next_scheduled_refresh=datetime.utcnow() if req.refresh_immediately else None,
+                # New industries start NOINDEX until the first refresh
+                # establishes whether any brand scores. refresh_industry
+                # auto-flips this to FALSE on its first successful pass.
+                # Stops empty placeholder pages briefly leaking into
+                # Google's index during the gap between create + first cron tick.
+                noindex=True,
             )
             s.add(report)
             for nm, dom in cleaned:

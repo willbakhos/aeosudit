@@ -365,6 +365,25 @@ def refresh_industry(slug: str) -> dict[str, Any]:
             interval = fresh_report.refresh_interval_days or 30
             fresh_report.last_full_refresh = datetime.utcnow()
             fresh_report.next_scheduled_refresh = datetime.utcnow() + timedelta(days=interval)
+            # Empty-page guardrail: if NO brand scored any visibility or
+            # citation, this ranking is empty and shouldn't be indexed by
+            # Google. Reversible — next refresh that finds any score flips
+            # it back to FALSE automatically.
+            from sqlmodel import func as _func
+            scored_row = s.exec(
+                select(_func.count(IndustryBrand.id))
+                .where(IndustryBrand.industry_slug == slug)
+                .where((IndustryBrand.visibility_pct > 0) | (IndustryBrand.citation_pct > 0))
+            ).first()
+            scored_count = scored_row if isinstance(scored_row, int) else (scored_row[0] if scored_row else 0)
+            was_noindex = bool(getattr(fresh_report, "noindex", False))
+            fresh_report.noindex = (scored_count == 0)
+            summary["scored_count"] = int(scored_count)
+            summary["noindex"] = fresh_report.noindex
+            if fresh_report.noindex and not was_noindex:
+                print(f"[industry_audit] {slug}: marking NOINDEX (no brand scored)")
+            elif was_noindex and not fresh_report.noindex:
+                print(f"[industry_audit] {slug}: clearing NOINDEX ({scored_count} brands scored)")
             s.add(fresh_report)
         s.commit()
 

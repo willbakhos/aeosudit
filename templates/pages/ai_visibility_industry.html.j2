@@ -5,6 +5,11 @@
 {% set page_og_type = 'article' %}
 {% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
+{# Empty-page guardrail: when no brand has scored any visibility/citation,
+   refresh_industry sets report.noindex=True. We emit noindex,follow so
+   Google still crawls (the next refresh may produce data) but doesn't
+   keep an empty page in the index. Same flag drives sitemap exclusion. #}
+{% if report.noindex %}{% set page_robots = "noindex,follow" %}{% endif %}
 {# Narrative cache from refresh_industry — empty dict {} for pre-narrative
    rows. Each conditional below falls back to bare table when missing. #}
 {% set narrative = report.narrative or {} %}
