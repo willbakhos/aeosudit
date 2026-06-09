@@ -2110,6 +2110,107 @@ def api_industries_create(req: IndustryCreateRequest, request: Request) -> JSONR
     return JSONResponse(payload, status_code=201)
 
 
+class IndustryBrandsReplaceRequest(BaseModel):
+    brands: list[IndustryBrandIn]
+    # Default true: synchronously refresh after replace so the caller gets
+    # immediate confirmation that the new brand list actually scores.
+    # Pass false for bulk-edit workflows that prefer cron pickup.
+    refresh_immediately: bool = True
+
+
+@app.put("/api/industries/{slug}/brands")
+def api_industries_replace_brands(
+    slug: str, req: IndustryBrandsReplaceRequest, request: Request,
+) -> JSONResponse:
+    """Replace the entire brand list for an existing industry. Used to fix
+    'empty' rankings where the curated brand list doesn't match what AI
+    actually names for the category's queries.
+
+    Behaviour:
+    - Deletes every IndustryBrand for the slug, inserts the new list
+      atomically. Old scores survive in IndustryBrandHistory.
+    - Resets the page to noindex=True until the next refresh re-evaluates.
+    - When refresh_immediately=true (default): runs refresh_industry
+      synchronously (~30-90s) and returns the audit summary. The new
+      brands either score (noindex auto-clears) or don't (noindex
+      persists, page stays hidden from Google).
+    - When refresh_immediately=false: just queues for cron pickup.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>
+
+    Example:
+        curl -X PUT https://www.monitoraeo.com/api/industries/lawyer-dallas/brands \\
+          -H "Authorization: Bearer $INDUSTRY_API_TOKEN" \\
+          -H "Content-Type: application/json" \\
+          -d '{"brands":[{"name":"Thompson Law","domain":"thompsonfirm.com"}]}'
+    """
+    _require_industry_token(request)
+
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryBrand, get_session
+
+    # Same domain normalisation as POST /api/industries — strip schema,
+    # www., trailing slash. Drops rows missing either field.
+    cleaned: list[tuple[str, str]] = []
+    for b in req.brands:
+        nm = (b.name or "").strip()
+        dom = (b.domain or "").strip().lower()
+        for prefix in ("https://", "http://"):
+            if dom.startswith(prefix):
+                dom = dom[len(prefix):]
+        if dom.startswith("www."):
+            dom = dom[4:]
+        dom = dom.rstrip("/")
+        if nm and dom:
+            cleaned.append((nm, dom))
+    if not cleaned:
+        raise HTTPException(400, "brands list is empty after normalisation")
+
+    try:
+        with get_session() as s:
+            report = s.exec(
+                _select(IndustryReport).where(IndustryReport.slug == slug)
+            ).first()
+            if not report:
+                raise HTTPException(404, f"industry not found: {slug}")
+            # Delete-and-replace. Existing scores were already snapshotted
+            # to IndustryBrandHistory by the prior refresh, so nothing's lost.
+            for existing in s.exec(
+                _select(IndustryBrand).where(IndustryBrand.industry_slug == slug)
+            ):
+                s.delete(existing)
+            for nm, dom in cleaned:
+                s.add(IndustryBrand(industry_slug=slug, brand_name=nm, brand_domain=dom))
+            # Reset noindex until next refresh evaluates. Schedule immediate
+            # cron pickup if not refreshing synchronously.
+            report.noindex = True
+            if not req.refresh_immediately:
+                report.next_scheduled_refresh = datetime.utcnow()
+            s.add(report)
+            s.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+
+    invalidate_ai_visibility_cache(slug)
+
+    response: dict[str, Any] = {
+        "slug": slug,
+        "replaced_brand_count": len(cleaned),
+    }
+    if req.refresh_immediately:
+        from src.industry_audit import refresh_industry
+        try:
+            response["refresh"] = refresh_industry(slug)
+        except Exception as exc:  # noqa: BLE001
+            response["refresh"] = {"error": f"{type(exc).__name__}: {exc}"}
+    else:
+        response["refresh_queued"] = True
+
+    return JSONResponse(response)
+
+
 @app.post("/api/industries/{slug}/refresh")
 def api_industries_refresh(slug: str, request: Request) -> JSONResponse:
     """Trigger an immediate re-audit of one industry. Runs the 8 category
