@@ -152,6 +152,22 @@
   .action-btn.primary:hover { background: #1e40af; border-color: #1e40af; color: white; }
   .action-btn.copied { background: #dcfce7; color: #15803d; border-color: #86efac; }
   .action-btn svg { width: 14px; height: 14px; }
+  /* Disabled / loading state — needed because the submit button gets
+     disabled while the PDF render+send runs (~6-8s). Without these
+     styles it looked identical to a fresh click target and users were
+     double-submitting. */
+  .action-btn:disabled, .action-btn.is-loading {
+    opacity: .6; cursor: not-allowed; pointer-events: none;
+  }
+  .action-btn.is-loading::before {
+    content: ""; display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%;
+    margin-right: 8px; vertical-align: -2px;
+    animation: pdfm-spin .7s linear infinite;
+  }
+  @keyframes pdfm-spin { to { transform: rotate(360deg); } }
 
   /* Email-gate modal for PDF download. */
   .pdfm-backdrop {
@@ -376,7 +392,14 @@
     if (!modal) return;
     modal.classList.remove('open');
     if (statusEl) { statusEl.textContent = ''; statusEl.className = 'pdfm-status'; }
-    if (submitBtn) submitBtn.disabled = false;
+    // Reset the submit button so it's ready if the user reopens the modal.
+    // The original text is captured in submitOrigText below the form handler;
+    // restore here so the "Sent ✓" text from a successful run doesn't stick.
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('is-loading');
+      submitBtn.textContent = 'Send me the PDF';
+    }
   }
   if (openBtn && modal) {
     openBtn.addEventListener('click', function(){
@@ -392,18 +415,30 @@
     if (e.key === 'Escape' && modal && modal.classList.contains('open')) closeModal();
   });
   if (form) {
+    var submitOrigText = submitBtn ? submitBtn.textContent : '';
+    var setLoading = function(loading) {
+      if (!submitBtn) return;
+      submitBtn.disabled = loading;
+      submitBtn.classList.toggle('is-loading', loading);
+      submitBtn.textContent = loading ? 'Sending…' : submitOrigText;
+    };
     form.addEventListener('submit', function(e){
       e.preventDefault();
       if (!emailIn || !statusEl || !submitBtn) return;
+      // Re-entry guard: if a previous submit is in flight (button is
+      // already disabled / loading) drop the event entirely. Browsers
+      // can re-fire submit on Enter-key from a focused field even when
+      // the button is disabled.
+      if (submitBtn.disabled) return;
       var email = (emailIn.value || '').trim().toLowerCase();
       if (!email || email.indexOf('@') < 0) {
         statusEl.className = 'pdfm-status err';
         statusEl.textContent = 'Please enter a valid email.';
         return;
       }
-      submitBtn.disabled = true;
+      setLoading(true);
       statusEl.className = 'pdfm-status';
-      statusEl.textContent = 'Sending…';
+      statusEl.textContent = '';
       fetch('/api/industry-pdf-request', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -414,16 +449,19 @@
         if (r.ok) {
           statusEl.className = 'pdfm-status ok';
           statusEl.textContent = '✓ Check your inbox — the PDF will arrive in the next minute.';
+          // Leave the button in its loading state until the modal closes
+          // so there's no flash back to an active-looking button.
+          if (submitBtn) submitBtn.textContent = 'Sent ✓';
           setTimeout(closeModal, 3500);
         } else {
+          setLoading(false);
           statusEl.className = 'pdfm-status err';
           statusEl.textContent = (r.body && r.body.detail) || 'Something went wrong. Please try again.';
-          submitBtn.disabled = false;
         }
       }).catch(function(){
+        setLoading(false);
         statusEl.className = 'pdfm-status err';
         statusEl.textContent = 'Network error. Please try again.';
-        submitBtn.disabled = false;
       });
     });
   }
