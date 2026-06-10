@@ -2341,6 +2341,34 @@ def _render_industry_pdf_background(
         traceback.print_exc()
 
 
+@app.get("/api/runtime-libs")
+def api_runtime_libs(request: Request) -> JSONResponse:
+    """Bearer-gated runtime diagnostic. Reports where (if anywhere) the
+    WeasyPrint native deps live in this container — used to debug the
+    'libgobject-2.0-0 not found' build-config issue."""
+    _require_industry_token(request)
+    import subprocess, ctypes.util, glob
+    libs = ["gobject-2.0", "glib-2.0", "pango-1.0", "cairo", "gdk_pixbuf-2.0", "harfbuzz"]
+    find_results = {name: ctypes.util.find_library(name) for name in libs}
+    # Find any actual files on disk
+    candidates = []
+    for pattern in ("/usr/lib/x86_64-linux-gnu/libgobject*", "/usr/lib/libgobject*",
+                    "/nix/store/*glib*/lib/libgobject*", "/lib/x86_64-linux-gnu/libgobject*"):
+        candidates.extend(glob.glob(pattern))
+    env = {k: v for k, v in os.environ.items() if k in ("LD_LIBRARY_PATH", "PATH", "PKG_CONFIG_PATH", "NIX_LD_LIBRARY_PATH")}
+    try:
+        ldconfig_out = subprocess.check_output(["ldconfig", "-p"], text=True, timeout=5)
+        gobject_hits = [l.strip() for l in ldconfig_out.splitlines() if "gobject" in l.lower()]
+    except Exception as exc:  # noqa: BLE001
+        gobject_hits = [f"ldconfig failed: {exc}"]
+    return JSONResponse({
+        "ctypes_find_library": find_results,
+        "disk_candidates": candidates[:20],
+        "env_paths": env,
+        "ldconfig_gobject_entries": gobject_hits[:20],
+    })
+
+
 @app.post("/api/industry-pdf-debug")
 def api_industry_pdf_debug(
     req: IndustryPDFRequest, request: Request,
