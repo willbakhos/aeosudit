@@ -1,13 +1,25 @@
 [phases.setup]
-nixPkgs = [
-  "python311",
-  "pango",
-  "glib",
-  "cairo",
-  "gdk-pixbuf",
-  "harfbuzz",
-  "fontconfig",
-  "libffi",
+# Pin Python via Nix, but install WeasyPrint's native deps via apt so the
+# libraries land in /usr/lib/x86_64-linux-gnu where ctypes.util.find_library()
+# can actually locate them. The Nix-installed equivalents end up in
+# /nix/store/... paths that WeasyPrint's runtime loader doesn't search,
+# which manifests as: OSError: cannot load library 'libgobject-2.0-0'.
+nixPkgs = ["python311"]
+
+# WeasyPrint runtime deps. libpango pulls in libglib2.0-0 (libgobject) as
+# a transitive dep, but listing it explicitly makes the requirement legible
+# in the build log. shared-mime-info is needed for some embedded asset
+# mime-type detection.
+aptPkgs = [
+  "libpango-1.0-0",
+  "libpangoft2-1.0-0",
+  "libglib2.0-0",
+  "libcairo2",
+  "libgdk-pixbuf2.0-0",
+  "libharfbuzz0b",
+  "libfontconfig1",
+  "libffi-dev",
+  "shared-mime-info",
 ]
 
 [start]
