@@ -104,6 +104,77 @@ def send_report(
     return resend.Emails.send(params)
 
 
+def send_industry_pdf(
+    *,
+    to_email: str,
+    industry_name: str,
+    industry_url: str,
+    pdf_bytes: bytes,
+    pdf_filename: str,
+) -> dict[str, Any]:
+    """Send an email-gated download of the /ai-visibility/{slug} PDF.
+    Returns the Resend response dict. Raises if RESEND_API_KEY is missing.
+
+    industry_url: canonical URL of the public ranking page (linked from the
+        email so the recipient can revisit the live page).
+    pdf_filename: download name shown in the recipient's mail client
+        (e.g. 'monitoraeo-crm-software-rankings.pdf')."""
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("RESEND_API_KEY is not set")
+    resend.api_key = api_key
+
+    from_addr = os.environ.get("REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>")
+    subject = f"Your AI visibility ranking PDF: {industry_name}"
+    html = f"""\
+<!doctype html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  max-width:560px; margin:0 auto; padding:32px 24px; color:#0f172a; line-height:1.55;">
+  <h1 style="font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0 0 16px;">
+    Your <strong>{_html_escape(industry_name)}</strong> ranking PDF
+  </h1>
+  <p style="margin:0 0 14px; font-size:15px;">
+    The PDF is attached. It captures the current AI visibility rankings,
+    citation rates, top cited sources, and the methodology behind the scores.
+  </p>
+  <p style="margin:0 0 24px; font-size:15px;">
+    View the live page (refreshed monthly):
+    <a href="{_html_escape(industry_url)}" style="color:#2563eb; font-weight:700;">{_html_escape(industry_url)}</a>
+  </p>
+  <div style="padding:18px 20px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; margin-bottom:24px;">
+    <strong style="font-size:14px; display:block; margin-bottom:6px;">Want this for your own brand?</strong>
+    <span style="font-size:14px; color:#475569;">
+      Run a full AEO audit across 5 AI engines —
+      <a href="https://www.monitoraeo.com/product/audit" style="color:#2563eb; font-weight:700;">monitoraeo.com/product/audit</a>
+    </span>
+  </div>
+  <p style="font-size:12px; color:#94a3b8; margin:32px 0 0;">
+    You're getting this because you requested it at monitoraeo.com.
+    No further emails. Unsubscribe N/A — single send.
+  </p>
+</body></html>"""
+
+    params: dict[str, Any] = {
+        "from": from_addr,
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+        "attachments": [{
+            "filename": pdf_filename,
+            "content": base64.b64encode(pdf_bytes).decode("ascii"),
+        }],
+    }
+    return resend.Emails.send(params)
+
+
+def _html_escape(s: str) -> str:
+    """Minimal HTML escape for values that go into our email bodies."""
+    return (
+        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        .replace('"', "&quot;").replace("'", "&#39;")
+    )
+
+
 def _build_welcome_html(
     *, brand_name: str, tier: str, is_subscription: bool, dashboard_url: str
 ) -> str:

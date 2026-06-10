@@ -139,6 +139,51 @@
 {% endblock %}
 
 {% block extra_css %}
+  /* Share + Download action row — drops out of the PDF render via @media print. */
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 0; align-items: center; }
+  .action-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
+    background: white; color: var(--ink); font-size: 13px; font-weight: 700;
+    text-decoration: none; cursor: pointer; transition: all .15s;
+  }
+  .action-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .action-btn.primary { background: var(--blue); color: white; border-color: var(--blue); }
+  .action-btn.primary:hover { background: #1e40af; border-color: #1e40af; color: white; }
+  .action-btn.copied { background: #dcfce7; color: #15803d; border-color: #86efac; }
+  .action-btn svg { width: 14px; height: 14px; }
+
+  /* Email-gate modal for PDF download. */
+  .pdfm-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(15,23,42,.55);
+    z-index: 100; align-items: center; justify-content: center; padding: 20px;
+  }
+  .pdfm-backdrop.open { display: flex; }
+  .pdfm-card {
+    background: white; border-radius: 20px; padding: 28px; max-width: 460px;
+    width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+  }
+  .pdfm-card h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.02em; }
+  .pdfm-card p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+  .pdfm-card input[type=email] {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1.5px solid var(--line); font-size: 15px; box-sizing: border-box;
+    font-family: inherit;
+  }
+  .pdfm-card input[type=email]:focus { outline: none; border-color: var(--blue); }
+  .pdfm-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .pdfm-actions .action-btn { flex: 1; justify-content: center; }
+  .pdfm-status { margin-top: 12px; font-size: 13px; line-height: 1.5; }
+  .pdfm-status.ok { color: #15803d; }
+  .pdfm-status.err { color: #b91c1c; }
+  .pdfm-consent { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  @media print {
+    .actions-row, .pdfm-backdrop, nav, .site-footer, .footer { display: none !important; }
+    body { padding: 0 !important; }
+    .ind-hero, .glance-card, .narrative-section { box-shadow: none !important; }
+  }
+
   .ind-hero { padding: 32px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); margin-bottom: 24px; }
   .ind-hero h1 { margin: 6px 0 10px; font-size: clamp(28px, 4vw, 42px); line-height: 1.08; letter-spacing: -.04em; }
   .ind-hero .lede { color: var(--muted); margin: 0 0 16px; font-size: 15.5px; max-width: 720px; line-height: 1.6; }
@@ -227,7 +272,163 @@
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_citation }}%</div><div class="l">Avg citation rate</div></div>
     <div class="ind-stat"><div class="n">{{ audited_count }}/{{ brands|length }}</div><div class="l">Brands successfully audited</div></div>
   </div>
+  {% if not pdf %}
+  {# Action row — share + PDF download. Dropped entirely when rendering
+     for the email-gated PDF (pdf=True context flag). #}
+  {% set _share_title = ('Top ' ~ brands|length ~ ' ' ~ report.name|lower ~ ' by AI search visibility (2026)') %}
+  {% set _share_url = _canonical %}
+  {% set _x_intent = 'https://twitter.com/intent/tweet?text=' ~ (_share_title ~ ' — via @monitoraeo')|urlencode ~ '&url=' ~ _share_url|urlencode %}
+  {% set _li_intent = 'https://www.linkedin.com/sharing/share-offsite/?url=' ~ _share_url|urlencode %}
+  <div class="actions-row" id="actionsRow">
+    <button class="action-btn" id="shareNativeBtn" type="button" data-share-url="{{ _share_url }}" data-share-title="{{ _share_title }}" style="display:none;" aria-label="Share">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Share
+    </button>
+    <a class="action-btn" href="{{ _x_intent }}" target="_blank" rel="noopener" aria-label="Share on X">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2H21l-6.54 7.47L22 22h-6.84l-4.78-6.25L4.8 22H2l7.01-8.01L2 2h6.92l4.32 5.71L18.24 2zm-1.2 18.4h1.88L7.05 3.5H5.04l12 16.9z"/></svg>
+      X
+    </a>
+    <a class="action-btn" href="{{ _li_intent }}" target="_blank" rel="noopener" aria-label="Share on LinkedIn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14zM8.34 18.34V10.4H5.67v7.94h2.67zM7 9.28a1.55 1.55 0 1 0 0-3.1 1.55 1.55 0 0 0 0 3.1zm11.34 9.06v-4.35c0-2.33-1.24-3.41-2.9-3.41a2.5 2.5 0 0 0-2.27 1.25v-1.07h-2.67c.04.76 0 7.94 0 7.94h2.67v-4.43c0-.24.02-.48.09-.65a1.46 1.46 0 0 1 1.37-.98c.97 0 1.36.74 1.36 1.82v4.24h2.65z"/></svg>
+      LinkedIn
+    </a>
+    <button class="action-btn" id="copyLinkBtn" type="button" data-copy-url="{{ _share_url }}" aria-label="Copy link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span class="copy-label">Copy link</span>
+    </button>
+    <button class="action-btn primary" id="downloadPdfBtn" type="button" aria-label="Download PDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+  </div>
+  {% endif %}
 </section>
+
+{% if not pdf %}
+<div class="pdfm-backdrop" id="pdfmBackdrop" role="dialog" aria-modal="true" aria-labelledby="pdfmTitle">
+  <div class="pdfm-card">
+    <h3 id="pdfmTitle">Download this ranking as a PDF</h3>
+    <p>We'll email it to you. One-off send — no list, no follow-up, no surprise marketing.</p>
+    <form id="pdfmForm" autocomplete="off">
+      <input type="email" id="pdfmEmail" placeholder="you@yourbrand.com" required autocomplete="email">
+      <div class="pdfm-actions">
+        <button type="button" class="action-btn" id="pdfmCancel">Cancel</button>
+        <button type="submit" class="action-btn primary" id="pdfmSubmit">Send me the PDF</button>
+      </div>
+      <div class="pdfm-status" id="pdfmStatus" aria-live="polite"></div>
+      <p class="pdfm-consent">
+        By submitting, you confirm you want to receive this PDF at the address above.
+        See our <a href="/privacy" style="color:var(--muted);">privacy policy</a>.
+      </p>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Native Web Share (mobile + Chrome desktop). If available, surface the
+  // native button — otherwise leave it hidden and rely on the dedicated
+  // social buttons + copy link.
+  var nativeBtn = document.getElementById('shareNativeBtn');
+  if (nativeBtn && navigator.share) {
+    nativeBtn.style.display = '';
+    nativeBtn.addEventListener('click', function(){
+      navigator.share({
+        title: nativeBtn.dataset.shareTitle,
+        text: nativeBtn.dataset.shareTitle,
+        url: nativeBtn.dataset.shareUrl,
+      }).catch(function(){ /* user dismissed */ });
+    });
+  }
+  // Copy link to clipboard with visible "Copied!" feedback for 2s.
+  var copyBtn = document.getElementById('copyLinkBtn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function(){
+      var url = copyBtn.dataset.copyUrl;
+      var label = copyBtn.querySelector('.copy-label');
+      var done = function(){
+        copyBtn.classList.add('copied');
+        if (label) label.textContent = 'Copied!';
+        setTimeout(function(){
+          copyBtn.classList.remove('copied');
+          if (label) label.textContent = 'Copy link';
+        }, 2000);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function(){
+          window.prompt('Copy this link:', url);
+        });
+      } else {
+        window.prompt('Copy this link:', url);
+      }
+    });
+  }
+  // PDF download modal.
+  var openBtn = document.getElementById('downloadPdfBtn');
+  var modal = document.getElementById('pdfmBackdrop');
+  var cancelBtn = document.getElementById('pdfmCancel');
+  var form = document.getElementById('pdfmForm');
+  var emailIn = document.getElementById('pdfmEmail');
+  var submitBtn = document.getElementById('pdfmSubmit');
+  var statusEl = document.getElementById('pdfmStatus');
+  function closeModal(){
+    if (!modal) return;
+    modal.classList.remove('open');
+    if (statusEl) { statusEl.textContent = ''; statusEl.className = 'pdfm-status'; }
+    if (submitBtn) submitBtn.disabled = false;
+  }
+  if (openBtn && modal) {
+    openBtn.addEventListener('click', function(){
+      modal.classList.add('open');
+      setTimeout(function(){ emailIn && emailIn.focus(); }, 50);
+    });
+  }
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  if (modal) modal.addEventListener('click', function(e){
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && modal && modal.classList.contains('open')) closeModal();
+  });
+  if (form) {
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if (!emailIn || !statusEl || !submitBtn) return;
+      var email = (emailIn.value || '').trim().toLowerCase();
+      if (!email || email.indexOf('@') < 0) {
+        statusEl.className = 'pdfm-status err';
+        statusEl.textContent = 'Please enter a valid email.';
+        return;
+      }
+      submitBtn.disabled = true;
+      statusEl.className = 'pdfm-status';
+      statusEl.textContent = 'Sending…';
+      fetch('/api/industry-pdf-request', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: email, slug: {{ report.slug|tojson }}})
+      }).then(function(r){
+        return r.json().then(function(body){ return {ok: r.ok, status: r.status, body: body}; });
+      }).then(function(r){
+        if (r.ok) {
+          statusEl.className = 'pdfm-status ok';
+          statusEl.textContent = '✓ Check your inbox — the PDF will arrive in the next minute.';
+          setTimeout(closeModal, 3500);
+        } else {
+          statusEl.className = 'pdfm-status err';
+          statusEl.textContent = (r.body && r.body.detail) || 'Something went wrong. Please try again.';
+          submitBtn.disabled = false;
+        }
+      }).catch(function(){
+        statusEl.className = 'pdfm-status err';
+        statusEl.textContent = 'Network error. Please try again.';
+        submitBtn.disabled = false;
+      });
+    });
+  }
+})();
+</script>
+{% endif %}
 
 {# At a glance — programmatic factual highlights from the actual audit
    data. Always renders (no LLM dependency) so the page has unique,

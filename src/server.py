@@ -2229,6 +2229,268 @@ def api_industries_refresh(slug: str, request: Request) -> JSONResponse:
     return JSONResponse(summary)
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Email-gated PDF download for /ai-visibility/{slug}
+#
+# Per-IP rate limit (5/hour, 20/day) prevents trivial abuse without
+# requiring login or captcha. Rejects obvious disposable-email domains.
+# Email send + PDF render run in a background thread so the UI gets a
+# fast 202 even when WeasyPrint takes 5-10s on a large page.
+# ─────────────────────────────────────────────────────────────────────────
+
+PDF_REQUEST_HOURLY_LIMIT = int(os.environ.get("PDF_REQUEST_HOURLY_LIMIT", "5"))
+PDF_REQUEST_DAILY_LIMIT = int(os.environ.get("PDF_REQUEST_DAILY_LIMIT", "20"))
+PDF_REQUEST_RATE_HITS: dict[str, list[float]] = {}
+
+# Throw-away / disposable email domains commonly used to bypass gates.
+# Not exhaustive — just the most prevalent ones. Real spammers will get
+# around it; the bar here is "stop drive-by junk."
+_DISPOSABLE_EMAIL_DOMAINS: set[str] = {
+    "mailinator.com", "guerrillamail.com", "10minutemail.com",
+    "tempmail.com", "throwawaymail.com", "yopmail.com", "trashmail.com",
+    "fakeinbox.com", "getnada.com", "tempr.email", "maildrop.cc",
+    "sharklasers.com", "spam4.me", "tempmailo.com", "temp-mail.org",
+    "moakt.com", "dispostable.com", "mintemail.com",
+}
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
+
+
+def _enforce_pdf_request_rate_limit(request: Request) -> None:
+    """Same shape as _enforce_preview_rate_limit but with PDF-specific
+    limits. Logged-in dashboard users + localhost skip the gate."""
+    from src.auth import current_user
+    if current_user(request) is not None:
+        return
+    ip = _client_ip(request)
+    if ip in ("127.0.0.1", "::1"):
+        return
+    now = time.time()
+    hits = [t for t in PDF_REQUEST_RATE_HITS.get(ip, []) if now - t < 86400]
+    if len(hits) >= PDF_REQUEST_DAILY_LIMIT:
+        raise HTTPException(429, f"Too many PDF requests today ({PDF_REQUEST_DAILY_LIMIT}/day). Try again tomorrow.")
+    if sum(1 for t in hits if now - t < 3600) >= PDF_REQUEST_HOURLY_LIMIT:
+        raise HTTPException(429, f"Too many PDF requests this hour ({PDF_REQUEST_HOURLY_LIMIT}/hour). Try again later.")
+    hits.append(now)
+    PDF_REQUEST_RATE_HITS[ip] = hits
+
+
+class IndustryPDFRequest(BaseModel):
+    email: EmailStr
+    slug: str
+
+
+def _render_industry_pdf_background(
+    *, lead_id: int, email: str, slug: str, industry_name: str, base_url: str,
+) -> None:
+    """Render the live page, send the email, update the lead row with
+    sent_at / error. Runs in a daemon thread spawned from the request
+    handler — never propagates exceptions to the user (they already got
+    a 202)."""
+    from src.db import IndustryPDFLead, get_session
+    from src.pdf import render_html_to_pdf_bytes
+    from src.delivery import send_industry_pdf
+    err: str | None = None
+    try:
+        # Render the live HTML for the page with a special `pdf=True`
+        # query param the template can use to drop interactive UI bits.
+        page_html = _jinja.get_template("pages/ai_visibility_industry.html.j2").render(
+            **_build_industry_pdf_render_context(slug)
+        )
+        pdf_bytes = render_html_to_pdf_bytes(page_html, base_url=base_url)
+        industry_url = f"{SITE_BASE_URL}/ai-visibility/{slug}"
+        pdf_filename = f"monitoraeo-{slug}-rankings.pdf"
+        send_industry_pdf(
+            to_email=email,
+            industry_name=industry_name,
+            industry_url=industry_url,
+            pdf_bytes=pdf_bytes,
+            pdf_filename=pdf_filename,
+        )
+    except Exception as exc:  # noqa: BLE001
+        err = f"{type(exc).__name__}: {str(exc)[:300]}"
+        print(f"[pdf-request] background failure for lead {lead_id}: {err}")
+        import traceback
+        traceback.print_exc()
+    # Stamp the lead row either way so admin sees the outcome.
+    try:
+        with get_session() as s:
+            row = s.get(IndustryPDFLead, lead_id)
+            if row:
+                if err is None:
+                    row.sent_at = datetime.utcnow()
+                else:
+                    row.error = err
+                s.add(row)
+                s.commit()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[pdf-request] lead row update failed for {lead_id}: {exc}")
+
+
+def _build_industry_pdf_render_context(slug: str) -> dict[str, Any]:
+    """Build the same template context the public industry page uses, with
+    a `pdf=True` flag the template uses to drop interactive elements.
+    Returns an empty fallback dict if the slug isn't published."""
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryBrand, get_session
+    from src.industry_audit import _engine_display_name
+    from src.local_services import detect_local_services
+
+    with get_session() as s:
+        report = s.exec(
+            _select(IndustryReport).where(IndustryReport.slug == slug)
+        ).first()
+        if not report:
+            raise RuntimeError(f"industry not found: {slug}")
+        brands = list(s.exec(
+            _select(IndustryBrand)
+            .where(IndustryBrand.industry_slug == slug)
+            .order_by(IndustryBrand.rank_in_industry.asc())
+        ))
+        # Pre-touch attributes while session is open (same pattern as the
+        # cached detail route).
+        _ = (
+            report.name, report.slug, report.description, report.parent_category,
+            report.refresh_interval_days, report.last_full_refresh, report.narrative,
+            report.noindex,
+        )
+        for b in brands:
+            _ = (
+                b.brand_name, b.brand_domain, b.visibility_pct, b.citation_pct,
+                b.visibility_score, b.rank_in_industry, b.last_audited,
+                b.top_cited_sources, b.visibility_per_engine, b.top_engine,
+            )
+
+    audited = [b for b in brands if b.last_audited]
+    avg_visibility = sum(b.visibility_pct for b in audited) / len(audited) if audited else 0.0
+    avg_citation = sum(b.citation_pct for b in audited) / len(audited) if audited else 0.0
+    source_counts: dict[str, int] = {}
+    for b in audited:
+        for src in (b.top_cited_sources or []):
+            source_counts[src] = source_counts.get(src, 0) + 1
+    top_category_sources = [
+        s for s, _ in sorted(source_counts.items(), key=lambda kv: -kv[1])[:8]
+    ]
+
+    return {
+        "report": report,
+        "brands": brands,
+        "avg_visibility": avg_visibility,
+        "avg_citation": avg_citation,
+        "top_category_sources": top_category_sources,
+        "audited_count": len(audited),
+        "quick_insights": {
+            "leader": (sorted(audited, key=lambda b: -b.visibility_pct)[:1] or [None])[0],
+            "most_cited_brand": (sorted(audited, key=lambda b: -b.citation_pct)[:1] or [None])[0],
+            "top_source_domain": top_category_sources[0] if top_category_sources else None,
+            "top_source_count": max(source_counts.values()) if source_counts else 0,
+            "visibility_spread": (
+                max(b.visibility_pct for b in audited) - min(b.visibility_pct for b in audited)
+                if len(audited) >= 2 else 0.0
+            ),
+            "zero_visibility_count": sum(1 for b in audited if b.visibility_pct == 0),
+            "zero_visibility_pct": (
+                sum(1 for b in audited if b.visibility_pct == 0) / len(audited) * 100
+                if audited else 0.0
+            ),
+        },
+        "auto_brand_insights": {},
+        "engine_display_name": _engine_display_name(),
+        "local_meta": detect_local_services(
+            slug=report.slug, name=report.name, parent_category=report.parent_category,
+        ),
+        "base_url": SITE_BASE_URL,
+        "user": None,
+        "breadcrumbs": [
+            {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+            {"name": report.name, "path": f"/ai-visibility/{report.slug}"},
+        ],
+        "pdf": True,  # template uses this to drop interactive UI elements
+    }
+
+
+@app.post("/api/industry-pdf-request")
+def api_industry_pdf_request(
+    req: IndustryPDFRequest, request: Request,
+) -> JSONResponse:
+    """Anonymous, email-gated download of the /ai-visibility/{slug} page
+    as a PDF. Stores the lead in IndustryPDFLead (visible in the super-
+    admin /dashboard/admin/pdf-leads view), renders + emails in the
+    background.
+
+    Returns 202 immediately. The PDF arrives via Resend a few seconds later.
+    Lead row gets sent_at OR error stamped when the background work
+    completes — admins can see which leads succeeded/failed.
+
+    Rate-limited per IP (5/hour, 20/day). Rejects obvious disposable
+    email domains. No auth required."""
+    _enforce_pdf_request_rate_limit(request)
+
+    email = (req.email or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(400, "invalid email")
+    domain = email.split("@", 1)[1] if "@" in email else ""
+    if domain in _DISPOSABLE_EMAIL_DOMAINS:
+        raise HTTPException(400, "disposable email addresses are not accepted")
+
+    slug = re.sub(r"[^a-z0-9-]", "", (req.slug or "").strip().lower())
+    if not slug:
+        raise HTTPException(400, "invalid slug")
+
+    # Look up the industry — both to validate the slug exists AND to
+    # capture the human-readable name on the lead row.
+    from sqlmodel import select as _select
+    from src.db import IndustryReport, IndustryPDFLead, get_session
+    try:
+        with get_session() as s:
+            report = s.exec(
+                _select(IndustryReport).where(IndustryReport.slug == slug)
+            ).first()
+            if not report:
+                raise HTTPException(404, "industry not found")
+            lead = IndustryPDFLead(
+                email=email,
+                industry_slug=slug,
+                industry_name=report.name,
+                ip_address=_client_ip(request),
+                user_agent=(request.headers.get("user-agent") or "")[:300],
+                referrer=(request.headers.get("referer") or "")[:500],
+            )
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+            lead_id = lead.id
+            industry_name = report.name
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, f"db error: {type(exc).__name__}: {exc}")
+
+    # Background: render + send. Daemon thread same pattern as the manual
+    # refresh admin endpoint — no need for a real task queue at this volume.
+    import threading as _threading
+    _threading.Thread(
+        target=_render_industry_pdf_background,
+        kwargs={
+            "lead_id": lead_id,
+            "email": email,
+            "slug": slug,
+            "industry_name": industry_name,
+            "base_url": SITE_BASE_URL,
+        },
+        daemon=True,
+    ).start()
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "PDF on its way. Check your inbox in the next minute.",
+            "lead_id": lead_id,
+        },
+        status_code=202,
+    )
+
+
 @app.post("/api/industries/refresh-all")
 def api_industries_refresh_all(request: Request) -> JSONResponse:
     """Queue EVERY industry for immediate cron pickup by bumping

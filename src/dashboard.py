@@ -2892,6 +2892,120 @@ def _industries_admin_render(flash: str = "") -> str:
     )
 
 
+@router.get("/admin/pdf-leads", response_class=HTMLResponse)
+def admin_pdf_leads(request: Request, limit: int = 200):
+    """Super-admin view: all email-gated PDF download requests from
+    /ai-visibility/{slug} pages. Newest first. Shows the lead email,
+    slug, request IP, sent/error status. No edit — read-only lead list."""
+    user = _require_master(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    from src.db import IndustryPDFLead
+    try:
+        limit = max(10, min(int(limit), 1000))
+    except (TypeError, ValueError):
+        limit = 200
+    with get_session() as s:
+        leads = list(s.exec(
+            select(IndustryPDFLead)
+            .order_by(IndustryPDFLead.requested_at.desc())
+            .limit(limit)
+        ))
+
+    # Aggregate counts for the header pill row.
+    total = len(leads)
+    sent = sum(1 for l in leads if l.sent_at is not None)
+    errored = sum(1 for l in leads if l.error)
+    pending = total - sent - errored
+
+    rows_html = []
+    for l in leads:
+        when = l.requested_at.strftime("%Y-%m-%d %H:%M UTC") if l.requested_at else "—"
+        status_cell = (
+            f"<span style='color:#15803d; font-weight:700;'>✓ sent</span> "
+            f"<span style='color:#94a3b8; font-size:11px;'>{l.sent_at.strftime('%H:%M UTC') if l.sent_at else ''}</span>"
+            if l.sent_at else (
+                f"<span style='color:#b91c1c; font-weight:700;' title='{(l.error or '')[:200]}'>✗ error</span>"
+                if l.error else
+                "<span style='color:#a16207; font-weight:700;'>… pending</span>"
+            )
+        )
+        # Truncate error for the row; full text in title= tooltip.
+        ip = l.ip_address or "—"
+        slug_link = (
+            f"<a href='/ai-visibility/{l.industry_slug}' target='_blank' "
+            f"style='color:#2563eb; font-weight:600;'>{l.industry_slug}</a>"
+        )
+        rows_html.append(
+            f"<tr>"
+            f"<td style='font-family:ui-monospace,Menlo,monospace; font-size:12px;'>{when}</td>"
+            f"<td style='font-weight:600;'>{(l.email or '').lower()}</td>"
+            f"<td>{slug_link}</td>"
+            f"<td style='color:#475569;'>{l.industry_name or ''}</td>"
+            f"<td style='font-family:ui-monospace,Menlo,monospace; font-size:11px; color:#94a3b8;'>{ip}</td>"
+            f"<td>{status_cell}</td>"
+            f"</tr>"
+        )
+    rows_block = "\n".join(rows_html) if rows_html else (
+        "<tr><td colspan='6' style='text-align:center; padding:32px; color:#94a3b8;'>"
+        "No PDF download requests yet."
+        "</td></tr>"
+    )
+
+    return HTMLResponse(f"""<!doctype html>
+<html><head>
+<meta charset="utf-8"><title>PDF download leads · admin</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+  body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:#f8fafc; margin:0; padding:32px 20px; color:#0f172a; }}
+  .wrap {{ max-width:1100px; margin:0 auto; }}
+  h1 {{ font-size:28px; letter-spacing:-.02em; margin:0 0 14px; }}
+  .pillrow {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }}
+  .pill {{ padding:5px 11px; border-radius:999px; font-size:12.5px; font-weight:800; }}
+  .p-total {{ background:#eff6ff; color:#1d4ed8; }}
+  .p-sent {{ background:#dcfce7; color:#15803d; }}
+  .p-err {{ background:#fee2e2; color:#b91c1c; }}
+  .p-pending {{ background:#fef3c7; color:#92400e; }}
+  .back {{ color:#64748b; text-decoration:none; font-weight:600; font-size:13px; }}
+  table {{ width:100%; border-collapse:collapse; background:white; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; }}
+  th, td {{ padding:11px 14px; text-align:left; font-size:13.5px; border-bottom:1px solid #f1f5f9; }}
+  th {{ background:#f8fafc; color:#475569; font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:800; }}
+  tr:last-child td {{ border-bottom:none; }}
+  tr:hover td {{ background:#fafbfc; }}
+  .csvhint {{ margin-top:16px; font-size:12px; color:#94a3b8; }}
+  code {{ background:#f1f5f9; padding:2px 6px; border-radius:6px; font-size:12px; }}
+</style>
+</head><body>
+<div class="wrap">
+  <a class="back" href="/dashboard/admin">← back to admin</a>
+  <h1>PDF download leads</h1>
+  <p style="color:#64748b; margin:0 0 14px; font-size:14px;">
+    Email-gated PDF downloads from the public /ai-visibility/{{slug}} pages.
+    Newest first, showing up to {limit}.
+  </p>
+  <div class="pillrow">
+    <span class="pill p-total">{total} total</span>
+    <span class="pill p-sent">{sent} sent</span>
+    <span class="pill p-err">{errored} error</span>
+    <span class="pill p-pending">{pending} pending</span>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Requested</th><th>Email</th><th>Slug</th><th>Industry</th><th>IP</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+{rows_block}
+    </tbody>
+  </table>
+  <p class="csvhint">
+    To export: <code>SELECT * FROM monitor_industry_pdf_lead ORDER BY requested_at DESC;</code>
+    (or wire a CSV download endpoint if you need this regularly).
+  </p>
+</div>
+</body></html>""")
+
+
 @router.get("/admin/industries", response_class=HTMLResponse)
 def admin_industries(request: Request, status: str = "", detail: str = ""):
     user = _require_master(request)

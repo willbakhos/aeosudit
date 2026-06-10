@@ -29,3 +29,15 @@ def render(run_dir: Path, output_filename: str = "report.pdf") -> Path:
     pdf_path = run_dir / output_filename
     HTML(string=html, base_url=str(run_dir)).write_pdf(str(pdf_path))
     return pdf_path
+
+
+def render_html_to_pdf_bytes(html: str, base_url: str | None = None) -> bytes:
+    """Render an HTML string directly to PDF bytes (no disk roundtrip).
+    Used by the /api/industry-pdf-request endpoint to ship the public
+    /ai-visibility/{slug} page as an email attachment. base_url controls
+    how WeasyPrint resolves any relative asset URLs in the HTML (logos,
+    stylesheets) — pass the canonical site URL when rendering a live page."""
+    result = HTML(string=html, base_url=base_url).write_pdf()
+    if result is None:
+        raise RuntimeError("WeasyPrint returned None from write_pdf")
+    return bytes(result)

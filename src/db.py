@@ -339,6 +339,25 @@ class DefinitionalPage(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class IndustryPDFLead(SQLModel, table=True):
+    """One row per email-gated PDF request from /ai-visibility/{slug}.
+    Captures the lead, tracks whether the PDF was actually sent (some can
+    fail — bad email, Resend outage, WeasyPrint render error). Visible in
+    the super-admin /dashboard/admin/pdf-leads view."""
+    __tablename__ = "monitor_industry_pdf_lead"
+
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(index=True)
+    industry_slug: str = Field(index=True)
+    industry_name: str = ""  # captured at request time for display in admin
+    requested_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    ip_address: str = ""
+    user_agent: str = ""
+    sent_at: datetime | None = None       # set when Resend confirms accept
+    error: str | None = None              # set when render OR send fails
+    referrer: str = ""                    # http Referer header at request time
+
+
 class IndustryBrandHistory(SQLModel, table=True):
     """Snapshot of each brand's scores at each refresh. Drives the
     'Movers & Shakers' section on the public page — biggest visibility
