@@ -73,30 +73,71 @@ def _build_prompt(summary: dict[str, Any]) -> str:
         f"You are an AEO (Answer Engine Optimisation) analyst. Below is fresh "
         f"audit data showing how {engine_name} describes and cites the top "
         f"brands in the '{industry}' category. Produce three things, grounded "
-        f"strictly in the data — no fabricated facts, no generic AEO advice:\n\n"
-        "1. 'narrative_paragraphs' — exactly 3 short paragraphs (60–90 words each) "
-        "of OBSERVATIONS about this specific category's AI visibility landscape. "
-        "Reference actual brand names, scores, and patterns from the data. "
-        "Cover (a) who leads and why the gap matters, (b) where visibility "
+        f"strictly in the data. No fabricated facts. No generic AEO advice.\n\n"
+        "STYLE RULES (strict, non-negotiable):\n"
+        "* NEVER use em dashes (U+2014) or en dashes (U+2013). Use commas, "
+        "  parentheses, or rewrite the sentence. This is a hard requirement.\n"
+        "* For numeric ranges, write '60 to 90' or '60-90' with a plain hyphen. "
+        "  Never '60–90'.\n"
+        "* Use simple punctuation: comma, full stop, colon, regular hyphen. "
+        "  No fancy quotes, no ellipsis character, no em/en dashes.\n\n"
+        "1. 'narrative_paragraphs': exactly 3 short paragraphs (60 to 90 words "
+        "each) of OBSERVATIONS about this specific category's AI visibility "
+        "landscape. Reference actual brand names, scores, and patterns from the "
+        "data. Cover (a) who leads and why the gap matters, (b) where visibility "
         "diverges from citation (named vs trusted), (c) which sources/engines "
         "the data suggests the AI is anchoring on. No marketing language, no "
-        "filler — every sentence should be a specific factual observation.\n\n"
-        "2. 'brand_insights' — for the top 5 brands by rank, ONE sentence each "
-        "(20–30 words) explaining their position relative to the others. "
+        "filler. Every sentence should be a specific factual observation.\n\n"
+        "2. 'brand_insights': for the top 5 brands by rank, ONE sentence each "
+        "(20 to 30 words) explaining their position relative to the others. "
         "Reference concrete numbers (their visibility vs the category average, "
         "their citation rate compared to peers, or their top engine if it's an "
         "outlier). No fluff.\n\n"
-        "3. 'faqs' — 4–6 Question/Answer pairs about THIS specific category's "
+        "3. 'faqs': 4 to 6 Question/Answer pairs about THIS specific category's "
         "AI visibility landscape. Questions should be queries a buyer/analyst "
         "might actually ask (\"Who leads AI visibility in [category]?\", "
         "\"What sources does AI cite most for [category] research?\"). Answers "
-        "should be 1–2 sentences grounded in the data.\n\n"
+        "should be 1 to 2 sentences grounded in the data.\n\n"
         "Reply with ONLY a JSON object of shape "
         '{"narrative_paragraphs": [...], "brand_insights": [...], "faqs": [...]}. '
         "Each brand_insight is {rank, brand_name, text}. Each faq is {q, a}. "
-        "No prose, no markdown fences, no commentary — JSON only.\n\n"
+        "No prose, no markdown fences, no commentary. JSON only.\n\n"
         f"AUDIT DATA:\n{json.dumps(summary, indent=2)}\n"
     )
+
+
+# Hard guardrail in case the model ignores the prompt rule. Replaces
+# em/en/horizontal-bar dashes with safe substitutes. Tradeoff: the
+# replacement isn't always grammatically perfect (an em dash often means
+# a clause boundary that ', ' approximates better than ' - '), but the
+# user's stated preference is "never use them" so erring on the side of
+# strip is correct.
+_DASH_REPLACEMENTS = [
+    ("—", ", "),   # em dash
+    ("–", "-"),    # en dash (usually a numeric range — plain hyphen fits)
+    ("―", ", "),   # horizontal bar
+]
+
+
+def _strip_dashes(s: str) -> str:
+    if not isinstance(s, str):
+        return s
+    out = s
+    for needle, repl in _DASH_REPLACEMENTS:
+        out = out.replace(needle, repl)
+    return out
+
+
+def _strip_dashes_deep(obj: Any) -> Any:
+    """Recursively walk a parsed-JSON structure, stripping dashes from any
+    string leaf. Idempotent: safe to run on already-clean data."""
+    if isinstance(obj, str):
+        return _strip_dashes(obj)
+    if isinstance(obj, list):
+        return [_strip_dashes_deep(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _strip_dashes_deep(v) for k, v in obj.items()}
+    return obj
 
 
 def _extract_content(data: dict[str, Any]) -> str:
@@ -216,6 +257,11 @@ def generate(
         return {}
     if not result:
         return {}
+    # Belt-and-suspenders: even with the prompt rule, the model
+    # occasionally slips in an em or en dash. Walk every string leaf
+    # before we shape the output. The user's stated preference is
+    # "never use them" so we strip rather than ask the model again.
+    result = _strip_dashes_deep(result)
     # Normalise shape: keep only the keys we use, drop anything else Claude
     # might add. Validate basic types.
     out = {

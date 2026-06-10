@@ -161,25 +161,54 @@ def _build_prompt(summary: dict[str, Any]) -> str:
         "You are an AEO (Answer Engine Optimisation) strategist. Below is a "
         "summarised audit of how AI answer engines treat a brand. Produce 10 "
         "specific, concrete recommendations that the brand's content + PR team "
-        "could action in the next 30–60 days to improve visibility and "
+        "could action in the next 30 to 60 days to improve visibility and "
         "citations across AI engines.\n\n"
+        "STYLE RULES (strict, non-negotiable):\n"
+        "* NEVER use em dashes (U+2014) or en dashes (U+2013). Use commas, "
+        "  parentheses, or rewrite the sentence. This is a hard requirement.\n"
+        "* For numeric ranges, write '30 to 60' or '30-60' with a plain hyphen. "
+        "  Never '30–60'.\n"
+        "* Use simple punctuation: comma, full stop, colon, regular hyphen.\n\n"
         "Constraints on each recommendation:\n"
-        "- 'title': short and verb-led (e.g. 'Publish a structured FAQ on loan eligibility')\n"
-        "- 'category': one of content / schema / pr_outreach / site_structure / "
+        "* 'title': short and verb-led (e.g. 'Publish a structured FAQ on loan eligibility')\n"
+        "* 'category': one of content / schema / pr_outreach / site_structure / "
         "ground_truth / competitive\n"
-        "- 'priority': high / medium / low — high = directly addresses the biggest visibility gap\n"
-        "- 'problem': 1–2 sentences naming the specific gap from the audit data (cite a query type, "
+        "* 'priority': high / medium / low (high means directly addresses the biggest visibility gap)\n"
+        "* 'problem': 1 to 2 sentences naming the specific gap from the audit data (cite a query type, "
         "engine, or competitor where possible)\n"
-        "- 'action': 2–4 sentences describing exactly what to do\n"
-        "- 'example': REAL example copy/markup the team can adapt — not a "
+        "* 'action': 2 to 4 sentences describing exactly what to do\n"
+        "* 'example': REAL example copy/markup the team can adapt, not a "
         "placeholder. For schema, give actual JSON-LD. For content, write the "
         "actual paragraph or FAQ entry. For PR, name specific publication targets "
         "from the cited-domains list and draft a one-line pitch.\n"
-        "- 'expected_impact': 1 sentence on what should improve and how to measure it\n\n"
-        "Diversify across categories — don't return 10 content recommendations. "
+        "* 'expected_impact': 1 sentence on what should improve and how to measure it\n\n"
+        "Diversify across categories. Do not return 10 content recommendations. "
         "Lead with high-priority items.\n\n"
         f"AUDIT SUMMARY:\n{json.dumps(summary, indent=2)}\n"
     )
+
+
+_DASH_REPLACEMENTS = [
+    ("—", ", "),   # em dash
+    ("–", "-"),    # en dash (usually a numeric range)
+    ("―", ", "),   # horizontal bar
+]
+
+
+def _strip_dashes_deep(obj: Any) -> Any:
+    """Recursively walk a parsed-JSON structure, stripping em/en/horizontal-
+    bar dashes from any string leaf. User preference is "never use them"
+    so we strip rather than ask the model again. Mirrors the same helper
+    in industry_narrative.py."""
+    if isinstance(obj, str):
+        for needle, repl in _DASH_REPLACEMENTS:
+            obj = obj.replace(needle, repl)
+        return obj
+    if isinstance(obj, list):
+        return [_strip_dashes_deep(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _strip_dashes_deep(v) for k, v in obj.items()}
+    return obj
 
 
 def _extract_content(data: dict[str, Any]) -> str:
@@ -354,6 +383,10 @@ def generate(
     summary = _summarise_findings(rows, config)
     try:
         recs = asyncio.run(_call_planner(summary, api_key))
+        # Belt-and-suspenders: strip em/en/horizontal-bar dashes from
+        # every string leaf even though the prompt forbids them. User
+        # preference is "never use them" so we don't trust the model.
+        recs = _strip_dashes_deep(recs)
         print(f"[action_plan] generated {len(recs)} recommendations")
         return recs
     except Exception as exc:  # noqa: BLE001
