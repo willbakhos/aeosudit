@@ -179,7 +179,8 @@
   .pdfm-consent { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
 
   @media print {
-    .actions-row, .pdfm-backdrop, nav, .site-footer, .footer { display: none !important; }
+    .actions-row, .pdfm-backdrop, nav, .site-footer, .footer,
+    .faq-block { display: none !important; }
     body { padding: 0 !important; }
     .ind-hero, .glance-card, .narrative-section { box-shadow: none !important; }
   }
@@ -582,6 +583,11 @@
 </div>
 
 {% if narrative_faqs %}
+{# FAQ block is wrapped in .faq-block so the @media print rule can hide
+   it cleanly. <details>/<summary> renders collapsed in print (just the
+   questions, no answers) which looks broken in the PDF — better to
+   drop it entirely. Web page is unchanged. #}
+<div class="faq-block">
 <h2 id="faq">Frequently asked about {{ report.name|lower }} AI visibility</h2>
 <div style="display:grid; gap:14px; margin-top:14px;">
   {% for f in narrative_faqs %}
@@ -590,6 +596,7 @@
     <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">{{ f.a }}</p>
   </details>
   {% endfor %}
+</div>
 </div>
 {% endif %}
 {% endblock %}
