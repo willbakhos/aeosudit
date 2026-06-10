@@ -2491,6 +2491,41 @@ def api_industry_pdf_request(
     )
 
 
+@app.get("/api/industry-pdf-leads")
+def api_industry_pdf_leads(request: Request, limit: int = 20) -> JSONResponse:
+    """Bearer-gated debug/inspection endpoint — returns the most recent
+    PDF-download lead rows with their sent_at / error status. Lets ops
+    inspect background failures without needing dashboard session auth.
+
+    Auth: Authorization: Bearer <INDUSTRY_API_TOKEN>"""
+    _require_industry_token(request)
+    from sqlmodel import select as _select
+    from src.db import IndustryPDFLead, get_session
+    try:
+        limit = max(1, min(int(limit), 200))
+    except (TypeError, ValueError):
+        limit = 20
+    with get_session() as s:
+        rows = list(s.exec(
+            _select(IndustryPDFLead)
+            .order_by(IndustryPDFLead.requested_at.desc())
+            .limit(limit)
+        ))
+    return JSONResponse({
+        "count": len(rows),
+        "leads": [{
+            "id": r.id,
+            "email": r.email,
+            "industry_slug": r.industry_slug,
+            "industry_name": r.industry_name,
+            "requested_at": r.requested_at.isoformat() + "Z" if r.requested_at else None,
+            "sent_at": r.sent_at.isoformat() + "Z" if r.sent_at else None,
+            "error": r.error,
+            "ip_address": r.ip_address,
+        } for r in rows],
+    })
+
+
 @app.post("/api/industries/refresh-all")
 def api_industries_refresh_all(request: Request) -> JSONResponse:
     """Queue EVERY industry for immediate cron pickup by bumping
