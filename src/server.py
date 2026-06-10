@@ -2286,34 +2286,43 @@ def _render_industry_pdf_background(
     """Render the live page, send the email, update the lead row with
     sent_at / error. Runs in a daemon thread spawned from the request
     handler — never propagates exceptions to the user (they already got
-    a 202)."""
-    from src.db import IndustryPDFLead, get_session
-    from src.pdf import render_html_to_pdf_bytes
-    from src.delivery import send_industry_pdf
+    a 202).
+
+    Every step is logged + every exception path stamps the lead row so
+    operators can debug failures via /api/industry-pdf-leads without
+    needing access to stdout logs."""
+    print(f"[pdf-request] thread start lead={lead_id} slug={slug} email={email}")
     err: str | None = None
     try:
-        # Render the live HTML for the page with a special `pdf=True`
-        # query param the template can use to drop interactive UI bits.
-        page_html = _jinja.get_template("pages/ai_visibility_industry.html.j2").render(
-            **_build_industry_pdf_render_context(slug)
-        )
+        from src.db import IndustryPDFLead, get_session
+        from src.pdf import render_html_to_pdf_bytes
+        from src.delivery import send_industry_pdf
+        print(f"[pdf-request] imports OK lead={lead_id}")
+        ctx = _build_industry_pdf_render_context(slug)
+        print(f"[pdf-request] context built lead={lead_id} brands={len(ctx.get('brands') or [])}")
+        page_html = _jinja.get_template("pages/ai_visibility_industry.html.j2").render(**ctx)
+        print(f"[pdf-request] html rendered lead={lead_id} bytes={len(page_html)}")
         pdf_bytes = render_html_to_pdf_bytes(page_html, base_url=base_url)
+        print(f"[pdf-request] pdf rendered lead={lead_id} bytes={len(pdf_bytes)}")
         industry_url = f"{SITE_BASE_URL}/ai-visibility/{slug}"
         pdf_filename = f"monitoraeo-{slug}-rankings.pdf"
-        send_industry_pdf(
+        resend_resp = send_industry_pdf(
             to_email=email,
             industry_name=industry_name,
             industry_url=industry_url,
             pdf_bytes=pdf_bytes,
             pdf_filename=pdf_filename,
         )
+        print(f"[pdf-request] resend send returned lead={lead_id} resp={resend_resp}")
     except Exception as exc:  # noqa: BLE001
-        err = f"{type(exc).__name__}: {str(exc)[:300]}"
+        err = f"{type(exc).__name__}: {str(exc)[:600]}"
         print(f"[pdf-request] background failure for lead {lead_id}: {err}")
         import traceback
         traceback.print_exc()
-    # Stamp the lead row either way so admin sees the outcome.
+    # Always stamp the lead row — even if err is still None we want to
+    # mark it sent. If the row update itself fails, log loudly.
     try:
+        from src.db import IndustryPDFLead, get_session
         with get_session() as s:
             row = s.get(IndustryPDFLead, lead_id)
             if row:
@@ -2323,8 +2332,56 @@ def _render_industry_pdf_background(
                     row.error = err
                 s.add(row)
                 s.commit()
+                print(f"[pdf-request] lead row stamped lead={lead_id} sent={row.sent_at} error={row.error}")
+            else:
+                print(f"[pdf-request] lead row NOT FOUND lead={lead_id}")
     except Exception as exc:  # noqa: BLE001
-        print(f"[pdf-request] lead row update failed for {lead_id}: {exc}")
+        print(f"[pdf-request] lead row update failed for {lead_id}: {type(exc).__name__}: {exc}")
+        import traceback
+        traceback.print_exc()
+
+
+@app.post("/api/industry-pdf-debug")
+def api_industry_pdf_debug(
+    req: IndustryPDFRequest, request: Request,
+) -> JSONResponse:
+    """Bearer-gated SYNCHRONOUS variant of /api/industry-pdf-request.
+    Runs the entire render+send pipeline inline (60-90s) and returns
+    the result so failures are immediately visible. Used to diagnose
+    why the background-thread version isn't delivering."""
+    _require_industry_token(request)
+    from src.db import IndustryPDFLead, IndustryReport, get_session
+    from sqlmodel import select as _select
+    email = (req.email or "").strip().lower()
+    slug = re.sub(r"[^a-z0-9-]", "", (req.slug or "").strip().lower())
+    if not email or "@" not in email or not slug:
+        raise HTTPException(400, "missing email/slug")
+    with get_session() as s:
+        report = s.exec(_select(IndustryReport).where(IndustryReport.slug == slug)).first()
+        if not report:
+            raise HTTPException(404, "industry not found")
+        lead = IndustryPDFLead(
+            email=email, industry_slug=slug, industry_name=report.name,
+            ip_address=_client_ip(request),
+            user_agent=(request.headers.get("user-agent") or "")[:300],
+            referrer="[debug]",
+        )
+        s.add(lead); s.commit(); s.refresh(lead)
+        lead_id = lead.id
+        industry_name = report.name
+    # Run synchronously — caller will wait the full render+send time.
+    _render_industry_pdf_background(
+        lead_id=lead_id, email=email, slug=slug,
+        industry_name=industry_name, base_url=SITE_BASE_URL,
+    )
+    # Re-read the lead to return final status.
+    with get_session() as s:
+        row = s.get(IndustryPDFLead, lead_id)
+        return JSONResponse({
+            "lead_id": lead_id,
+            "sent_at": row.sent_at.isoformat() + "Z" if (row and row.sent_at) else None,
+            "error": row.error if row else None,
+        })
 
 
 def _build_industry_pdf_render_context(slug: str) -> dict[str, Any]:
