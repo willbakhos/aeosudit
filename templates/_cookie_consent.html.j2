@@ -70,6 +70,10 @@
     .cc-bar .cc-actions { justify-content: stretch; }
     .cc-bar .cc-actions button { flex: 1; }
   }
+  /* Self-suppress in any print render (PDFs from screenshotsys, the
+     browser's Print dialog, future server-side PDF flows). Sitewide —
+     no per-template duplication needed. */
+  @media print { .cc-bar { display: none !important; } }
 </style>
 
 <div id="cookieBar" class="cc-bar" role="dialog" aria-live="polite" aria-label="Cookie consent">
