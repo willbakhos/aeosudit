@@ -1,0 +1,24 @@
+# Keep the built image small + fast — these add no runtime value.
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.DS_Store
+
+# Local-only output / scratch
+output/
+attachments/
+*.egg-info/
+dist/
+build/
+
+# Replaced by Dockerfile — Railway will use Dockerfile when present so
+# Nixpacks artefacts are dead weight in the image.
+nixpacks.toml
+Procfile
