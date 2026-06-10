@@ -1,11 +1,20 @@
-"""HTML → PDF using WeasyPrint. The audit report HTML is already self-contained
-(inline CSS), so we just rasterise it. Embeds the screenshot if present."""
+"""HTML → PDF. Two paths:
+  - render_url_to_pdf_bytes(): goes via our screenshotsys service
+    (Playwright/Chromium on Railway). Used for the email-gated
+    /api/industry-pdf-request flow. Works on Railway.
+  - render() / render_html_to_pdf_bytes(): in-process WeasyPrint. Used
+    only by the paid-audit local report path. BROKEN on Railway today
+    because the base image is missing libgobject — kept as fallback for
+    local dev and any future Railway image that includes Pango.
+
+WeasyPrint is imported LAZILY (inside the function) so just importing
+src.pdf doesn't crash with `cannot load library 'libgobject-2.0-0'`
+on Railway. Critical: render_url_to_pdf_bytes must work even when
+WeasyPrint can't be imported at all."""
 from __future__ import annotations
 
 import base64
 from pathlib import Path
-
-from weasyprint import HTML
 
 
 def _inline_screenshot(html: str, run_dir: Path) -> str:
@@ -21,6 +30,7 @@ def _inline_screenshot(html: str, run_dir: Path) -> str:
 
 def render(run_dir: Path, output_filename: str = "report.pdf") -> Path:
     """Render report.html → report.pdf in the same directory."""
+    from weasyprint import HTML  # lazy: see module docstring
     html_path = run_dir / "report.html"
     if not html_path.exists():
         raise FileNotFoundError(f"No report.html in {run_dir}")
@@ -33,11 +43,9 @@ def render(run_dir: Path, output_filename: str = "report.pdf") -> Path:
 
 def render_html_to_pdf_bytes(html: str, base_url: str | None = None) -> bytes:
     """Render an HTML string directly to PDF bytes (no disk roundtrip).
-    Kept on WeasyPrint for the paid-audit report path which renders a
-    pre-built standalone report.html sitting on disk. Cron / industry
-    pages should call render_url_to_pdf_bytes() instead — it goes via
-    screenshotsys (Playwright) which works on Railway without the
-    libgobject / Pango native-dep mess WeasyPrint hits there."""
+    Uses WeasyPrint — only viable for paid-audit reports rendered locally.
+    For industry-page renders on Railway use render_url_to_pdf_bytes()."""
+    from weasyprint import HTML  # lazy: see module docstring
     result = HTML(string=html, base_url=base_url).write_pdf()
     if result is None:
         raise RuntimeError("WeasyPrint returned None from write_pdf")
