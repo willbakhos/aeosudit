@@ -2295,16 +2295,20 @@ def _render_industry_pdf_background(
     err: str | None = None
     try:
         from src.db import IndustryPDFLead, get_session
-        from src.pdf import render_html_to_pdf_bytes
+        from src.pdf import render_url_to_pdf_bytes
         from src.delivery import send_industry_pdf
         print(f"[pdf-request] imports OK lead={lead_id}")
-        ctx = _build_industry_pdf_render_context(slug)
-        print(f"[pdf-request] context built lead={lead_id} brands={len(ctx.get('brands') or [])}")
-        page_html = _jinja.get_template("pages/ai_visibility_industry.html.j2").render(**ctx)
-        print(f"[pdf-request] html rendered lead={lead_id} bytes={len(page_html)}")
-        pdf_bytes = render_html_to_pdf_bytes(page_html, base_url=base_url)
-        print(f"[pdf-request] pdf rendered lead={lead_id} bytes={len(pdf_bytes)}")
+        # Render the LIVE page via screenshotsys (Playwright/Chromium on
+        # Railway). Was in-process WeasyPrint but Railway's image is
+        # missing libgobject — see commit history for the journey. The
+        # `pdf=True` template flag we wrote earlier is now redundant on
+        # this path (screenshotsys renders the real public URL exactly
+        # as visitors see it). Kept the flag in place for any future
+        # path that wants the stripped-down render.
         industry_url = f"{SITE_BASE_URL}/ai-visibility/{slug}"
+        print(f"[pdf-request] rendering url={industry_url} lead={lead_id}")
+        pdf_bytes = render_url_to_pdf_bytes(industry_url, format="A4", margin_px=24)
+        print(f"[pdf-request] pdf rendered lead={lead_id} bytes={len(pdf_bytes)}")
         pdf_filename = f"monitoraeo-{slug}-rankings.pdf"
         resend_resp = send_industry_pdf(
             to_email=email,

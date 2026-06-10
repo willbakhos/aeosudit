@@ -33,11 +33,66 @@ def render(run_dir: Path, output_filename: str = "report.pdf") -> Path:
 
 def render_html_to_pdf_bytes(html: str, base_url: str | None = None) -> bytes:
     """Render an HTML string directly to PDF bytes (no disk roundtrip).
-    Used by the /api/industry-pdf-request endpoint to ship the public
-    /ai-visibility/{slug} page as an email attachment. base_url controls
-    how WeasyPrint resolves any relative asset URLs in the HTML (logos,
-    stylesheets) — pass the canonical site URL when rendering a live page."""
+    Kept on WeasyPrint for the paid-audit report path which renders a
+    pre-built standalone report.html sitting on disk. Cron / industry
+    pages should call render_url_to_pdf_bytes() instead — it goes via
+    screenshotsys (Playwright) which works on Railway without the
+    libgobject / Pango native-dep mess WeasyPrint hits there."""
     result = HTML(string=html, base_url=base_url).write_pdf()
     if result is None:
         raise RuntimeError("WeasyPrint returned None from write_pdf")
     return bytes(result)
+
+
+def render_url_to_pdf_bytes(
+    url: str,
+    *,
+    format: str = "A4",
+    landscape: bool = False,
+    margin_px: int = 20,
+    timeout_sec: float = 90.0,
+) -> bytes:
+    """Render a live URL to PDF bytes via our self-hosted screenshotsys
+    service (Playwright/Chromium on Railway). Used by the email-gated
+    /api/industry-pdf-request flow — works around the missing-libgobject
+    issue that breaks WeasyPrint in Railway's Python image.
+
+    The screenshotsys instance is the same one src/screenshot.py uses
+    for site screenshots — reads SCREENSHOT_API_URL + SCREENSHOT_API_TOKEN
+    from env. Raises RuntimeError when either is unset OR when the
+    upstream returns non-2xx (the caller's outer try/except stamps the
+    failure onto the IndustryPDFLead row)."""
+    import os
+    import httpx
+
+    base = os.environ.get("SCREENSHOT_API_URL", "").strip().rstrip("/")
+    token = os.environ.get("SCREENSHOT_API_TOKEN", "").strip()
+    if not base or not token:
+        raise RuntimeError(
+            "SCREENSHOT_API_URL / SCREENSHOT_API_TOKEN are not set — "
+            "PDF rendering needs the screenshotsys service"
+        )
+
+    params: dict[str, str] = {
+        "url": url,
+        "format": format,
+        "margin": str(int(margin_px)),
+    }
+    if landscape:
+        params["landscape"] = "1"
+
+    with httpx.Client(timeout=timeout_sec, follow_redirects=True) as client:
+        resp = client.get(
+            f"{base}/pdf",
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    if resp.status_code >= 400:
+        # Trim the body so massive HTML error pages don't blow up the
+        # IndustryPDFLead.error column (varchar — we slice to 300 chars
+        # on the caller side, but be defensive).
+        snippet = resp.text[:400].replace("\n", " ")
+        raise RuntimeError(
+            f"screenshotsys /pdf returned HTTP {resp.status_code}: {snippet}"
+        )
+    return resp.content
