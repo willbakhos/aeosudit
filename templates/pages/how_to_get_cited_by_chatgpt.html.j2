@@ -1,5 +1,5 @@
 {% extends "_layout.html.j2" %}
-{% set canonical_path = "/how-to-get-cited-by-chatgpt" %}
+{% set canonical_path = "/guides/how-to-get-cited-by-chatgpt" %}
 {% set page_description = "How to get cited by ChatGPT search: 8 concrete steps covering robots.txt, schema, content shape, third-party mentions and llms.txt — plus what ChatGPT citations actually are." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = '2026-06-08T00:00:00Z' %}
@@ -178,9 +178,23 @@
   }
   .related-cards a:hover { border-color: var(--blue); }
   @media (max-width: 820px) { .related-cards { grid-template-columns: 1fr; } }
+
+  /* Table of contents — sticky sidebar on wide screens, inline on narrow.
+     Built client-side by scraping h2[id] from the rendered content so any
+     new heading added below auto-appears in the TOC. */
+  .guide-layout { display: grid; grid-template-columns: 1fr 240px; gap: 38px; align-items: start; }
+  .guide-toc { position: sticky; top: 24px; padding: 18px 16px; border-radius: 14px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); font-size: 13.5px; }
+  .guide-toc h3 { margin: 0 0 10px; font-size: 11.5px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .guide-toc ol { list-style: none; padding: 0; margin: 0; counter-reset: tocstep; }
+  .guide-toc li { counter-increment: tocstep; margin: 0 0 6px; line-height: 1.4; }
+  .guide-toc li a { display: block; padding: 5px 8px; border-radius: 7px; color: var(--ink); text-decoration: none; font-weight: 600; }
+  .guide-toc li a:hover, .guide-toc li a.active { background: #eff6ff; color: var(--blue); }
+  @media (max-width: 1024px) { .guide-layout { grid-template-columns: 1fr; } .guide-toc { position: static; margin: 0 0 24px; } }
 {% endblock %}
 
 {% block content %}
+<div class="guide-layout">
+<div>
 <span class="eyebrow">Guide · ChatGPT Search</span>
 <h1 class="page-title">How to get cited by ChatGPT search: a practical playbook</h1>
 
@@ -256,9 +270,52 @@
 
 <h2>Related guides</h2>
 <div class="related-cards">
-  <a href="/glossary/how-chatgpt-chooses-citations">How ChatGPT chooses citations — deeper technical breakdown</a>
-  <a href="/what-is-ai-mode">What is AI Mode — the conversational AI search surface</a>
-  <a href="/aeo-vs-seo">AEO vs SEO — what's different and what carries over</a>
+  <a href="/glossary/how-chatgpt-chooses-citations">How ChatGPT chooses citations: deeper technical breakdown</a>
+  <a href="/what-is-ai-mode">What is AI Mode: the conversational AI search surface</a>
+  <a href="/aeo-vs-seo">AEO vs SEO: what's different and what carries over</a>
   <a href="/product/audit">Run a paid ChatGPT citation audit</a>
 </div>
+</div><!-- /guide-main -->
+
+<aside class="guide-toc" id="guideToc" aria-label="On this page">
+  <h3>On this page</h3>
+  <ol id="guideTocList"></ol>
+</aside>
+</div><!-- /guide-layout -->
+
+<script>
+(function(){
+  var list = document.getElementById('guideTocList');
+  if (!list) return;
+  // Build TOC from every h2 inside the main content (excluding the
+  // sidebar's own h3). Auto-IDs added for any h2 missing one.
+  var headings = Array.prototype.slice.call(document.querySelectorAll('.guide-layout > div > h2'));
+  if (!headings.length) { document.getElementById('guideToc').style.display = 'none'; return; }
+  var entries = [];
+  headings.forEach(function(h, i){
+    if (!h.id) {
+      h.id = 'sec-' + (h.textContent || ('section-' + i))
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    }
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    li.appendChild(a);
+    list.appendChild(li);
+    entries.push({h: h, a: a});
+  });
+  // Highlight the active section as the user scrolls
+  function onScroll(){
+    var y = window.scrollY + 120;
+    var active = entries[0];
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].h.offsetTop <= y) active = entries[i];
+    }
+    entries.forEach(function(e){ e.a.classList.toggle('active', e === active); });
+  }
+  window.addEventListener('scroll', onScroll, {passive: true});
+  onScroll();
+})();
+</script>
 {% endblock %}

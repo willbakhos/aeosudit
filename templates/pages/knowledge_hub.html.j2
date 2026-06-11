@@ -1,0 +1,161 @@
+{% extends "_layout.html.j2" %}
+{% set canonical_path = "/knowledge" %}
+{% set page_description = "monitoraeo knowledge base: AEO + GEO glossary (" ~ total_glossary ~ " terms) and pillar guides, sectioned + searchable. The reference for AI search visibility." %}
+{% set page_og_type = 'website' %}
+{% block title %}Knowledge base: AEO + GEO glossary and guides | monitoraeo{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "@id": "{{ _canonical }}#page",
+  "name": "monitoraeo knowledge base",
+  "description": "{{ page_description }}",
+  "url": "{{ _canonical }}",
+  "publisher": {"@id": "{{ _base_url }}/#org"},
+  "inLanguage": "en",
+  "hasPart": [
+    {%- for slug, items in sections %}{% for it in items %}
+    {"@type": "DefinedTerm", "name": {{ it.name|tojson }}, "url": "{{ _base_url }}/glossary/{{ it.slug }}", "description": {{ it.short_definition|tojson }}}{% if not loop.last %},{% endif %}
+    {%- endfor %}{% if not loop.last %},{% endif %}{% endfor %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+  .kb-hero { padding: 32px; border-radius: 24px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); margin-bottom: 24px; }
+  .kb-hero h1 { margin: 6px 0 10px; font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; }
+  .kb-hero .lede { color: var(--muted); margin: 0 0 18px; font-size: 15.5px; max-width: 720px; line-height: 1.6; }
+  .kb-counts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .kb-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: rgba(37,99,235,.08); color: var(--blue); font-size: 12px; font-weight: 800; }
+
+  .kb-search { position: relative; margin: 18px 0 24px; }
+  .kb-search input {
+    width: 100%; padding: 14px 16px 14px 44px; border-radius: 14px;
+    border: 1.5px solid var(--line); font-size: 15.5px; box-sizing: border-box;
+    font-family: inherit;
+  }
+  .kb-search input:focus { outline: none; border-color: var(--blue); }
+  .kb-search .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--muted); }
+  .kb-search .clear { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; display: none; }
+  .kb-search.has-text .clear { display: inline-block; }
+
+  .kb-section { margin: 30px 0 18px; }
+  .kb-section h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.02em; }
+  .kb-section .label { color: var(--muted); font-size: 13px; }
+
+  .kb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 720px) { .kb-grid { grid-template-columns: 1fr; } }
+
+  .kb-card { padding: 18px 20px; border-radius: 16px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); transition: border-color .15s; }
+  .kb-card:hover { border-color: var(--blue); }
+  .kb-card a { color: inherit; text-decoration: none; }
+  .kb-card .kind { display: inline-block; font-size: 10.5px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; background: #eff6ff; color: var(--blue); margin-bottom: 8px; }
+  .kb-card .kind.guide { background: #f5f3ff; color: var(--purple); }
+  .kb-card h3 { margin: 0 0 6px; font-size: 16.5px; letter-spacing: -.01em; line-height: 1.3; }
+  .kb-card p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+
+  .kb-no-results { padding: 28px; text-align: center; color: var(--muted); border-radius: 14px; background: white; border: 1px solid var(--line); display: none; }
+  .kb-no-results.show { display: block; }
+{% endblock %}
+
+{% block content %}
+<section class="kb-hero">
+  <span class="eyebrow">Knowledge base</span>
+  <h1>The AEO + GEO knowledge base</h1>
+  <p class="lede">Every term, metric, engine quirk and tactical playbook we've documented across <strong>{{ total_glossary }} glossary entries</strong> and <strong>{{ total_guides }} pillar guide{{ '' if total_guides == 1 else 's' }}</strong>. Search the lot or browse by section.</p>
+  <div class="kb-counts">
+    <span class="kb-pill">{{ total_glossary }} glossary entries</span>
+    <span class="kb-pill">{{ total_guides }} guide{{ '' if total_guides == 1 else 's' }}</span>
+    <span class="kb-pill">Updated regularly</span>
+  </div>
+</section>
+
+<div class="kb-search" id="kbSearch">
+  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+  <input type="search" id="kbSearchInput" placeholder="Search terms, metrics, engines, guides…" aria-label="Search the knowledge base" autocomplete="off">
+  <button type="button" class="clear" id="kbSearchClear" aria-label="Clear search">×</button>
+</div>
+
+<div id="kbResults" class="kb-no-results">No results. Try a different term, or <a href="/glossary">browse the full glossary</a>.</div>
+
+{% if guides %}
+<section class="kb-section" data-kb-section="Guides">
+  <h2>Guides</h2>
+  <p class="label">Pillar pages: practical playbooks longer than a glossary definition.</p>
+  <div class="kb-grid">
+    {% for g in guides %}
+    <article class="kb-card" data-kb-kind="guide" data-kb-title="{{ g.title|lower }}" data-kb-snippet="{{ g.summary|lower }}" data-kb-kw="{{ (g.target_kw or '')|lower }}">
+      <a href="/guides/{{ g.slug }}">
+        <span class="kind guide">Guide</span>
+        <h3>{{ g.title }}</h3>
+        <p>{{ g.summary }}</p>
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% for section_name, items in sections %}
+<section class="kb-section" data-kb-section="{{ section_name }}">
+  <h2>{{ section_name }}</h2>
+  <p class="label">{{ items|length }} term{{ '' if items|length == 1 else 's' }}</p>
+  <div class="kb-grid">
+    {% for it in items %}
+    <article class="kb-card" data-kb-kind="glossary" data-kb-title="{{ it.name|lower }}" data-kb-snippet="{{ it.short_definition|lower }}" data-kb-kw="{{ (it.short_definition or '')|lower }}">
+      <a href="/glossary/{{ it.slug }}">
+        <span class="kind">Glossary</span>
+        <h3>{{ it.name }}</h3>
+        <p>{{ it.short_definition }}</p>
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<script>
+(function(){
+  var input = document.getElementById('kbSearchInput');
+  var wrap = document.getElementById('kbSearch');
+  var clearBtn = document.getElementById('kbSearchClear');
+  var noResults = document.getElementById('kbResults');
+  if (!input) return;
+  var cards = Array.prototype.slice.call(document.querySelectorAll('[data-kb-title]'));
+  var sections = Array.prototype.slice.call(document.querySelectorAll('[data-kb-section]'));
+  function applyFilter(q){
+    q = (q || '').trim().toLowerCase();
+    wrap.classList.toggle('has-text', q.length > 0);
+    var anyVisible = false;
+    cards.forEach(function(c){
+      if (!q) { c.style.display = ''; anyVisible = true; return; }
+      var hay = (c.dataset.kbTitle || '') + ' ' + (c.dataset.kbSnippet || '') + ' ' + (c.dataset.kbKw || '');
+      var match = hay.indexOf(q) >= 0;
+      c.style.display = match ? '' : 'none';
+      if (match) anyVisible = true;
+    });
+    // Hide sections that have no visible cards
+    sections.forEach(function(sec){
+      var visibleCards = Array.prototype.slice.call(sec.querySelectorAll('[data-kb-title]'))
+        .filter(function(c){ return c.style.display !== 'none'; });
+      sec.style.display = visibleCards.length ? '' : 'none';
+    });
+    noResults.classList.toggle('show', q.length > 0 && !anyVisible);
+  }
+  input.addEventListener('input', function(){ applyFilter(input.value); });
+  if (clearBtn) clearBtn.addEventListener('click', function(){
+    input.value = ''; applyFilter(''); input.focus();
+  });
+  // Esc clears + blurs
+  input.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') { input.value = ''; applyFilter(''); input.blur(); }
+  });
+  // ?q= deep links
+  var initQ = new URLSearchParams(window.location.search).get('q');
+  if (initQ) { input.value = initQ; applyFilter(initQ); }
+})();
+</script>
+{% endblock %}

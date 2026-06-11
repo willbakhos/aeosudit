@@ -263,9 +263,15 @@ SITEMAP_PAGES: list[tuple[str, str, str]] = [
     ("/what-is-ai-overview", "monthly", "0.8"),
     ("/what-is-ai-mode", "monthly", "0.8"),
     ("/what-is-llms-txt", "monthly", "0.8"),
-    ("/how-to-get-cited-by-chatgpt", "monthly", "0.8"),
+    # Pillar guide URL — moved from /how-to-get-cited-by-chatgpt 2026-06-11.
+    # Old URL serves a 301 (see redirect_how_to_get_cited_legacy) and is
+    # intentionally excluded from the sitemap so crawlers focus on canonical.
+    ("/guides/how-to-get-cited-by-chatgpt", "monthly", "0.8"),
     ("/answer-engine-optimization-checklist", "monthly", "0.8"),
     ("/aeo-tools", "monthly", "0.8"),
+    # Knowledge base hub + guides index — surfaces glossary + guides.
+    ("/knowledge", "weekly", "0.8"),
+    ("/guides", "weekly", "0.7"),
     ("/glossary", "monthly", "0.7"),
     ("/ai-visibility", "weekly", "0.9"),
     ("/ai-visibility/methodology", "monthly", "0.6"),
@@ -329,7 +335,9 @@ hallucination risk per engine, and produces a prioritised action plan.
 - [AEO vs SEO]({SITE_BASE_URL}/aeo-vs-seo): Where traditional SEO ends (ranking blue links) and AEO begins (winning the synthesised answer).
 - [AEO checklist]({SITE_BASE_URL}/answer-engine-optimization-checklist): The prioritised 20-item list for getting your brand named, cited and recommended by AI engines.
 - [AEO tools comparison]({SITE_BASE_URL}/aeo-tools): Honest comparison of the AEO tooling landscape — monitoraeo, Otterly.ai, Profound, Athena, Goodie and others.
-- [How to get cited by ChatGPT]({SITE_BASE_URL}/how-to-get-cited-by-chatgpt): Eight-step practical playbook covering robots.txt, schema, content shape, third-party mentions and llms.txt for getting your domain into ChatGPT search citations.
+- [How to get cited by ChatGPT]({SITE_BASE_URL}/guides/how-to-get-cited-by-chatgpt): Eight-step practical playbook covering robots.txt, schema, content shape, third-party mentions and llms.txt for getting your domain into ChatGPT search citations.
+- [Knowledge base]({SITE_BASE_URL}/knowledge): Hub for the full glossary (~25 terms) plus pillar guides. Search box, sectioned by Concepts / Engines / Metrics / Tactics / Google AI surfaces.
+- [Guides index]({SITE_BASE_URL}/guides): Longer-form pillar pages on how to win AI visibility — currently the ChatGPT-citation playbook, more coming.
 - [Glossary]({SITE_BASE_URL}/glossary): Every AI search term defined — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice, brand hallucination and more.
 
 ## Industry rankings
@@ -507,15 +515,137 @@ def page_what_is_llms_txt(request: Request) -> HTMLResponse:
     )
 
 
-@app.get("/how-to-get-cited-by-chatgpt", response_class=HTMLResponse)
-def page_how_to_get_cited_by_chatgpt(request: Request) -> HTMLResponse:
+# /how-to-get-cited-by-chatgpt moved to /guides/how-to-get-cited-by-chatgpt
+# on 2026-06-11 as part of the Option C knowledge-base restructure. 301
+# preserves the link equity for the ~84 monthly impressions the old URL
+# had built up. Sitemap + llms.txt list only the new URL.
+@app.get("/how-to-get-cited-by-chatgpt", include_in_schema=False)
+def redirect_how_to_get_cited_legacy() -> RedirectResponse:
+    return RedirectResponse(
+        url="/guides/how-to-get-cited-by-chatgpt", status_code=301,
+    )
+
+
+@app.get("/guides/how-to-get-cited-by-chatgpt", response_class=HTMLResponse)
+def page_guide_how_to_get_cited_by_chatgpt(request: Request) -> HTMLResponse:
     return _render(
         "how_to_get_cited_by_chatgpt.html.j2", request=request,
         breadcrumbs=[
-            {"name": "Guides", "path": "/glossary"},
-            {"name": "How to get cited by ChatGPT", "path": "/how-to-get-cited-by-chatgpt"},
+            {"name": "Knowledge", "path": "/knowledge"},
+            {"name": "Guides", "path": "/guides"},
+            {"name": "How to get cited by ChatGPT", "path": "/guides/how-to-get-cited-by-chatgpt"},
         ],
     )
+
+
+# ───── Knowledge base structure ─────────────────────────────────────────
+# Hub at /knowledge surfaces both:
+#   - Glossary entries (short definitional pages, ~24 today)
+#   - Guides (longer pillar pages, 1 today)
+# Each subsection has its own list page (/glossary, /guides).
+# This is the Option C hybrid: existing /glossary/{slug} URLs unchanged;
+# only the /how-to-get-cited-by-chatgpt pillar moved to /guides/{slug}.
+
+# Manually-defined guide registry. Add a new pillar page by appending here.
+# Each entry surfaces on /knowledge, /guides, and the search index.
+_GUIDES: list[dict[str, str]] = [
+    {
+        "slug": "how-to-get-cited-by-chatgpt",
+        "title": "How to get cited by ChatGPT search: a practical playbook",
+        "summary": "Eight-step playbook covering robots.txt, schema, content shape, third-party mentions and llms.txt for getting your domain into ChatGPT search citations.",
+        "target_kw": "how to get cited by chatgpt",
+        "minutes_read": 9,
+    },
+]
+
+
+@app.get("/guides", response_class=HTMLResponse)
+def page_guides_index(request: Request) -> HTMLResponse:
+    """List page for all pillar guides. Currently shows the single
+    ChatGPT-citation playbook; future additions auto-surface via _GUIDES."""
+    return _render(
+        "knowledge_guides_index.html.j2", request=request,
+        guides=_GUIDES,
+        breadcrumbs=[
+            {"name": "Knowledge", "path": "/knowledge"},
+            {"name": "Guides", "path": "/guides"},
+        ],
+    )
+
+
+@app.get("/knowledge", response_class=HTMLResponse)
+def page_knowledge_hub(request: Request) -> HTMLResponse:
+    """Knowledge-base hub. Lists every glossary entry (grouped by section)
+    and every pillar guide on one page with a client-side search box.
+    No new URLs vs /glossary + /guides; this is just the front door."""
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    glossary_by_section: dict[str, list[dict[str, Any]]] = {}
+    try:
+        with get_session() as s:
+            rows = list(s.exec(
+                _select(DefinitionalPage).order_by(DefinitionalPage.name)
+            ))
+            for r in rows:
+                glossary_by_section.setdefault(
+                    r.parent_section or "Concepts", []
+                ).append({
+                    "slug": r.slug,
+                    "name": r.name,
+                    "short_definition": (r.short_definition or "")[:200],
+                })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[knowledge] DB error: {type(exc).__name__}: {exc}")
+    # Canonical section order (matches the taxonomy comment in src/db.py)
+    section_order = ["Concepts", "Engines", "Metrics", "Tactics", "Google AI surfaces"]
+    ordered_sections = [
+        (s, glossary_by_section[s])
+        for s in section_order if s in glossary_by_section
+    ]
+    return _render(
+        "knowledge_hub.html.j2", request=request,
+        sections=ordered_sections,
+        guides=_GUIDES,
+        total_glossary=sum(len(v) for v in glossary_by_section.values()),
+        total_guides=len(_GUIDES),
+        breadcrumbs=[{"name": "Knowledge", "path": "/knowledge"}],
+    )
+
+
+@app.get("/api/knowledge-search.json", include_in_schema=False)
+def api_knowledge_search() -> JSONResponse:
+    """Pre-built search index used by /knowledge's client-side fuzzy filter.
+    Returns every glossary entry + every guide as a flat list of
+    {kind, url, title, snippet, kw} dicts. Cheap (~25 entries today)."""
+    from sqlmodel import select as _select
+    from src.db import DefinitionalPage, get_session
+    items: list[dict[str, str]] = []
+    try:
+        with get_session() as s:
+            for r in s.exec(_select(DefinitionalPage)):
+                items.append({
+                    "kind": "glossary",
+                    "url": f"/glossary/{r.slug}",
+                    "title": r.name,
+                    "snippet": (r.short_definition or "")[:240],
+                    "kw": (
+                        (r.target_kw or "") + " "
+                        + " ".join(r.alternate_names or [])
+                    ).lower(),
+                    "section": r.parent_section or "Concepts",
+                })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[knowledge-search] DB error: {type(exc).__name__}: {exc}")
+    for g in _GUIDES:
+        items.append({
+            "kind": "guide",
+            "url": f"/guides/{g['slug']}",
+            "title": g["title"],
+            "snippet": g["summary"],
+            "kw": (g.get("target_kw") or "").lower(),
+            "section": "Guides",
+        })
+    return JSONResponse({"items": items})
 
 
 @app.get("/answer-engine-optimization-checklist", response_class=HTMLResponse)
@@ -568,14 +698,41 @@ def page_glossary(request: Request) -> HTMLResponse:
 @app.get("/glossary/{slug}", response_class=HTMLResponse)
 def page_glossary_entry(slug: str, request: Request) -> HTMLResponse:
     """One DB-backed glossary entry. 404s on unknown slug so invented URLs
-    don't render thin pages Google would index."""
+    don't render thin pages Google would index. Enriches related_slugs
+    with the target entry's name + short_definition so the template can
+    render a richer 'related concepts' card panel instead of a bullet list."""
     from sqlmodel import select as _select
     from src.db import DefinitionalPage, get_session
+    related: list[dict[str, str]] = []
     try:
         with get_session() as s:
             page = s.exec(_select(DefinitionalPage).where(DefinitionalPage.slug == slug)).first()
             if not page:
                 raise HTTPException(404, "Glossary entry not found")
+            # Resolve each related slug:
+            #   - "/glossary/{x}" or "x" -> DB lookup for name + short_definition
+            #   - "/anything-else"        -> labelled link only, no description
+            for s_or_url in (page.related_slugs or []):
+                if not isinstance(s_or_url, str):
+                    continue
+                if s_or_url.startswith("/glossary/") or not s_or_url.startswith("/"):
+                    target_slug = s_or_url.removeprefix("/glossary/").lstrip("/")
+                    target = s.exec(
+                        _select(DefinitionalPage).where(DefinitionalPage.slug == target_slug)
+                    ).first()
+                    if target:
+                        related.append({
+                            "url": f"/glossary/{target.slug}",
+                            "name": target.name,
+                            "description": (target.short_definition or "")[:200],
+                            "kind": "glossary",
+                        })
+                        continue
+                # Non-glossary URL — best-effort label from the path
+                label = s_or_url.lstrip("/").replace("/", " ").replace("-", " ").title()
+                related.append({
+                    "url": s_or_url, "name": label, "description": "", "kind": "page",
+                })
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -584,7 +741,9 @@ def page_glossary_entry(slug: str, request: Request) -> HTMLResponse:
     return _render(
         "definitional_page.html.j2", request=request,
         page=page,
+        related=related,
         breadcrumbs=[
+            {"name": "Knowledge", "path": "/knowledge"},
             {"name": "Glossary", "path": "/glossary"},
             {"name": page.name, "path": f"/glossary/{page.slug}"},
         ],

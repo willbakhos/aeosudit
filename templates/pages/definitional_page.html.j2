@@ -96,18 +96,27 @@
   <a href="/glossary" class="btn-secondary">Back to glossary</a>
 </div>
 
-{% if page.related_slugs %}
+{% if related %}
 <h2>Related concepts</h2>
-<ul class="bullets">
-  {% for slug_or_url in page.related_slugs %}
-    {# Allow either a bare slug ("what-is-aeo") for known root URLs OR an
-       absolute path ("/what-is-aeo", "/glossary/share-of-voice"). Bare slugs
-       default to /glossary/{slug} since custom-page URLs are individually
-       hardcoded in routes anyway. #}
-    {% set link = slug_or_url if slug_or_url.startswith('/') else ('/glossary/' ~ slug_or_url) %}
-    <li><a href="{{ link }}">{{ slug_or_url.replace('/glossary/', '').replace('/', '').replace('-', ' ').title() }}</a></li>
+<div class="related-articles">
+  {% for r in related %}
+  <a class="related-card" href="{{ r.url }}">
+    <span class="kind {{ r.kind }}">{{ 'Glossary' if r.kind == 'glossary' else 'Page' }}</span>
+    <h3>{{ r.name }}</h3>
+    {% if r.description %}<p>{{ r.description }}</p>{% endif %}
+  </a>
   {% endfor %}
-</ul>
+</div>
+<style>
+  .related-articles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0 30px; }
+  @media (max-width: 720px) { .related-articles { grid-template-columns: 1fr; } }
+  .related-card { display: block; padding: 16px 18px; border-radius: 14px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); text-decoration: none; color: inherit; transition: border-color .15s; }
+  .related-card:hover { border-color: var(--blue); }
+  .related-card .kind { display: inline-block; font-size: 10.5px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; background: #eff6ff; color: var(--blue); margin-bottom: 8px; }
+  .related-card .kind.page { background: #f1f5f9; color: var(--ink-2); }
+  .related-card h3 { margin: 0 0 6px; font-size: 15.5px; letter-spacing: -.01em; line-height: 1.35; }
+  .related-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+</style>
 {% endif %}
 
 {% if page.faqs %}
