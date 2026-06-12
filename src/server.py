@@ -1841,6 +1841,16 @@ def submit_preview_get(
     attribution ONLY fires on this initial /preview hit — normal landing
     visits, manual /preview submissions and direct navigation are never
     attributed to email/outreach."""
+    # If neither a shortlink nor a real domain was supplied, this is
+    # either a stray crawl (old industry-page CTA used to link here
+    # with only ?c=... and no domain — Search Console flagged 32 5xx
+    # URLs in June 2026) or a bookmarked URL with bad params. Redirect
+    # to the homepage preview form instead of 400'ing. The category
+    # query param is dropped because the homepage form doesn't read it.
+    has_shortlink = bool(d) and _resolve_teaser_shortlink(d) is not None
+    if not has_shortlink and not (d or domain):
+        return RedirectResponse(url="/#preview", status_code=302)
+
     _enforce_preview_rate_limit(request)
     resolved_domain = d
     resolved_brand = b

@@ -622,7 +622,13 @@
 <p>The brands above were curated from public market-leader lists. Want the same measurement against your own brand — including the queries you appear on, which competitors get named instead, and a prioritised fix list? Run a free preview.</p>
 
 <div style="display:flex; gap:14px; margin-top: 14px; flex-wrap:wrap;">
-  <a href="/preview?c={{ report.name|urlencode }}" class="btn-primary">Audit your {{ report.name|lower }} brand →</a>
+  {# Was href="/preview?c={category}" but Googlebot was following these
+     and hitting the run-execution endpoint without a domain, returning
+     5xx — Search Console reported 32 affected URLs. Point at the
+     homepage preview form anchor instead so visitors land on the form
+     where they type their own domain + brand. nofollow as belt-and-
+     suspenders if Google ever revisits a cached version of the URL. #}
+  <a href="/#preview" rel="nofollow" class="btn-primary">Audit your {{ report.name|lower }} brand →</a>
   <a href="/ai-visibility" class="btn-secondary">Browse all rankings</a>
   <a href="/ai-visibility/methodology" class="btn-secondary">Methodology →</a>
 </div>
