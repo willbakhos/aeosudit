@@ -1,7 +1,14 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility/" ~ report.slug %}
 {% set _engine_name = engine_display_name or "Google AI" %}
-{% set page_description = "Top " ~ (brands|length) ~ " " ~ report.name ~ " brands ranked by AI search visibility across " ~ _engine_name ~ ". Composite score = 70% visibility + 30% citation rate. Refreshed monthly." %}
+{# Title + description target AEO buyers and the brands themselves rather
+   than commercial shoppers (who'd never convert to monitoraeo customers
+   anyway, and dilute CTR by mismatched intent). Was "Top N {category}
+   by AI search visibility" — that read like a G2 listicle and pulled
+   in the wrong audience. New framing leads with "AI search visibility
+   ranking", which monitoraeo can actually own in SERPs against the
+   handful of other AEO sites. #}
+{% set page_description = "How AI search engines rank " ~ report.name|lower ~ " by visibility and citations. " ~ (brands|length) ~ " brands measured across " ~ _engine_name ~ ", refreshed monthly. Composite score: 70% visibility + 30% citation rate." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
@@ -25,7 +32,7 @@
    raw scores so the page never reads bare. #}
 {% set insight_by_brand = dict(auto_brand_insights or {}) %}
 {% for bi in brand_insights %}{% set _ = insight_by_brand.update({bi.brand_name|lower: bi.text}) %}{% endfor %}
-{% block title %}Top {{ brands|length }} {{ report.name }} by AI search visibility (2026) | monitoraeo{% endblock %}
+{% block title %}{{ report.name }}: AI search visibility ranking (2026) | monitoraeo{% endblock %}
 
 {% block schema %}
 <script type="application/ld+json">
@@ -35,8 +42,8 @@
     {
       "@type": "Dataset",
       "@id": "{{ _canonical }}#dataset",
-      "name": "AI search visibility rankings — {{ report.name }} (2026)",
-      "description": "Per-brand AI visibility, citation rate and per-engine breakdown for the top {{ brands|length }} {{ report.name|lower }} brands. Audited via {{ _engine_name }} on an 8-query buyer-intent set, refreshed every {{ report.refresh_interval_days }} days.",
+      "name": "{{ report.name }}: AI search visibility ranking (2026)",
+      "description": "How AI search engines rank {{ report.name|lower }} by visibility and citations. Per-brand visibility, citation rate and per-engine breakdown for {{ brands|length }} brands, audited via {{ _engine_name }} on an 8-query buyer-intent set, refreshed every {{ report.refresh_interval_days }} days.",
       "url": "{{ _canonical }}",
       "creator": { "@id": "{{ _base_url }}/#org" },
       "publisher": { "@id": "{{ _base_url }}/#org" },
@@ -45,7 +52,7 @@
       "inLanguage": "en",
       "license": "https://creativecommons.org/licenses/by/4.0/",
       "isAccessibleForFree": true,
-      "keywords": ["AI search visibility", "{{ report.name }}", "best {{ report.name|lower }}", "top {{ report.name|lower }} 2026", "AEO", "answer engine optimisation", "Google AI Overviews"],
+      "keywords": ["{{ report.name }} AI search visibility", "{{ report.name }} AEO ranking", "AI visibility ranking {{ report.name|lower }}", "{{ report.name }} citation rate AI", "answer engine optimisation", "AEO", "{{ _engine_name }}"],
       "variableMeasured": [
         {"@type": "PropertyValue", "name": "Visibility", "description": "Percentage of AI answers that name the brand in the prose"},
         {"@type": "PropertyValue", "name": "Citation rate", "description": "Percentage of AI answers that cite the brand's domain as a source"},
@@ -56,7 +63,7 @@
     {
       "@type": "ItemList",
       "@id": "{{ _canonical }}#ranking",
-      "name": "Top {{ report.name }} brands by AI visibility",
+      "name": "{{ report.name }} ranked by AI search visibility",
       "itemListOrder": "https://schema.org/ItemListOrderDescending",
       "numberOfItems": {{ brands|length }},
       "itemListElement": [
@@ -106,7 +113,7 @@
     {
       "@type": "Article",
       "@id": "{{ _canonical }}#article",
-      "headline": "Top {{ brands|length }} {{ report.name }} by AI search visibility (2026)",
+      "headline": "{{ report.name }}: AI search visibility ranking (2026)",
       "description": "{{ page_description }}",
       "url": "{{ _canonical }}",
       "mainEntityOfPage": "{{ _canonical }}",
@@ -277,8 +284,8 @@
 {% block content %}
 <section class="ind-hero">
   <span class="eyebrow">AI Visibility Rankings · {{ report.parent_category or 'Industry' }}</span>
-  <h1>Top {{ brands|length }} {{ report.name|lower }} by AI search visibility (2026)</h1>
-  <p class="lede">{% if report.description %}{{ report.description }} {% endif %}Ranked by a composite score: <strong>70% visibility</strong> (% of AI answers naming the brand) + <strong>30% citation rate</strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+  <h1>{{ report.name }}: AI search visibility ranking (2026)</h1>
+  <p class="lede">How AI search engines rank {{ report.name|lower }} by visibility and citations. {{ brands|length }} brands measured monthly across {{ _engine_name }}: which brands the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% visibility</strong> (% of AI answers naming the brand) + <strong>30% citation rate</strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
   {% if report.last_full_refresh %}
     <span class="updated-pill">Refreshed {{ report.last_full_refresh.strftime('%b %d, %Y') }}</span>
   {% else %}
@@ -292,7 +299,7 @@
   {% if not pdf %}
   {# Action row — share + PDF download. Dropped entirely when rendering
      for the email-gated PDF (pdf=True context flag). #}
-  {% set _share_title = ('Top ' ~ brands|length ~ ' ' ~ report.name|lower ~ ' by AI search visibility (2026)') %}
+  {% set _share_title = (report.name ~ ': AI search visibility ranking (2026)') %}
   {% set _share_url = _canonical %}
   {% set _x_intent = 'https://twitter.com/intent/tweet?text=' ~ (_share_title ~ ' — via @monitoraeo')|urlencode ~ '&url=' ~ _share_url|urlencode %}
   {% set _li_intent = 'https://www.linkedin.com/sharing/share-offsite/?url=' ~ _share_url|urlencode %}
