@@ -2,6 +2,51 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+{# Supabase magic-link rescue. Supabase delivers magic-link results in the
+   URL hash fragment of its configured Site URL — either an access_token on
+   success or an error_code on failure. If the Site URL is set to the
+   marketing root (e.g. monitoraeo.com/), the landing page receives the
+   hash and would otherwise ignore it, silently breaking sign-in. The
+   sniffer below catches both paths on first paint:
+     - #access_token=...  POST to /dashboard/auth/exchange, then /dashboard
+     - #error=... / #error_code=...  redirect to /dashboard/login with a
+       friendly banner key (otp_expired => link_expired)
+   Inlined (not in a block) so it runs before anything else and the user
+   never sees the marketing flash. #}
+<script>
+  (function () {
+    try {
+      var h = window.location.hash || "";
+      if (!h || h.length < 2) return;
+      var p = new URLSearchParams(h.charAt(0) === "#" ? h.slice(1) : h);
+
+      var access = p.get("access_token");
+      if (access) {
+        // Success path. Mirror /dashboard/auth/callback's JS shim: exchange
+        // the token for our HttpOnly session cookie, then land on /dashboard.
+        // Wipe the hash first so the token never sits in the URL bar.
+        try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch (_) {}
+        fetch("/dashboard/auth/exchange", {
+          method: "POST",
+          headers: {"content-type": "application/json"},
+          body: JSON.stringify({access_token: access}),
+          credentials: "same-origin",
+        }).then(function (r) {
+          window.location.replace(r.ok ? "/dashboard" : "/dashboard/login?error=exchange_failed");
+        }).catch(function () {
+          window.location.replace("/dashboard/login?error=exchange_failed");
+        });
+        return;
+      }
+
+      if (p.get("error") || p.get("error_code")) {
+        var code = p.get("error_code") || p.get("error") || "auth_error";
+        var key = code === "otp_expired" ? "link_expired" : code;
+        window.location.replace("/dashboard/login?error=" + encodeURIComponent(key));
+      }
+    } catch (e) { /* never block the page render on this */ }
+  })();
+</script>
 {# GTM is loaded inside _cookie_consent.html.j2 (at end of body), gated on the
    visitor's explicit consent. Loading it unconditionally here would set
    analytics cookies before the user has chosen, which is a GDPR/UK-GDPR/CCPA

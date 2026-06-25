@@ -103,9 +103,20 @@
       </div>
     {% endif %}
 
-    {% if error %}
+    {% if error == "link_expired" %}
+      <div class="card" style="background:#fef3c7;border-color:#fcd34d;color:#7c2d12;margin-bottom:16px;">
+        <strong>That sign-in link has expired.</strong>
+        Magic links are good for one click and time out after about an hour. Enter your email below and we'll send a fresh one.
+      </div>
+    {% elif error == "exchange_failed" %}
+      <div class="card" style="background:#fef3c7;border-color:#fcd34d;color:#7c2d12;margin-bottom:16px;">
+        <strong>We couldn't finish signing you in.</strong>
+        The link worked but the session exchange failed. Send a fresh link below and try again.
+      </div>
+    {% elif error %}
       <div class="card" style="background:#fee2e2;border-color:#fca5a5;color:#7f1d1d;margin-bottom:16px;">
-        Something went wrong: <code>{{ error }}</code>
+        <strong>We couldn't sign you in.</strong>
+        Send yourself a new link below. <span style="opacity:.7;">(<code>{{ error }}</code>)</span>
       </div>
     {% endif %}
 
