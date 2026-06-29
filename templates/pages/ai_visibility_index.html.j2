@@ -234,19 +234,32 @@
    Sort default ('alphabetical') isn't carried in the URL when active to
    keep the canonical /ai-visibility URL parameter-free for SEO. #}
 {% if total_industries %}
-{# Build a query-string helper that preserves the OTHER active filters
-   when toggling any one of them. Used by every pill link below. Vertical
-   + country only make sense inside type=local, so they're auto-cleared
-   when the type pill toggles to something else. #}
-{% macro _qs(omit='') -%}
+{# Build a query string of the active filters. When the caller wants to
+   TOGGLE one filter (click a pill), they pass set={'vertical': 'Dentists'}
+   to add/replace that one param while preserving everything else. Pass
+   clear=['vertical', 'country'] to drop params (used when the type pill
+   toggles away from local).
+
+   The macro returns parts joined with single '&' (NOT '&amp;'). Jinja's
+   autoescape on {{ _qs(...) }} encodes '&' to '&amp;' exactly ONCE on
+   render, producing valid HTML. Earlier version joined with '&amp;'
+   directly, which got re-escaped to '&amp;amp;' on output and broke
+   the second-onwards query param when the URL was clicked. #}
+{% macro _qs(set={}, clear=[]) -%}
   {%- set parts = [] -%}
-  {%- if q and omit != 'q' %}{% set _ = parts.append('q=' ~ q|urlencode) %}{% endif -%}
-  {%- if category_filter and omit != 'category' %}{% set _ = parts.append('category=' ~ category_filter|urlencode) %}{% endif -%}
-  {%- if type_filter and omit != 'type' %}{% set _ = parts.append('type=' ~ type_filter|urlencode) %}{% endif -%}
-  {%- if vertical_filter and omit != 'vertical' and (type_filter == 'local' or omit == 'type') %}{% set _ = parts.append('vertical=' ~ vertical_filter|urlencode) %}{% endif -%}
-  {%- if country_filter and omit != 'country' and (type_filter == 'local' or omit == 'type') %}{% set _ = parts.append('country=' ~ country_filter|urlencode) %}{% endif -%}
-  {%- if sort and sort != 'alphabetical' and omit != 'sort' %}{% set _ = parts.append('sort=' ~ sort|urlencode) %}{% endif -%}
-  {{- parts|join('&amp;') -}}
+  {%- set active = {} -%}
+  {%- if q %}{% set _ = active.update({'q': q}) %}{% endif -%}
+  {%- if category_filter %}{% set _ = active.update({'category': category_filter}) %}{% endif -%}
+  {%- if type_filter %}{% set _ = active.update({'type': type_filter}) %}{% endif -%}
+  {%- if vertical_filter %}{% set _ = active.update({'vertical': vertical_filter}) %}{% endif -%}
+  {%- if country_filter %}{% set _ = active.update({'country': country_filter}) %}{% endif -%}
+  {%- if sort and sort != 'alphabetical' %}{% set _ = active.update({'sort': sort}) %}{% endif -%}
+  {%- for k, v in set.items() %}{% set _ = active.update({k: v}) %}{% endfor -%}
+  {%- for k in clear %}{% set _ = active.pop(k, none) %}{% endfor -%}
+  {%- for k in ['q', 'category', 'type', 'vertical', 'country', 'sort'] -%}
+    {%- if k in active and active[k] %}{% set _ = parts.append(k ~ '=' ~ active[k]|urlencode) %}{% endif -%}
+  {%- endfor -%}
+  {{- parts|join('&') -}}
 {%- endmacro %}
 <form class="filter-bar" method="get" action="/ai-visibility">
   <div class="search">
@@ -279,13 +292,15 @@
    category they happen to map to. #}
 {% if local_count %}
 <div class="category-pills type-pills">
-  <a class="category-pill{% if not type_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(omit='type') %}{% if qs %}?{{ qs }}{% endif %}">
+  {# Type pill bar. Toggling away from 'local' also drops vertical +
+     country since those filters only apply inside local services. #}
+  <a class="category-pill{% if not type_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(clear=['type','vertical','country']) %}{% if qs %}?{{ qs }}{% endif %}">
     All types <span class="count">{{ total_industries }}</span>
   </a>
-  <a class="category-pill{% if type_filter == 'software' %} active{% endif %}" href="/ai-visibility?type=software{% set qs = _qs(omit='type') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+  <a class="category-pill{% if type_filter == 'software' %} active{% endif %}" href="/ai-visibility?{{ _qs(set={'type':'software'}, clear=['vertical','country']) }}">
     Software &amp; products <span class="count">{{ total_industries - local_count }}</span>
   </a>
-  <a class="category-pill{% if type_filter == 'local' %} active{% endif %}" href="/ai-visibility?type=local{% set qs = _qs(omit='type') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+  <a class="category-pill{% if type_filter == 'local' %} active{% endif %}" href="/ai-visibility?{{ _qs(set={'type':'local'}) }}">
     Local services <span class="count">{{ local_count }}</span>
   </a>
 </div>
@@ -302,11 +317,11 @@
   <div class="sub-filter-row">
     <span class="sub-filter-label">Vertical</span>
     <div class="category-pills sub-pills">
-      <a class="category-pill{% if not vertical_filter %} active{% endif %}" href="/ai-visibility?type=local{% set qs = _qs(omit='vertical') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+      <a class="category-pill{% if not vertical_filter %} active{% endif %}" href="/ai-visibility?{{ _qs(clear=['vertical']) }}">
         All <span class="count">{{ local_count }}</span>
       </a>
       {% for v in all_verticals %}
-      <a class="category-pill{% if vertical_filter == v.name %} active{% endif %}" href="/ai-visibility?type=local&amp;vertical={{ v.name|urlencode }}{% set qs = _qs(omit='vertical') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+      <a class="category-pill{% if vertical_filter == v.name %} active{% endif %}" href="/ai-visibility?{{ _qs(set={'vertical': v.name}) }}">
         {{ v.name }} <span class="count">{{ v.count }}</span>
       </a>
       {% endfor %}
@@ -316,11 +331,11 @@
   <div class="sub-filter-row">
     <span class="sub-filter-label">Country</span>
     <div class="category-pills sub-pills">
-      <a class="category-pill{% if not country_filter %} active{% endif %}" href="/ai-visibility?type=local{% set qs = _qs(omit='country') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+      <a class="category-pill{% if not country_filter %} active{% endif %}" href="/ai-visibility?{{ _qs(clear=['country']) }}">
         All
       </a>
       {% for c in all_countries %}
-      <a class="category-pill{% if country_filter == c.code %} active{% endif %}" href="/ai-visibility?type=local&amp;country={{ c.code|urlencode }}{% set qs = _qs(omit='country') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+      <a class="category-pill{% if country_filter == c.code %} active{% endif %}" href="/ai-visibility?{{ _qs(set={'country': c.code}) }}">
         {{ c.label }} <span class="count">{{ c.count }}</span>
       </a>
       {% endfor %}
@@ -336,11 +351,11 @@
    pills above are a better cut for local-services browsing. #}
 {% if all_categories and type_filter != 'local' %}
 <div class="category-pills">
-  <a class="category-pill{% if not category_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(omit='category') %}{% if qs %}?{{ qs }}{% endif %}">
+  <a class="category-pill{% if not category_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(clear=['category']) %}{% if qs %}?{{ qs }}{% endif %}">
     All categories <span class="count">{{ total_industries }}</span>
   </a>
   {% for cat in all_categories %}
-  <a class="category-pill{% if category_filter == cat %} active{% endif %}" href="/ai-visibility?category={{ cat|urlencode }}{% set qs = _qs(omit='category') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+  <a class="category-pill{% if category_filter == cat %} active{% endif %}" href="/ai-visibility?{{ _qs(set={'category': cat}) }}">
     {{ cat }}
   </a>
   {% endfor %}
