@@ -440,6 +440,42 @@ def refresh_industry(slug: str) -> dict[str, Any]:
         traceback.print_exc()
         summary["narrative_error"] = f"{type(exc).__name__}: {exc}"
 
+    # Buyer-intent intro paragraphs rendered ABOVE the data on the public
+    # page. Same try-around-everything shape as the narrative path so a
+    # failure here doesn't roll back the audit, the template falls back
+    # to no intro. Reuses the same brand_dicts + top_category_sources so
+    # no extra DB hit. Skipped when the narrative generation failed
+    # because we'd have no brand_dicts to feed it.
+    try:
+        if 'brand_dicts' in locals() and brand_dicts:
+            from src.industry_narrative import generate_buyer_intro
+            from src.local_services import detect_local_services
+            is_local = bool(detect_local_services(
+                slug=report.slug, name=report.name,
+                parent_category=report.parent_category,
+            ))
+            buyer_intro = generate_buyer_intro(
+                industry_name=report.name,
+                parent_category=report.parent_category or "",
+                brands=brand_dicts,
+                top_cited_sources=top_category_sources,
+                is_local=is_local,
+            )
+            if buyer_intro:
+                with get_session() as s:
+                    fresh_report = s.exec(select(IndustryReport).where(IndustryReport.slug == slug)).first()
+                    if fresh_report:
+                        fresh_report.buyer_intro = buyer_intro
+                        s.add(fresh_report)
+                        s.commit()
+                summary["buyer_intro_generated"] = True
+            else:
+                summary["buyer_intro_generated"] = False
+    except Exception as exc:  # noqa: BLE001
+        print(f"[industry_audit] buyer-intro generation failed: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
+        summary["buyer_intro_error"] = f"{type(exc).__name__}: {exc}"
+
     summary["elapsed_sec"] = round(time.monotonic() - started, 1)
 
     # Drop the public index + this slug's detail cache so newly refreshed

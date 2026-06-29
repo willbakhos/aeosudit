@@ -220,6 +220,147 @@ async def _call_narrator(summary: dict[str, Any], api_key: str) -> dict[str, Any
     return {}
 
 
+def _build_buyer_intro_prompt(
+    industry_name: str,
+    parent_category: str,
+    brands: list[dict[str, Any]],
+    top_cited_sources: list[str],
+    is_local: bool,
+) -> str:
+    """Prompt for the 2-3 paragraph buyer-intent intro rendered ABOVE the
+    data on /ai-visibility/{slug}. Written for someone evaluating brands
+    in this category, NOT for the analyst evaluating monitoraeo. The goal:
+    the page has substantive text above the fold that earns clicks from
+    Google for buyer queries like 'best X' or 'best X in [city]'."""
+    audience = (
+        "people looking to hire a provider in this category"
+        if is_local
+        else "people evaluating which brand to use in this category"
+    )
+    noun = "providers" if is_local else "brands"
+    leader = brands[0].get("brand_name") if brands else None
+    leader_v = brands[0].get("visibility_pct", 0) if brands else 0
+    leader_c = brands[0].get("citation_pct", 0) if brands else 0
+    summary = {
+        "industry": industry_name,
+        "parent_category": parent_category,
+        "is_local_service": is_local,
+        "brand_count": len(brands),
+        "leader": leader,
+        "leader_visibility_pct": round(leader_v, 1) if leader else None,
+        "leader_citation_pct": round(leader_c, 1) if leader else None,
+        "top_3_brands": [b.get("brand_name") for b in brands[:3]],
+        "top_cited_sources": top_cited_sources[:5],
+    }
+    return (
+        f"You are writing the introduction to a public-facing page about "
+        f"{industry_name}. The audience is {audience}. The page below "
+        f"the intro ranks {noun} by how often AI engines (ChatGPT, Claude, "
+        f"Perplexity, Gemini, Google AI) name them in answers and cite "
+        f"them as sources.\n\n"
+        "STYLE RULES (strict, non-negotiable):\n"
+        "* Write for the buyer, not the analyst. The reader cares about "
+        "  picking a brand, not about monitoraeo's methodology.\n"
+        "* NEVER use em dashes (U+2014) or en dashes (U+2013). Use commas, "
+        "  parentheses, or rewrite the sentence. This is a hard requirement.\n"
+        "* No marketing fluff. No 'in today's fast-moving world' openers. "
+        "  Get to the substance in the first sentence.\n"
+        "* Concrete > abstract. Name the leader, name the top sources, "
+        "  reference real numbers from the data.\n"
+        "* Plain hyphens for ranges (60 to 90, not 60–90).\n\n"
+        "Produce exactly 3 short paragraphs (45 to 70 words each):\n"
+        "1. Lead with what AI engines actually say when buyers ask about "
+        f"{industry_name}. Name the leader. Mention 1-2 other top brands. "
+        "Reference the visibility number for the leader if it is informative.\n"
+        "2. Explain WHY the rankings look the way they do. Reference the "
+        "top cited sources (the domains AI engines pull from most). If "
+        "those are aggregator/review sites, say so and what that means.\n"
+        "3. What this means for a buyer reading the page. One concrete "
+        "thing to consider when picking from this list, framed around "
+        "what AI engines value (recent reviews, third-party validation, "
+        "topical authority on the specific subcategory).\n\n"
+        "Reply with ONLY a JSON object of shape {\"paragraphs\": [str, str, str]}. "
+        "No prose, no markdown fences, no commentary. JSON only.\n\n"
+        f"DATA:\n{json.dumps(summary, indent=2)}\n"
+    )
+
+
+async def _call_buyer_intro(prompt: str, api_key: str) -> dict[str, Any]:
+    """Same OpenRouter call shape as the analyst-narrative path. Buyer
+    intros are short (~200 words total) so MAX_TOKENS can be smaller."""
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 1200,
+    }
+    last_exc: Exception | None = None
+    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = await _post_once(client, payload, api_key)
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    last_exc = httpx.HTTPStatusError(
+                        f"HTTP {resp.status_code}: {resp.text[:200]}",
+                        request=resp.request, response=resp,
+                    )
+                    await asyncio.sleep(BASE_BACKOFF * (2**attempt))
+                    continue
+                if resp.status_code >= 400:
+                    print(f"[buyer_intro] rejected: HTTP {resp.status_code} {resp.text[:200]}")
+                    return {}
+                data = resp.json()
+                raw = _extract_content(data)
+                return _parse_json_payload(raw)
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                last_exc = exc
+                await asyncio.sleep(BASE_BACKOFF * (2**attempt))
+    if last_exc:
+        print(f"[buyer_intro] gave up: {type(last_exc).__name__}: {last_exc}")
+    return {}
+
+
+def generate_buyer_intro(
+    industry_name: str,
+    parent_category: str,
+    brands: list[dict[str, Any]],
+    top_cited_sources: list[str],
+    is_local: bool = False,
+) -> dict[str, Any]:
+    """Generate the 2-3 paragraph buyer-intent intro for an industry page.
+    Returns shape {generated_at, model, paragraphs: [str]} on success, {}
+    on any failure (missing API key, empty brands, network, parse error).
+    Caller stores the empty dict and the template falls back to no intro
+    above the data, same as the analyst-narrative path."""
+    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("[buyer_intro] OPENROUTER_API_KEY not set, skipping")
+        return {}
+    if not brands:
+        return {}
+    prompt = _build_buyer_intro_prompt(
+        industry_name, parent_category, brands, top_cited_sources, is_local,
+    )
+    try:
+        result = asyncio.run(_call_buyer_intro(prompt, api_key))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[buyer_intro] generate failed: {type(exc).__name__}: {exc}")
+        return {}
+    if not result:
+        return {}
+    result = _strip_dashes_deep(result)
+    paragraphs = [
+        p.strip() for p in (result.get("paragraphs") or [])
+        if isinstance(p, str) and p.strip()
+    ]
+    if not paragraphs:
+        return {}
+    return {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "model": MODEL,
+        "paragraphs": paragraphs[:3],
+    }
+
+
 def generate(
     industry_name: str,
     parent_category: str,

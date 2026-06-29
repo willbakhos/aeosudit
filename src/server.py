@@ -1096,7 +1096,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
             _ = (
                 report.name, report.slug, report.description,
                 report.parent_category, report.refresh_interval_days,
-                report.last_full_refresh, report.narrative,
+                report.last_full_refresh, report.narrative, report.buyer_intro,
             )
             for _b in brands:
                 _ = (

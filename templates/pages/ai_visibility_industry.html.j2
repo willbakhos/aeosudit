@@ -277,6 +277,17 @@
   .mover-card.down .d { color: var(--danger); }
   .mover-card .r { display: block; color: var(--muted); font-size: 11.5px; font-weight: 500; margin-top: 2px; }
 
+  .buyer-intro {
+    margin: 24px 0 28px; padding: 22px 26px;
+    background: white; border: 1px solid var(--line); border-left: 4px solid var(--blue);
+    border-radius: 14px; box-shadow: var(--shadow-soft);
+  }
+  .buyer-intro p {
+    font-size: 16px; line-height: 1.7; color: var(--ink-2);
+    margin: 0 0 14px;
+  }
+  .buyer-intro p:first-child { font-size: 17px; color: var(--ink); font-weight: 500; }
+  .buyer-intro p:last-child { margin-bottom: 0; }
   .related-concepts { margin-top: 36px; padding: 24px 28px; border-radius: 18px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
   .related-concepts h2 { margin: 0 0 10px; font-size: 18px; }
   .related-concepts-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
@@ -488,6 +499,21 @@
   }
 })();
 </script>
+{% endif %}
+
+{# Buyer-intent intro — 2-3 short paragraphs aimed at someone evaluating
+   brands in this category (not at someone evaluating monitoraeo). Sits
+   ABOVE 'At a glance' so the first thing a buyer landing from Google
+   reads is buyer-shaped, not methodology. Populated by
+   industry_narrative.generate_buyer_intro() during refresh_industry.
+   When missing (first refresh of a new industry, or LLM failure) we
+   render nothing and fall straight through to "At a glance" as before. #}
+{% set buyer_intro = report.buyer_intro or {} %}
+{% set buyer_paragraphs = buyer_intro.get('paragraphs', []) %}
+{% if buyer_paragraphs %}
+<section class="buyer-intro">
+  {% for para in buyer_paragraphs %}<p>{{ para }}</p>{% endfor %}
+</section>
 {% endif %}
 
 {# At a glance — programmatic factual highlights from the actual audit
