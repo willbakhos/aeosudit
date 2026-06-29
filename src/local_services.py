@@ -292,4 +292,67 @@ def detect_local_services(
         "state_abbr": state_abbr,
         "state_full": state_full,
         "area_type": area_type,
+        "country": country_for_locality(city_name, state_abbr),
     }
+
+
+# International cities currently appearing across the published industry
+# rankings, mapped to ISO 3166-1 alpha-2 country codes. _CITY_DATA above is
+# US-only; this table lets country_for_locality classify the AU / CA / UK /
+# NZ / SG / IE pages too. Extend as new international cities are added.
+_INTL_CITY_TO_COUNTRY: dict[str, str] = {
+    # Australia
+    "adelaide": "AU", "brisbane": "AU", "sydney": "AU", "melbourne": "AU",
+    "perth": "AU", "canberra": "AU", "darwin": "AU", "hobart": "AU",
+    "newcastle": "AU", "gold coast": "AU", "sunshine coast": "AU",
+    "wollongong": "AU", "bendigo": "AU", "geelong": "AU", "townsville": "AU",
+    "cairns": "AU", "ballarat": "AU", "launceston": "AU",
+    # New Zealand
+    "auckland": "NZ", "wellington": "NZ", "christchurch": "NZ",
+    "tauranga": "NZ", "dunedin": "NZ",
+    # Canada
+    "toronto": "CA", "vancouver": "CA", "montreal": "CA", "calgary": "CA",
+    "ottawa": "CA", "edmonton": "CA", "quebec city": "CA", "winnipeg": "CA",
+    "halifax": "CA",
+    # United Kingdom
+    "london": "GB", "manchester": "GB", "birmingham": "GB", "glasgow": "GB",
+    "edinburgh": "GB", "liverpool": "GB", "leeds": "GB", "bristol": "GB",
+    "cardiff": "GB", "belfast": "GB", "sheffield": "GB",
+    # Ireland
+    "dublin": "IE", "cork": "IE", "galway": "IE",
+    # Singapore + Hong Kong (city-states)
+    "singapore": "SG",
+    "hong kong": "HK",
+}
+
+# Code → human-readable label for the country filter UI. Order also drives
+# the order pills render in (most common first).
+COUNTRY_LABELS: list[tuple[str, str]] = [
+    ("US", "United States"),
+    ("AU", "Australia"),
+    ("CA", "Canada"),
+    ("GB", "United Kingdom"),
+    ("NZ", "New Zealand"),
+    ("SG", "Singapore"),
+    ("IE", "Ireland"),
+    ("HK", "Hong Kong"),
+]
+COUNTRY_LABEL_MAP = dict(COUNTRY_LABELS)
+COUNTRY_CODES = {code for code, _ in COUNTRY_LABELS}
+
+
+def country_for_locality(
+    city_name: str | None,
+    state_abbr: str | None,
+) -> str | None:
+    """Map a parsed (city, state) tuple to an ISO 3166-1 alpha-2 country
+    code. US wins on state_abbr match (every entry in _STATE_DATA is US).
+    For non-US, fall back to looking the city up in the international
+    table. Returns None when the locality can't be classified."""
+    if state_abbr:
+        for _full, abbr in _STATE_DATA:
+            if abbr == state_abbr.upper():
+                return "US"
+    if city_name:
+        return _INTL_CITY_TO_COUNTRY.get(city_name.lower())
+    return None

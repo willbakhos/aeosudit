@@ -125,6 +125,32 @@
   }
   .filter-bar .sort-row select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
   .type-pills { margin-bottom: 10px; }
+  .sub-filter-block {
+    padding: 12px 16px; margin: 0 0 14px;
+    background: rgba(37,99,235,.04); border: 1px solid rgba(37,99,235,.14);
+    border-radius: 14px;
+  }
+  .sub-filter-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .sub-filter-row:last-child { margin-bottom: 0; }
+  .sub-filter-label {
+    flex: 0 0 auto; padding: 6px 0;
+    font-size: 11px; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    min-width: 70px;
+  }
+  .sub-pills { margin: 0 !important; }
+  .vertical-section-head {
+    display: flex; align-items: baseline; flex-wrap: wrap;
+    gap: 12px; margin-bottom: 8px;
+  }
+  .vertical-section-head h2 { margin: 0; }
+  .vertical-section-head .section-sub { margin: 0; color: var(--muted); font-size: 13px; }
+  .vertical-section-head .view-all-link {
+    margin-left: auto; padding: 6px 12px; border-radius: 999px;
+    background: rgba(37,99,235,.08); color: var(--blue);
+    font-size: 13px; font-weight: 800; text-decoration: none;
+  }
+  .vertical-section-head .view-all-link:hover { background: rgba(37,99,235,.15); }
   .filter-bar .search { display: flex; align-items: center; gap: 8px; }
   .filter-bar .search input {
     flex: 1; padding: 9px 14px; border: 1px solid var(--line);
@@ -209,12 +235,16 @@
    keep the canonical /ai-visibility URL parameter-free for SEO. #}
 {% if total_industries %}
 {# Build a query-string helper that preserves the OTHER active filters
-   when toggling any one of them. Used by every pill link below. #}
+   when toggling any one of them. Used by every pill link below. Vertical
+   + country only make sense inside type=local, so they're auto-cleared
+   when the type pill toggles to something else. #}
 {% macro _qs(omit='') -%}
   {%- set parts = [] -%}
   {%- if q and omit != 'q' %}{% set _ = parts.append('q=' ~ q|urlencode) %}{% endif -%}
   {%- if category_filter and omit != 'category' %}{% set _ = parts.append('category=' ~ category_filter|urlencode) %}{% endif -%}
   {%- if type_filter and omit != 'type' %}{% set _ = parts.append('type=' ~ type_filter|urlencode) %}{% endif -%}
+  {%- if vertical_filter and omit != 'vertical' and (type_filter == 'local' or omit == 'type') %}{% set _ = parts.append('vertical=' ~ vertical_filter|urlencode) %}{% endif -%}
+  {%- if country_filter and omit != 'country' and (type_filter == 'local' or omit == 'type') %}{% set _ = parts.append('country=' ~ country_filter|urlencode) %}{% endif -%}
   {%- if sort and sort != 'alphabetical' and omit != 'sort' %}{% set _ = parts.append('sort=' ~ sort|urlencode) %}{% endif -%}
   {{- parts|join('&amp;') -}}
 {%- endmacro %}
@@ -261,10 +291,50 @@
 </div>
 {% endif %}
 
+{# Local-services sub-pills: vertical (Dentists / Coworking / Lawyers /
+   etc.) + country. Only render when type=local is the active filter, so
+   the rest of the directory stays uncluttered. Solves the "mash-up"
+   complaint: instead of seeing Coworking, Dentists and Lawyers all
+   interleaved alphabetically, the user can narrow to one vertical
+   (Dentists) and one country (Australia) before browsing. #}
+{% if type_filter == 'local' and all_verticals %}
+<div class="sub-filter-block">
+  <div class="sub-filter-row">
+    <span class="sub-filter-label">Vertical</span>
+    <div class="category-pills sub-pills">
+      <a class="category-pill{% if not vertical_filter %} active{% endif %}" href="/ai-visibility?type=local{% set qs = _qs(omit='vertical') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+        All <span class="count">{{ local_count }}</span>
+      </a>
+      {% for v in all_verticals %}
+      <a class="category-pill{% if vertical_filter == v.name %} active{% endif %}" href="/ai-visibility?type=local&amp;vertical={{ v.name|urlencode }}{% set qs = _qs(omit='vertical') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+        {{ v.name }} <span class="count">{{ v.count }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% if all_countries %}
+  <div class="sub-filter-row">
+    <span class="sub-filter-label">Country</span>
+    <div class="category-pills sub-pills">
+      <a class="category-pill{% if not country_filter %} active{% endif %}" href="/ai-visibility?type=local{% set qs = _qs(omit='country') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+        All
+      </a>
+      {% for c in all_countries %}
+      <a class="category-pill{% if country_filter == c.code %} active{% endif %}" href="/ai-visibility?type=local&amp;country={{ c.code|urlencode }}{% set qs = _qs(omit='country') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+        {{ c.label }} <span class="count">{{ c.count }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {# Category pill bar — single-select. Each pill toggles ?category= for that
    value (or clears it when clicked again). Preserves the active search q,
-   type, and sort. #}
-{% if all_categories %}
+   type, and sort. Hidden when type=local is active because the vertical
+   pills above are a better cut for local-services browsing. #}
+{% if all_categories and type_filter != 'local' %}
 <div class="category-pills">
   <a class="category-pill{% if not category_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(omit='category') %}{% if qs %}?{{ qs }}{% endif %}">
     All categories <span class="count">{{ total_industries }}</span>
@@ -284,19 +354,47 @@
       Showing <strong>{{ total_filtered }}</strong> industr{{ 'y' if total_filtered == 1 else 'ies' }}
       {% if q %}matching <strong>"{{ q }}"</strong>{% endif %}
       {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}
-      {% if type_filter == 'local' %}(<strong>local services</strong> only){% elif type_filter == 'software' %}(<strong>software &amp; products</strong> only){% endif %}
+      {% if type_filter == 'local' %}(<strong>local services</strong>{% if vertical_filter %}, <strong>{{ vertical_filter|lower }}</strong>{% endif %}{% if country_filter %}, <strong>{{ country_filter }}</strong>{% endif %}){% elif type_filter == 'software' %}(<strong>software &amp; products</strong> only){% endif %}
       {% if sort == 'recent' %}sorted by <strong>most recently refreshed</strong>{% elif sort == 'brands' %}sorted by <strong>most brands tracked</strong>{% endif %}.
     {% else %}
       No industries match
       {% if q %}<strong>"{{ q }}"</strong>{% endif %}
       {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}
-      {% if type_filter == 'local' %}(local services only){% elif type_filter == 'software' %}(software only){% endif %}.
+      {% if type_filter == 'local' %}(local services{% if vertical_filter %}, {{ vertical_filter|lower }}{% endif %}{% if country_filter %}, {{ country_filter }}{% endif %}){% elif type_filter == 'software' %}(software only){% endif %}.
       <a href="/ai-visibility">Clear filters</a> to see all.
     {% endif %}
   </p>
 {% endif %}
 
-{% if is_filtered or page > 1 %}
+{% if industries_by_vertical %}
+  {# Local-services tab, root view: every vertical gets its own section
+     with up to N preview cards plus a "View all" drill-in link. Solves
+     the mash-up complaint AND avoids the pagination regression where
+     only the first vertical would have been visible on page 1. #}
+  {% for vsection in industries_by_vertical %}
+    <div class="category-section">
+      <div class="vertical-section-head">
+        <h2>{{ vsection.name }}</h2>
+        <span class="section-sub">{{ vsection.total }} location{{ '' if vsection.total == 1 else 's' }} ranked</span>
+        {% if vsection.has_more %}
+          <a class="view-all-link" href="/ai-visibility?type=local&amp;vertical={{ vsection.name|urlencode }}">View all {{ vsection.total }} →</a>
+        {% endif %}
+      </div>
+      <div class="industry-grid">
+        {% for it in vsection.preview %}
+          <a class="industry-card" href="/ai-visibility/{{ it.slug }}">
+            <span class="name">{{ it.name }}</span>
+            <div class="meta">
+              {% if it.top_brand_name %}<span class="top">Top brand: <strong>{{ it.top_brand_name }}</strong></span>{% endif %}
+              {% if it.brand_count %}<span class="updated">{{ it.brand_count }} brand{{ '' if it.brand_count == 1 else 's' }} audited</span>{% endif %}
+              {% if it.last_refresh %}<span class="updated">Updated {{ it.last_refresh.strftime('%b %Y') }}</span>{% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% elif is_filtered or page > 1 %}
   {# Flat paginated grid for any filtered/page-2+ view. #}
   {% if flat_results %}
   <div class="industry-grid">
@@ -342,7 +440,7 @@
 {# Pagination footer — shows when there's more than one page of results in
    the current view. Builds URLs preserving the active q + category. #}
 {% if total_pages > 1 %}
-  {% set base_qs %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}{% if category_filter %}category={{ category_filter|urlencode }}&amp;{% endif %}{% if type_filter %}type={{ type_filter|urlencode }}&amp;{% endif %}{% if sort and sort != 'alphabetical' %}sort={{ sort|urlencode }}&amp;{% endif %}{% endset %}
+  {% set base_qs %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}{% if category_filter %}category={{ category_filter|urlencode }}&amp;{% endif %}{% if type_filter %}type={{ type_filter|urlencode }}&amp;{% endif %}{% if vertical_filter %}vertical={{ vertical_filter|urlencode }}&amp;{% endif %}{% if country_filter %}country={{ country_filter|urlencode }}&amp;{% endif %}{% if sort and sort != 'alphabetical' %}sort={{ sort|urlencode }}&amp;{% endif %}{% endset %}
   <nav class="pagination" aria-label="Pagination">
     {% if page > 1 %}
       <a href="/ai-visibility?{{ base_qs }}page={{ page - 1 }}" rel="prev">← Prev</a>

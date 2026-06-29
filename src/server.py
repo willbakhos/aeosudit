@@ -820,6 +820,8 @@ def page_ai_visibility_index(
     # `type` is shadowed by Python's built-in; FastAPI re-aliases the query
     # key via the `alias=` kwarg so URLs can still use ?type=local|software.
     type_param: str = FastAPIQuery(default="", alias="type"),
+    vertical: str = "",
+    country: str = "",
     sort: str = "",
     page: int = 1,
 ) -> HTMLResponse:
@@ -835,6 +837,17 @@ def page_ai_visibility_index(
     type_filter = (type_param or "").strip().lower()[:20]
     if type_filter not in ("local", "software"):
         type_filter = ""
+    # vertical + country filters are only meaningful inside type=local.
+    # Accept any non-empty string here, validate against actual values
+    # once we've computed them below (unknown values fall back to "").
+    vertical = (vertical or "").strip()[:40]
+    country = (country or "").strip().upper()[:4]
+    if type_filter != "local":
+        vertical = ""  # vertical/country only apply inside local services
+        country = ""
+    from src.local_services import COUNTRY_CODES
+    if country and country not in COUNTRY_CODES:
+        country = ""
     sort = (sort or "").strip().lower()[:20]
     if sort not in ("recent", "alphabetical", "brands"):
         sort = "alphabetical"  # default preserves prior behaviour
@@ -846,7 +859,7 @@ def page_ai_visibility_index(
         page = 1
 
     import time as _time
-    cache_key = (q, category, type_filter, sort, page)
+    cache_key = (q, category, type_filter, vertical, country, sort, page)
     cached = _AI_VIZ_INDEX_CACHE.get(cache_key)
     if cached and (_time.monotonic() - cached[0]) < _AI_VIZ_INDEX_TTL:
         bundle = cached[1]
@@ -864,8 +877,10 @@ def page_ai_visibility_index(
     last_refresh: datetime | None = None
     all_categories: list[str] = []  # categories that have at least one industry
     local_count_global = 0       # site-wide count of local-service industries
+    all_verticals: list[dict[str, Any]] = []  # local-services vertical breakdown
+    all_countries: list[dict[str, Any]] = []  # local-services country breakdown
 
-    is_filtered = bool(q or category or type_filter) or sort != "alphabetical"
+    is_filtered = bool(q or category or type_filter or vertical or country) or sort != "alphabetical"
     db_ok = False
 
     try:
@@ -903,18 +918,56 @@ def page_ai_visibility_index(
             refresh_dates = [r.last_full_refresh for r in all_reports if r.last_full_refresh]
             last_refresh = max(refresh_dates) if refresh_dates else None
 
-            # Pre-compute local-services membership per industry. Used both
-            # for the type=local filter and the "Local services" pill count.
-            # detect_local_services is cheap (regex on slug + parent_category)
-            # so running it across all ~hundreds of industries is sub-ms.
+            # Pre-compute local-services membership + vertical + country per
+            # industry. Used for the type=local filter, the vertical sub-pill
+            # bar, the country sub-pill bar, and the "Local services" pill
+            # count. detect_local_services is cheap (regex on slug +
+            # parent_category) so iterating all ~hundreds of industries
+            # is sub-ms.
             from src.local_services import detect_local_services
             local_slugs: set[str] = set()
+            vertical_by_slug: dict[str, str] = {}
+            country_by_slug: dict[str, str] = {}
             for r in all_reports:
-                if detect_local_services(
+                meta = detect_local_services(
                     slug=r.slug, name=r.name, parent_category=r.parent_category,
-                ):
-                    local_slugs.add(r.slug)
+                )
+                if not meta:
+                    continue
+                local_slugs.add(r.slug)
+                v = (meta.get("vertical") or "").strip()
+                if v:
+                    vertical_by_slug[r.slug] = v
+                c = meta.get("country")
+                if c:
+                    country_by_slug[r.slug] = c
             local_count_global = len(local_slugs)
+
+            # Build the vertical + country pill data: the values actually
+            # present in the local-services set, with counts. Sorted so the
+            # pill bar order is stable + meaningful (most-populated first).
+            from collections import Counter
+            from src.local_services import COUNTRY_LABELS, COUNTRY_LABEL_MAP
+            vertical_counts: Counter[str] = Counter(vertical_by_slug.values())
+            all_verticals = [
+                {"name": v, "count": n}
+                for v, n in vertical_counts.most_common()
+            ]
+            country_counts: Counter[str] = Counter(country_by_slug.values())
+            all_countries = [
+                {"code": code, "label": COUNTRY_LABEL_MAP.get(code, code), "count": country_counts[code]}
+                for code, _ in COUNTRY_LABELS
+                if country_counts.get(code, 0) > 0
+            ]
+            # Validate the vertical query param against actual values; drop
+            # if unrecognised (case-insensitive comparison).
+            if vertical:
+                _lc = vertical.lower()
+                match = next(
+                    (v["name"] for v in all_verticals if v["name"].lower() == _lc),
+                    None,
+                )
+                vertical = match or ""
 
             # Apply filters in Python (cheap at this scale, dodges ILIKE
             # locale quirks on Postgres).
@@ -928,6 +981,10 @@ def page_ai_visibility_index(
                 filtered = [r for r in filtered if r.slug in local_slugs]
             elif type_filter == "software":
                 filtered = [r for r in filtered if r.slug not in local_slugs]
+            if vertical:  # vertical only set when type_filter == 'local'
+                filtered = [r for r in filtered if vertical_by_slug.get(r.slug) == vertical]
+            if country:
+                filtered = [r for r in filtered if country_by_slug.get(r.slug) == country]
             total_filtered = len(filtered)
 
             # Apply sort. Recency uses last_full_refresh DESC (newest first),
@@ -996,6 +1053,8 @@ def page_ai_visibility_index(
                     "top_brand_name": top_brand_by_slug.get(r.slug),
                     "brand_count": count_by_slug.get(r.slug, 0),
                     "parent_category": r.parent_category or "Other",
+                    "vertical": vertical_by_slug.get(r.slug),
+                    "country": country_by_slug.get(r.slug),
                 }
                 flat_results.append(card)
                 if not is_filtered:
@@ -1014,6 +1073,83 @@ def page_ai_visibility_index(
         if cat in industries_by_category
     ]
 
+    # When the user is on the "Local services" tab with no narrower filter
+    # active (no vertical, no country, no search), bypass the normal page
+    # slice and render a DIRECTORY view: every vertical gets its own
+    # section, with up to LOCAL_PREVIEW_PER_VERTICAL cards visible plus a
+    # "View all N" link to the vertical-filtered drill-in. Solves the
+    # original UX complaint that the local-services view was "a mash up
+    # of things" because verticals were interleaved alphabetically, AND
+    # avoids the regression where pagination would hide all verticals
+    # except the first one on page 1.
+    industries_by_vertical: list[dict[str, Any]] = []
+    is_local_root_view = (
+        type_filter == "local"
+        and not vertical and not country and not q and not category
+        and page == 1
+    )
+    if is_local_root_view and db_ok:
+        LOCAL_PREVIEW_PER_VERTICAL = 6
+        # Build cards for ALL local industries (not just the page slice).
+        # We need brand counts + top brand for every local slug — one extra
+        # GROUP BY query + one rank=1 fetch covering the full local set.
+        try:
+            from sqlmodel import select as _select, func as _func
+            from src.db import IndustryBrand, get_session
+            local_filtered = [r for r in all_reports if r.slug in local_slugs]
+            local_slug_list = [r.slug for r in local_filtered]
+            top_brand_local: dict[str, str] = {}
+            count_local: dict[str, int] = {}
+            if local_slug_list:
+                with get_session() as s:
+                    rows = list(s.exec(
+                        _select(IndustryBrand.industry_slug, IndustryBrand.brand_name)
+                        .where(IndustryBrand.industry_slug.in_(local_slug_list))
+                        .where(IndustryBrand.rank_in_industry == 1)
+                    ))
+                    for row in rows:
+                        slug_val, name_val = row if isinstance(row, tuple) else (row.industry_slug, row.brand_name)
+                        top_brand_local[slug_val] = name_val
+                    crows = list(s.exec(
+                        _select(IndustryBrand.industry_slug, _func.count(IndustryBrand.id))
+                        .where(IndustryBrand.industry_slug.in_(local_slug_list))
+                        .group_by(IndustryBrand.industry_slug)
+                    ))
+                    for row in crows:
+                        slug_val, cnt_val = row if isinstance(row, tuple) else (row[0], row[1])
+                        count_local[slug_val] = int(cnt_val or 0)
+            by_vert: dict[str, list[dict[str, Any]]] = {}
+            for r in local_filtered:
+                card = {
+                    "slug": r.slug, "name": r.name, "description": r.description,
+                    "last_refresh": r.last_full_refresh,
+                    "top_brand_name": top_brand_local.get(r.slug),
+                    "brand_count": count_local.get(r.slug, 0),
+                    "vertical": vertical_by_slug.get(r.slug),
+                    "country": country_by_slug.get(r.slug),
+                }
+                v = card["vertical"] or "Other"
+                by_vert.setdefault(v, []).append(card)
+            # Sort cards within each vertical alphabetically (predictable
+            # browse order) and verticals by population (most-covered
+            # first, matching the pill bar order).
+            for v in by_vert:
+                by_vert[v].sort(key=lambda c: (c["name"] or "").lower())
+            for vname, cards in sorted(
+                by_vert.items(), key=lambda kv: (-len(kv[1]), kv[0].lower()),
+            ):
+                industries_by_vertical.append({
+                    "name": vname,
+                    "preview": cards[:LOCAL_PREVIEW_PER_VERTICAL],
+                    "total": len(cards),
+                    "has_more": len(cards) > LOCAL_PREVIEW_PER_VERTICAL,
+                })
+        except Exception as exc:  # noqa: BLE001
+            import traceback
+            print(f"[ai-visibility] local-root grouping failed: {type(exc).__name__}: {exc}")
+            traceback.print_exc()
+            industries_by_vertical = []
+
     # Pagination metadata for the template.
     total_pages = max(1, (total_filtered + AI_VISIBILITY_PAGE_SIZE - 1) // AI_VISIBILITY_PAGE_SIZE)
     page = min(page, total_pages)
@@ -1021,13 +1157,18 @@ def page_ai_visibility_index(
     from src.industry_audit import _engine_display_name
     bundle = dict(
         industries_by_category=ordered,
+        industries_by_vertical=industries_by_vertical,
         flat_results=flat_results,
         is_filtered=is_filtered,
         q=q, category_filter=category,
         type_filter=type_filter,
+        vertical_filter=vertical,
+        country_filter=country,
         sort=sort,
         local_count=local_count_global,
         all_categories=all_categories,
+        all_verticals=all_verticals if type_filter == "local" else [],
+        all_countries=all_countries if type_filter == "local" else [],
         total_industries=total_industries_global,
         total_filtered=total_filtered,
         total_brands=total_brands,
