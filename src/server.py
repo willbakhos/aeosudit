@@ -27,6 +27,10 @@ import stripe
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Request, Response
+# `Query` from fastapi is shadowed below by src.models.Query (the audit
+# query Pydantic model). Import the FastAPI helper under an alias so both
+# stay reachable in this module.
+from fastapi import Query as FastAPIQuery
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
@@ -813,15 +817,27 @@ def page_ai_visibility_index(
     request: Request,
     q: str = "",
     category: str = "",
+    # `type` is shadowed by Python's built-in; FastAPI re-aliases the query
+    # key via the `alias=` kwarg so URLs can still use ?type=local|software.
+    type_param: str = FastAPIQuery(default="", alias="type"),
+    sort: str = "",
     page: int = 1,
 ) -> HTMLResponse:
     """Index of every published industry ranking. Supports search (?q=)
-    on industry name, category filter (?category=), and pagination (?page=).
-    Unfiltered/first-page view is grouped by parent_category for editorial
-    feel; any active filter switches to a flat paginated grid for scale.
-    Falls back to an empty state when the DB is unreachable."""
+    on industry name, parent-category filter (?category=), a higher-level
+    type filter (?type=local|software) that cuts across categories, sort
+    (?sort=recent|alphabetical|brands), and pagination (?page=). Any
+    active filter switches to a flat paginated grid for scale; the
+    unfiltered/first-page view stays grouped by parent_category for
+    editorial feel. Falls back to an empty state when the DB is unreachable."""
     q = (q or "").strip()[:120]
     category = (category or "").strip()[:60]
+    type_filter = (type_param or "").strip().lower()[:20]
+    if type_filter not in ("local", "software"):
+        type_filter = ""
+    sort = (sort or "").strip().lower()[:20]
+    if sort not in ("recent", "alphabetical", "brands"):
+        sort = "alphabetical"  # default preserves prior behaviour
     if category and category not in INDUSTRY_PARENT_CATEGORIES:
         category = ""  # ignore unknown values rather than returning empty
     try:
@@ -830,7 +846,7 @@ def page_ai_visibility_index(
         page = 1
 
     import time as _time
-    cache_key = (q, category, page)
+    cache_key = (q, category, type_filter, sort, page)
     cached = _AI_VIZ_INDEX_CACHE.get(cache_key)
     if cached and (_time.monotonic() - cached[0]) < _AI_VIZ_INDEX_TTL:
         bundle = cached[1]
@@ -847,8 +863,9 @@ def page_ai_visibility_index(
     total_filtered = 0           # count after filters applied
     last_refresh: datetime | None = None
     all_categories: list[str] = []  # categories that have at least one industry
+    local_count_global = 0       # site-wide count of local-service industries
 
-    is_filtered = bool(q or category)
+    is_filtered = bool(q or category or type_filter) or sort != "alphabetical"
     db_ok = False
 
     try:
@@ -886,6 +903,19 @@ def page_ai_visibility_index(
             refresh_dates = [r.last_full_refresh for r in all_reports if r.last_full_refresh]
             last_refresh = max(refresh_dates) if refresh_dates else None
 
+            # Pre-compute local-services membership per industry. Used both
+            # for the type=local filter and the "Local services" pill count.
+            # detect_local_services is cheap (regex on slug + parent_category)
+            # so running it across all ~hundreds of industries is sub-ms.
+            from src.local_services import detect_local_services
+            local_slugs: set[str] = set()
+            for r in all_reports:
+                if detect_local_services(
+                    slug=r.slug, name=r.name, parent_category=r.parent_category,
+                ):
+                    local_slugs.add(r.slug)
+            local_count_global = len(local_slugs)
+
             # Apply filters in Python (cheap at this scale, dodges ILIKE
             # locale quirks on Postgres).
             filtered = all_reports
@@ -894,7 +924,41 @@ def page_ai_visibility_index(
                 filtered = [r for r in filtered if ql in (r.name or "").lower()]
             if category:
                 filtered = [r for r in filtered if r.parent_category == category]
+            if type_filter == "local":
+                filtered = [r for r in filtered if r.slug in local_slugs]
+            elif type_filter == "software":
+                filtered = [r for r in filtered if r.slug not in local_slugs]
             total_filtered = len(filtered)
+
+            # Apply sort. Recency uses last_full_refresh DESC (newest first),
+            # treating never-refreshed rows as the oldest. Brand count needs
+            # the count_by_slug map below, so we defer that ordering until
+            # after we've fetched counts for the candidate page set.
+            if sort == "recent":
+                from datetime import datetime as _dt
+                filtered.sort(
+                    key=lambda r: (r.last_full_refresh or _dt.min, r.name),
+                    reverse=True,
+                )
+            elif sort == "alphabetical":
+                filtered.sort(key=lambda r: (r.name or "").lower())
+            elif sort == "brands":
+                # Need brand counts across ALL filtered industries before we
+                # can sort + slice. One GROUP BY query, scales fine.
+                all_filtered_slugs = [r.slug for r in filtered]
+                count_all: dict[str, int] = {}
+                if all_filtered_slugs:
+                    rows = list(s.exec(
+                        _select(IndustryBrand.industry_slug, _func.count(IndustryBrand.id))
+                        .where(IndustryBrand.industry_slug.in_(all_filtered_slugs))
+                        .group_by(IndustryBrand.industry_slug)
+                    ))
+                    for row in rows:
+                        slug_val, cnt_val = row if isinstance(row, tuple) else (row[0], row[1])
+                        count_all[slug_val] = int(cnt_val or 0)
+                filtered.sort(
+                    key=lambda r: (-count_all.get(r.slug, 0), (r.name or "").lower()),
+                )
 
             # Page slice
             offset = (page - 1) * AI_VISIBILITY_PAGE_SIZE
@@ -960,6 +1024,9 @@ def page_ai_visibility_index(
         flat_results=flat_results,
         is_filtered=is_filtered,
         q=q, category_filter=category,
+        type_filter=type_filter,
+        sort=sort,
+        local_count=local_count_global,
         all_categories=all_categories,
         total_industries=total_industries_global,
         total_filtered=total_filtered,

@@ -1,14 +1,18 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility/" ~ report.slug %}
 {% set _engine_name = engine_display_name or "Google AI" %}
-{# Title + description target AEO buyers and the brands themselves rather
-   than commercial shoppers (who'd never convert to monitoraeo customers
-   anyway, and dilute CTR by mismatched intent). Was "Top N {category}
-   by AI search visibility" — that read like a G2 listicle and pulled
-   in the wrong audience. New framing leads with "AI search visibility
-   ranking", which monitoraeo can actually own in SERPs against the
-   handful of other AEO sites. #}
-{% set page_description = "How AI search engines rank " ~ report.name|lower ~ " by visibility and citations. " ~ (brands|length) ~ " brands measured across " ~ _engine_name ~ ", refreshed monthly. Composite score: 70% visibility + 30% citation rate." %}
+{# Title + description target buyers researching the category. Earlier
+   version led with "AI search visibility ranking" which is what the page
+   IS but not what buyers search for. Google Search Console showed pages
+   ranking position 5-10 on niche/local queries with zero clicks — the
+   methodology-led titles didn't sell. New framing leads with "Best X"
+   buyer intent while preserving the same content. The H1 below keeps
+   the methodology framing so the page is still honest about what it is.
+   For local-service slugs (where detect_local_services found a city or
+   state), swap "the brands" for "the providers" so the meta reads
+   naturally for dermatologists/lawyers/dentists/etc. #}
+{% set _noun = "providers" if local_meta else "brands" %}
+{% set page_description = "The " ~ _noun ~ " AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI) name and cite when buyers ask about " ~ report.name|lower ~ ". " ~ (brands|length) ~ " ranked, refreshed monthly." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
@@ -32,7 +36,7 @@
    raw scores so the page never reads bare. #}
 {% set insight_by_brand = dict(auto_brand_insights or {}) %}
 {% for bi in brand_insights %}{% set _ = insight_by_brand.update({bi.brand_name|lower: bi.text}) %}{% endfor %}
-{% block title %}{{ report.name }}: AI search visibility ranking (2026) | monitoraeo{% endblock %}
+{% block title %}Best {{ report.name|lower }} (2026): which {{ _noun }} AI search recommends | monitoraeo{% endblock %}
 
 {% block schema %}
 <script type="application/ld+json">
@@ -273,11 +277,21 @@
   .mover-card.down .d { color: var(--danger); }
   .mover-card .r { display: block; color: var(--muted); font-size: 11.5px; font-weight: 500; margin-top: 2px; }
 
+  .related-concepts { margin-top: 36px; padding: 24px 28px; border-radius: 18px; background: white; border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .related-concepts h2 { margin: 0 0 10px; font-size: 18px; }
+  .related-concepts-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .related-concepts-list li { padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .related-concepts-list li:last-child { border-bottom: 0; }
+  .related-concepts-list li a { font-weight: 800; color: var(--ink); text-decoration: none; border-bottom: 1px dashed transparent; }
+  .related-concepts-list li a:hover { color: var(--blue); border-bottom-color: var(--blue); }
+  .related-concepts-list .rcd { display: block; color: var(--muted); font-size: 13px; font-weight: 500; margin-top: 2px; line-height: 1.5; }
+
   @media (max-width: 720px) {
     .ind-stats, .movers-grid, .insight-cards { grid-template-columns: 1fr; }
     .glance-grid { grid-template-columns: 1fr 1fr; }
     .rank-table { display: block; overflow-x: auto; }
     .rank-table tr.insight-row td { padding-left: 16px; }
+    .related-concepts { padding: 18px 20px; }
   }
 {% endblock %}
 
@@ -285,7 +299,7 @@
 <section class="ind-hero">
   <span class="eyebrow">AI Visibility Rankings · {{ report.parent_category or 'Industry' }}</span>
   <h1>{{ report.name }}: AI search visibility ranking (2026)</h1>
-  <p class="lede">How AI search engines rank {{ report.name|lower }} by visibility and citations. {{ brands|length }} brands measured monthly across {{ _engine_name }}: which brands the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% visibility</strong> (% of AI answers naming the brand) + <strong>30% citation rate</strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+  <p class="lede">How AI search engines rank {{ report.name|lower }} by <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a> and <a href="/glossary/citation-rate-meaning" style="color:inherit;">citations</a>. {{ brands|length }} {{ _noun }} measured monthly across {{ _engine_name }}: which {{ _noun }} the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a></strong> (% of AI answers naming the brand) + <strong>30% <a href="/glossary/citation-rate-meaning" style="color:inherit;">citation rate</a></strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
   {% if report.last_full_refresh %}
     <span class="updated-pill">Refreshed {{ report.last_full_refresh.strftime('%b %d, %Y') }}</span>
   {% else %}
@@ -601,22 +615,39 @@
 <p>Four things worth knowing before you act on the numbers above. These are the same definitions across every industry page — for category-specific observations, see the <em>What we observed</em> section above (where available) and the per-brand insights inline in the ranking.</p>
 <div class="insight-cards">
   <div class="insight-card">
-    <h4>Visibility = being <em>named</em></h4>
-    <p>A brand's visibility % is the share of AI answers that mention it by name in the response prose. This is who AI engines actively <em>recommend</em> to the buyer.</p>
+    <h4><a href="/glossary/visibility-metric" style="color:inherit;">Visibility</a> = being <em>named</em></h4>
+    <p>A brand's visibility % is the share of AI answers that mention it by name in the response prose. This is who AI engines actively <em>recommend</em> to the buyer. <a href="/glossary/visibility-metric" style="color:var(--blue); font-weight:700;">More on visibility →</a></p>
   </div>
   <div class="insight-card">
-    <h4>Citation rate = being <em>trusted</em></h4>
-    <p>Citation rate is the share of AI answers that include the brand's domain as a clickable source link. This is what the AI treats as authoritative evidence — different from being named.</p>
+    <h4><a href="/glossary/citation-rate-meaning" style="color:inherit;">Citation rate</a> = being <em>trusted</em></h4>
+    <p>Citation rate is the share of AI answers that include the brand's domain as a clickable source link. This is what the AI treats as authoritative evidence, different from being named. <a href="/glossary/citation-rate-meaning" style="color:var(--blue); font-weight:700;">More on citation rate →</a></p>
   </div>
   <div class="insight-card">
     <h4>Top engine differs by brand</h4>
-    <p>The "top engine" column shows which AI surface each brand performs best on. Big gaps between a brand's score across engines usually points to specific content or schema gaps.</p>
+    <p>The "top engine" column shows which AI surface each brand performs best on. Big gaps between a brand's score across engines usually points to specific content or schema gaps. <a href="/glossary/how-chatgpt-chooses-citations" style="color:var(--blue); font-weight:700;">How AI engines pick sources →</a></p>
   </div>
   <div class="insight-card">
     <h4>Rankings move month to month</h4>
-    <p>AI engines re-crawl and re-rank on shorter cycles than classical search. We re-audit every brand on this list at least every {{ report.refresh_interval_days }} days and refresh this page automatically.</p>
+    <p>AI engines re-crawl and re-rank on shorter cycles than classical search. We re-audit every brand on this list at least every {{ report.refresh_interval_days }} days and refresh this page automatically. <a href="/glossary/ai-search-ranking" style="color:var(--blue); font-weight:700;">How AI search ranking works →</a></p>
   </div>
 </div>
+
+{# Related concepts footer — internal linking to the glossary cluster.
+   Boosts dwell time, spreads link equity to the glossary (which is
+   monitoraeo's strongest ranking content), and gives buyers a path
+   forward beyond the ranking table. #}
+<section class="related-concepts">
+  <h2>Related concepts</h2>
+  <ul class="related-concepts-list">
+    <li><a href="/glossary/visibility-metric">AI visibility (metric)</a> <span class="rcd">what visibility actually measures and how to improve it</span></li>
+    <li><a href="/glossary/citation-rate-meaning">Citation rate (metric)</a> <span class="rcd">why citation rate moves faster than visibility, and what to fix first</span></li>
+    <li><a href="/glossary/ai-search-ranking">AI search ranking</a> <span class="rcd">how AI ranking differs from classical SEO ranking</span></li>
+    <li><a href="/glossary/brand-ai-answer-rankings">Brand AI answer rankings</a> <span class="rcd">how these rankings are built and what they tell you</span></li>
+    <li><a href="/glossary/what-are-chatgpt-citations">ChatGPT citations</a> <span class="rcd">when ChatGPT shows citations and how it picks sources</span></li>
+    <li><a href="/glossary/most-cited-domains-chatgpt">Most cited domains in ChatGPT</a> <span class="rcd">the PR target list, why these domains dominate</span></li>
+    <li><a href="/ai-visibility/methodology">Methodology</a> <span class="rcd">exactly how this ranking is built, query by query</span></li>
+  </ul>
+</section>
 
 <h2>Get your own {{ report.name|lower }} brand audited</h2>
 <p>The brands above were curated from public market-leader lists. Want the same measurement against your own brand — including the queries you appear on, which competitors get named instead, and a prioritised fix list? Run a free preview.</p>

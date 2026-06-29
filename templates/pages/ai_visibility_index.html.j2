@@ -4,8 +4,10 @@
 {% set page_og_type = 'website' %}
 {# Noindex filtered/paginated views so they don't compete with the canonical index for SEO. #}
 {% if is_filtered or page > 1 %}{% set _ = page_description %}{% endif %}
-{% block title %}AI search visibility rankings by industry (2026){% if category_filter %} · {{ category_filter }}{% endif %}{% if q %} · "{{ q }}"{% endif %}{% if page > 1 %} · page {{ page }}{% endif %} | monitoraeo{% endblock %}
-{% block og_title %}AI search visibility rankings by industry (2026){% if category_filter %} · {{ category_filter }}{% endif %}{% endblock %}
+{% set _type_label = '' %}
+{% if type_filter == 'local' %}{% set _type_label = ' · local services' %}{% elif type_filter == 'software' %}{% set _type_label = ' · software & products' %}{% endif %}
+{% block title %}AI search visibility rankings by industry (2026){% if category_filter %} · {{ category_filter }}{% endif %}{{ _type_label }}{% if q %} · "{{ q }}"{% endif %}{% if page > 1 %} · page {{ page }}{% endif %} | monitoraeo{% endblock %}
+{% block og_title %}AI search visibility rankings by industry (2026){% if category_filter %} · {{ category_filter }}{% endif %}{{ _type_label }}{% endblock %}
 
 {# Filtered or paginated views are noindex,follow — duplicate-content
    prevention. Crawlers still follow links to the canonical industry pages
@@ -107,11 +109,22 @@
   }
 
   .filter-bar {
-    display: grid; grid-template-columns: 1fr auto; gap: 14px;
-    align-items: center; margin: 0 0 18px;
+    display: grid; grid-template-columns: 1fr auto auto; gap: 14px;
+    align-items: center; margin: 0 0 12px;
     padding: 14px 18px; background: white; border: 1px solid var(--line);
     border-radius: 18px; box-shadow: var(--shadow-soft);
   }
+  .filter-bar .sort-row { display: flex; align-items: center; gap: 8px; }
+  .filter-bar .sort-row label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .filter-bar .sort-row select {
+    padding: 8px 30px 8px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: #f8fafc; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink);
+    cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2.5'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .filter-bar .sort-row select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+  .type-pills { margin-bottom: 10px; }
   .filter-bar .search { display: flex; align-items: center; gap: 8px; }
   .filter-bar .search input {
     flex: 1; padding: 9px 14px; border: 1px solid var(--line);
@@ -164,6 +177,7 @@
     .industry-grid { grid-template-columns: 1fr; }
     .filter-bar { grid-template-columns: 1fr; }
     .filter-bar .search { flex-wrap: wrap; }
+    .filter-bar .sort-row { justify-content: space-between; }
   }
 {% endblock %}
 
@@ -190,26 +204,73 @@
   </div>
 </section>
 
-{# Filter bar — search + reset. Submits as GET so URLs are shareable. #}
+{# Filter bar — search + sort + reset. Submits as GET so URLs are shareable.
+   Sort default ('alphabetical') isn't carried in the URL when active to
+   keep the canonical /ai-visibility URL parameter-free for SEO. #}
 {% if total_industries %}
+{# Build a query-string helper that preserves the OTHER active filters
+   when toggling any one of them. Used by every pill link below. #}
+{% macro _qs(omit='') -%}
+  {%- set parts = [] -%}
+  {%- if q and omit != 'q' %}{% set _ = parts.append('q=' ~ q|urlencode) %}{% endif -%}
+  {%- if category_filter and omit != 'category' %}{% set _ = parts.append('category=' ~ category_filter|urlencode) %}{% endif -%}
+  {%- if type_filter and omit != 'type' %}{% set _ = parts.append('type=' ~ type_filter|urlencode) %}{% endif -%}
+  {%- if sort and sort != 'alphabetical' and omit != 'sort' %}{% set _ = parts.append('sort=' ~ sort|urlencode) %}{% endif -%}
+  {{- parts|join('&amp;') -}}
+{%- endmacro %}
 <form class="filter-bar" method="get" action="/ai-visibility">
   <div class="search">
-    <input type="search" name="q" value="{{ q }}" placeholder="Search industry name… (e.g. CRM, payment, healthcare)" aria-label="Search industries">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search industry name… (e.g. CRM, payment, dermatologists)" aria-label="Search industries">
     {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
+    {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
+    {% if sort and sort != 'alphabetical' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
     <button type="submit">Search</button>
+  </div>
+  <div class="sort-row">
+    <label for="sortSel">Sort</label>
+    <select id="sortSel" onchange="(function(s){
+      var p = new URLSearchParams(window.location.search);
+      if (s.value && s.value !== 'alphabetical') { p.set('sort', s.value); } else { p.delete('sort'); }
+      p.delete('page');
+      var qs = p.toString();
+      window.location.href = '/ai-visibility' + (qs ? '?' + qs : '');
+    })(this)">
+      <option value="alphabetical" {% if sort == 'alphabetical' %}selected{% endif %}>Alphabetical</option>
+      <option value="recent" {% if sort == 'recent' %}selected{% endif %}>Recently refreshed</option>
+      <option value="brands" {% if sort == 'brands' %}selected{% endif %}>Most brands tracked</option>
+    </select>
   </div>
   {% if is_filtered %}<a class="reset" href="/ai-visibility">Clear filters ×</a>{% endif %}
 </form>
 
+{# Type pill bar — cuts across parent_categories. 'Local services' surfaces
+   the city/region-scoped industries (dentists in chicago, lawyers in
+   sydney etc.) which would otherwise be buried inside whichever parent
+   category they happen to map to. #}
+{% if local_count %}
+<div class="category-pills type-pills">
+  <a class="category-pill{% if not type_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(omit='type') %}{% if qs %}?{{ qs }}{% endif %}">
+    All types <span class="count">{{ total_industries }}</span>
+  </a>
+  <a class="category-pill{% if type_filter == 'software' %} active{% endif %}" href="/ai-visibility?type=software{% set qs = _qs(omit='type') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+    Software &amp; products <span class="count">{{ total_industries - local_count }}</span>
+  </a>
+  <a class="category-pill{% if type_filter == 'local' %} active{% endif %}" href="/ai-visibility?type=local{% set qs = _qs(omit='type') %}{% if qs %}&amp;{{ qs }}{% endif %}">
+    Local services <span class="count">{{ local_count }}</span>
+  </a>
+</div>
+{% endif %}
+
 {# Category pill bar — single-select. Each pill toggles ?category= for that
-   value (or clears it when clicked again). Preserves the active search q. #}
+   value (or clears it when clicked again). Preserves the active search q,
+   type, and sort. #}
 {% if all_categories %}
 <div class="category-pills">
-  <a class="category-pill{% if not category_filter %} active{% endif %}" href="/ai-visibility{% if q %}?q={{ q|urlencode }}{% endif %}">
-    All <span class="count">{{ total_industries }}</span>
+  <a class="category-pill{% if not category_filter %} active{% endif %}" href="/ai-visibility{% set qs = _qs(omit='category') %}{% if qs %}?{{ qs }}{% endif %}">
+    All categories <span class="count">{{ total_industries }}</span>
   </a>
   {% for cat in all_categories %}
-  <a class="category-pill{% if category_filter == cat %} active{% endif %}" href="/ai-visibility?category={{ cat|urlencode }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">
+  <a class="category-pill{% if category_filter == cat %} active{% endif %}" href="/ai-visibility?category={{ cat|urlencode }}{% set qs = _qs(omit='category') %}{% if qs %}&amp;{{ qs }}{% endif %}">
     {{ cat }}
   </a>
   {% endfor %}
@@ -222,11 +283,14 @@
     {% if total_filtered %}
       Showing <strong>{{ total_filtered }}</strong> industr{{ 'y' if total_filtered == 1 else 'ies' }}
       {% if q %}matching <strong>"{{ q }}"</strong>{% endif %}
-      {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}.
+      {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}
+      {% if type_filter == 'local' %}(<strong>local services</strong> only){% elif type_filter == 'software' %}(<strong>software &amp; products</strong> only){% endif %}
+      {% if sort == 'recent' %}sorted by <strong>most recently refreshed</strong>{% elif sort == 'brands' %}sorted by <strong>most brands tracked</strong>{% endif %}.
     {% else %}
       No industries match
       {% if q %}<strong>"{{ q }}"</strong>{% endif %}
-      {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}.
+      {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}
+      {% if type_filter == 'local' %}(local services only){% elif type_filter == 'software' %}(software only){% endif %}.
       <a href="/ai-visibility">Clear filters</a> to see all.
     {% endif %}
   </p>
@@ -278,7 +342,7 @@
 {# Pagination footer — shows when there's more than one page of results in
    the current view. Builds URLs preserving the active q + category. #}
 {% if total_pages > 1 %}
-  {% set base_qs %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}{% if category_filter %}category={{ category_filter|urlencode }}&amp;{% endif %}{% endset %}
+  {% set base_qs %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}{% if category_filter %}category={{ category_filter|urlencode }}&amp;{% endif %}{% if type_filter %}type={{ type_filter|urlencode }}&amp;{% endif %}{% if sort and sort != 'alphabetical' %}sort={{ sort|urlencode }}&amp;{% endif %}{% endset %}
   <nav class="pagination" aria-label="Pagination">
     {% if page > 1 %}
       <a href="/ai-visibility?{{ base_qs }}page={{ page - 1 }}" rel="prev">← Prev</a>
