@@ -21,7 +21,15 @@ from typing import Any
 import httpx
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Analyst narrative (below the ranking table): Claude Sonnet. Longer,
+# more data-grounded, benefits from Claude's stricter instruction-following
+# on the multi-key JSON contract this generator uses.
 MODEL = "anthropic/claude-sonnet-4.6"
+# Buyer-intent intro (above the ranking table): GPT-4o. The intro is short
+# (~200 words), the prompt is simpler, and GPT-4o is materially cheaper
+# than Claude Sonnet at the volume we run (382+ industries per backfill /
+# monthly refresh cycle).
+BUYER_INTRO_MODEL = "openai/gpt-4o"
 DEFAULT_TIMEOUT = 120.0
 MAX_RETRIES = 2
 BASE_BACKOFF = 2.0
@@ -287,9 +295,12 @@ def _build_buyer_intro_prompt(
 
 async def _call_buyer_intro(prompt: str, api_key: str) -> dict[str, Any]:
     """Same OpenRouter call shape as the analyst-narrative path. Buyer
-    intros are short (~200 words total) so MAX_TOKENS can be smaller."""
+    intros are short (~200 words total) so MAX_TOKENS can be smaller.
+    Uses BUYER_INTRO_MODEL (GPT-4o) rather than the Claude MODEL that
+    the analyst narrative uses, since the intro is simple and short-
+    form and GPT-4o costs materially less at 382+ per refresh."""
     payload = {
-        "model": MODEL,
+        "model": BUYER_INTRO_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 1200,
     }
@@ -356,7 +367,7 @@ def generate_buyer_intro(
         return {}
     return {
         "generated_at": datetime.utcnow().isoformat() + "Z",
-        "model": MODEL,
+        "model": BUYER_INTRO_MODEL,
         "paragraphs": paragraphs[:3],
     }
 

@@ -217,6 +217,15 @@
   .ind-hero .lede { color: var(--muted); margin: 0 0 16px; font-size: 15.5px; max-width: 720px; line-height: 1.6; }
   .ind-hero .updated-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: rgba(16,185,129,.10); color: #15803d; font-size: 12px; font-weight: 700; }
   .ind-hero .updated-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
+  .ind-hero .ind-byline {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 8px; margin: 0 0 14px;
+    font-size: 13.5px; color: var(--muted); font-weight: 500;
+  }
+  .ind-hero .ind-byline a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 1px dashed var(--line); }
+  .ind-hero .ind-byline a:hover { color: var(--blue); border-bottom-color: var(--blue); }
+  .ind-hero .ind-byline time { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ind-hero .ind-byline span[aria-hidden] { color: var(--soft-muted); }
   .ind-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
   .ind-stat { padding: 14px 16px; background: #f8fafc; border-radius: 14px; border: 1px solid var(--line); }
   .ind-stat .n { font-size: 24px; font-weight: 900; letter-spacing: -.04em; line-height: 1; color: var(--ink); }
@@ -310,12 +319,22 @@
 <section class="ind-hero">
   <span class="eyebrow">AI Visibility Rankings · {{ report.parent_category or 'Industry' }}</span>
   <h1>{{ report.name }}: AI search visibility ranking (2026)</h1>
+  {# Byline. Renders both published + updated so the date signal is
+     visible in-page (matches the Article schema dateModified above) and
+     nudges SERP snippets toward showing a fresh date. Aria-hidden dot
+     separator keeps screen-reader output clean. #}
+  <p class="ind-byline">
+    <span class="ind-byline-author">By <a href="/">monitoraeo</a></span>
+    <span aria-hidden="true">·</span>
+    {% if report.last_full_refresh %}
+      <span>Last updated <time datetime="{{ report.last_full_refresh.strftime('%Y-%m-%d') }}">{{ report.last_full_refresh.strftime('%B %d, %Y') }}</time></span>
+    {% else %}
+      <span>First audit running</span>
+    {% endif %}
+    <span aria-hidden="true">·</span>
+    <span>Refreshed every {{ report.refresh_interval_days }} days</span>
+  </p>
   <p class="lede">How AI search engines rank {{ report.name|lower }} by <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a> and <a href="/glossary/citation-rate-meaning" style="color:inherit;">citations</a>. {{ brands|length }} {{ _noun }} measured monthly across {{ _engine_name }}: which {{ _noun }} the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a></strong> (% of AI answers naming the brand) + <strong>30% <a href="/glossary/citation-rate-meaning" style="color:inherit;">citation rate</a></strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
-  {% if report.last_full_refresh %}
-    <span class="updated-pill">Refreshed {{ report.last_full_refresh.strftime('%b %d, %Y') }}</span>
-  {% else %}
-    <span class="updated-pill" style="background:#fef3c7; color:#92400e;">First audit running</span>
-  {% endif %}
   <div class="ind-stats">
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_visibility }}%</div><div class="l">Avg visibility across category</div></div>
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_citation }}%</div><div class="l">Avg citation rate</div></div>
