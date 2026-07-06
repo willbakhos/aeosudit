@@ -248,7 +248,6 @@
   .narrative-section h2 { margin: 0 0 12px; font-size: 22px; letter-spacing: -.025em; }
   .narrative-section p { font-size: 15.5px; line-height: 1.75; color: var(--ink-2); margin: 0 0 14px; }
   .narrative-section p:last-child { margin-bottom: 0; }
-  .narrative-section .auto-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: rgba(124,58,237,.10); color: var(--purple); letter-spacing: .06em; text-transform: uppercase; margin-left: 8px; vertical-align: middle; }
 
   .rank-table { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-soft); }
   .rank-table thead th { background: #f8fafc; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); }
@@ -570,7 +569,7 @@
 
 {% if narrative_paragraphs %}
 <section class="narrative-section">
-  <h2>What we observed in this category<span class="auto-tag">auto-generated</span></h2>
+  <h2>What we observed in this category</h2>
   {% for para in narrative_paragraphs %}<p>{{ para }}</p>{% endfor %}
 </section>
 {% endif %}
