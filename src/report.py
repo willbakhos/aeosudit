@@ -18,6 +18,20 @@ def _row_dict(row: ScoredRow) -> dict[str, Any]:
     r = row.response
     d = row.deterministic
     llm = row.llm
+    # Citations: full URL list from the engine response. Semicolon-joined so
+    # Excel treats each column as a single cell (commas would split into
+    # extra columns). citation_urls preserves order + duplicates so it maps
+    # back to the answer prose position; citation_domains is deduped for
+    # quick pivot on "which domains did the AI trust across this run".
+    citation_urls = [c.url for c in r.citations if c.url]
+    citation_titles = [c.title or "" for c in r.citations]
+    seen_dom: set[str] = set()
+    citation_domains: list[str] = []
+    for c in r.citations:
+        d_l = (c.domain or "").lower()
+        if d_l and d_l not in seen_dom:
+            seen_dom.add(d_l)
+            citation_domains.append(c.domain)
     return {
         "query": r.query,
         "query_type": r.query_type,
@@ -33,6 +47,10 @@ def _row_dict(row: ScoredRow) -> dict[str, Any]:
         "hallucination_flags": " | ".join(llm.hallucination_flags) if llm else "",
         "confidence": llm.confidence if llm else "",
         "response_text": r.response_text,
+        "citation_count": len(citation_urls),
+        "citation_urls": "; ".join(citation_urls),
+        "citation_domains": "; ".join(citation_domains),
+        "citation_titles": "; ".join(citation_titles),
         "latency_ms": r.latency_ms,
         "error": r.error or "",
     }

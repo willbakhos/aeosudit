@@ -1021,11 +1021,17 @@ def report_in_dashboard(request: Request, run_id: str):
 
 @router.get("/reports/{run_id}/csv")
 def report_csv_download(request: Request, run_id: str):
-    """Stream the raw results.csv produced when the audit ran. Auth-gated
-    the same way as /reports/{run_id}: the run must belong to the logged-in
-    user, or the viewer must be a master account. The CSV file is the same
-    one write_csv(rows, run_dir) drops next to the HTML report."""
-    from fastapi.responses import FileResponse
+    """Download the per-query drilldown CSV. Auth-gated the same way as
+    /reports/{run_id}: the run must belong to the logged-in user, or the
+    viewer must be a master account.
+
+    Regenerates the CSV on-the-fly from raw_responses.json when that
+    file is available (all runs from mid-2026 onward), so old runs pick
+    up new columns (citation_urls, citation_domains, etc.) without
+    having to re-audit. Falls back to the cached results.csv file for
+    legacy runs that predate the raw_responses cache.
+    """
+    from fastapi.responses import FileResponse, StreamingResponse
     user = _require_user(request)
     if isinstance(user, RedirectResponse):
         return user
@@ -1039,15 +1045,63 @@ def report_csv_download(request: Request, run_id: str):
             raise HTTPException(404, "Report not found")
         brand = s.get(TrackedBrand, run.brand_id)
     output_root = Path(os.environ.get("OUTPUT_ROOT", "output"))
-    csv_path = output_root / run_id / "results.csv"
-    if not csv_path.exists():
-        # Older runs predate write_csv or the file was pruned. Be honest
-        # rather than 500ing — the report still works, just no CSV.
-        raise HTTPException(404, "CSV not available for this run")
-    # Friendly filename so the browser saves it as "<brand>-<run_id>.csv"
-    # instead of the bare "results.csv".
+    run_dir = output_root / run_id
+
     safe_brand = "".join(c if c.isalnum() else "-" for c in (brand.name if brand else "report")).strip("-").lower() or "report"
     filename = f"monitoraeo-{safe_brand}-{run_id}.csv"
+
+    # Preferred path: rebuild from raw_responses.json so downloads always
+    # reflect the current CSV schema (adds columns without requiring a
+    # re-audit of historical runs).
+    raw_path = run_dir / "raw_responses.json"
+    if raw_path.exists():
+        import io
+        import json as _json
+        import pandas as pd
+        import yaml as _yaml
+        from src.models import EngineResponse, ScoredRow, SiteConfig
+        from src.report import _row_dict
+        from src.scorer import score_response
+        from src.server import DEFAULT_CONFIG_PATH
+        try:
+            raw = _json.loads(raw_path.read_text())
+            responses = [EngineResponse.model_validate(r) for r in raw]
+            # Reconstruct a site config for scoring. Prefer the brand's
+            # live domain (accurate for cited_as_source matching) with the
+            # on-disk default as the fallback for tests/edge cases.
+            site = SiteConfig.model_validate(_yaml.safe_load(DEFAULT_CONFIG_PATH.open()))
+            if brand:
+                site.brand.name = brand.name or site.brand.name
+                site.brand.domain = brand.domain or site.brand.domain
+                site.brand.aliases = list(brand.aliases or [])
+                site.competitors = [
+                    c.get("name") if isinstance(c, dict) else str(c)
+                    for c in (brand.competitors or [])
+                    if c
+                ]
+            rows = [
+                ScoredRow(response=r, deterministic=score_response(r, site), llm=None)
+                for r in responses
+            ]
+            df = pd.DataFrame([_row_dict(r) for r in rows])
+            buf = io.StringIO()
+            df.to_csv(buf, index=False)
+            data = buf.getvalue().encode("utf-8")
+            return StreamingResponse(
+                iter([data]),
+                media_type="text/csv",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Never 500 on the download endpoint. Fall through to the
+            # cached CSV if regeneration explodes for any reason.
+            print(f"[reports/{run_id}/csv] regen failed, using cached CSV: {type(exc).__name__}: {exc}")
+
+    # Fallback: cached results.csv (legacy runs that predate the raw JSON,
+    # or the rare case where regeneration above throws).
+    csv_path = run_dir / "results.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "CSV not available for this run")
     return FileResponse(csv_path, media_type="text/csv", filename=filename)
 
 
