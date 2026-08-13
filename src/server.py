@@ -129,6 +129,39 @@ _jinja = Environment(
     autoescape=select_autoescape(("html", "htm", "xml", "j2")),
 )
 
+
+def _sentence_lower(value: str) -> str:
+    """Lowercase an industry name for mid-sentence use WITHOUT destroying
+    acronyms or proper nouns.
+
+    Plain `|lower` was mangling a large share of the 2400+ industry names:
+        "CRM software"        -> "crm software"        (acronym destroyed)
+        "SIEM software"       -> "siem software"       (acronym destroyed)
+        "AI voice generators" -> "ai voice generators" (acronym destroyed)
+        "Dentists in Perth"   -> "dentists in perth"   (city destroyed)
+
+    Rules:
+      * If the first word is an all-caps token of 2+ chars (CRM, SIEM, ETL,
+        HVAC, AI, B2B), the name leads with an acronym. Return unchanged.
+      * Otherwise lowercase ONLY the first character. Every later word keeps
+        its original case, so "Dentists in Perth" -> "dentists in Perth" and
+        "Account planning software" -> "account planning software".
+
+    Non-string / empty input is returned untouched so a template can never
+    500 on a null report.name.
+    """
+    if not isinstance(value, str) or not value:
+        return value
+    first = value.split(" ", 1)[0]
+    # Strip trailing punctuation before the acronym test so "CRM," still counts.
+    first_alpha = "".join(ch for ch in first if ch.isalpha())
+    if len(first_alpha) >= 2 and first_alpha.isupper():
+        return value
+    return value[0].lower() + value[1:]
+
+
+_jinja.filters["sentence_lower"] = _sentence_lower
+
 # In-memory job tracker for free previews. Fine for single-process MVP;
 # swap for Redis when you scale beyond one uvicorn worker.
 PREVIEW_JOBS: dict[str, dict[str, Any]] = {}
@@ -344,8 +377,9 @@ hallucination risk per engine, and produces a prioritised action plan.
 - [Guides index]({SITE_BASE_URL}/guides): Longer-form pillar pages on how to win AI visibility — currently the ChatGPT-citation playbook, more coming.
 - [Glossary]({SITE_BASE_URL}/glossary): Every AI search term defined — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice, brand hallucination and more.
 
-## Industry rankings
-- [AI visibility rankings by industry]({SITE_BASE_URL}/ai-visibility): Public ranking pages for the top brands in each industry, scored by how often AI engines name and cite them. Updated monthly. Each industry page (e.g. /ai-visibility/crm-software) is a Dataset with per-brand visibility and citation rates across Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini.
+## AEO rankings by industry
+- [AEO rankings by industry]({SITE_BASE_URL}/ai-visibility): Public answer engine optimisation ranking pages for the top brands in each industry, scored by how often AI engines name and cite them. Updated monthly. Each industry page (e.g. /ai-visibility/crm-software, titled "AEO for CRM software") is a Dataset with per-brand visibility and citation rates across Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini.
+- [AEO rankings methodology]({SITE_BASE_URL}/ai-visibility/methodology): The 8 category queries, the 70% visibility + 30% citation composite AEO score, the monthly refresh cadence, and the safeguards against gaming.
 
 ## Product
 - [How it works]({SITE_BASE_URL}/how-it-works): A monitoraeo audit takes a domain, runs 40 buyer-facing queries across 5 engines (200 AI answers), and scores how each engine describes the brand.
@@ -832,7 +866,7 @@ def page_ai_visibility_methodology(request: Request) -> HTMLResponse:
         "ai_visibility_methodology.html.j2", request=request,
         engine_display_name=_engine_display_name(),
         breadcrumbs=[
-            {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+            {"name": "AEO Rankings", "path": "/ai-visibility"},
             {"name": "Methodology", "path": "/ai-visibility/methodology"},
         ],
     )
@@ -920,7 +954,7 @@ def page_ai_visibility_index(
         return _render(
             "ai_visibility_index.html.j2", request=request,
             **bundle,
-            breadcrumbs=[{"name": "AI Visibility Rankings", "path": "/ai-visibility"}],
+            breadcrumbs=[{"name": "AEO Rankings", "path": "/ai-visibility"}],
         )
 
     industries_by_category: dict[str, list[dict[str, Any]]] = {}
@@ -1244,7 +1278,7 @@ def page_ai_visibility_index(
     return _render(
         "ai_visibility_index.html.j2", request=request,
         **bundle,
-        breadcrumbs=[{"name": "AI Visibility Rankings", "path": "/ai-visibility"}],
+        breadcrumbs=[{"name": "AEO Rankings", "path": "/ai-visibility"}],
     )
 
 
@@ -1264,7 +1298,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
             "ai_visibility_industry.html.j2", request=request,
             **bundle,
             breadcrumbs=[
-                {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+                {"name": "AEO Rankings", "path": "/ai-visibility"},
                 {"name": bundle["report"].name, "path": f"/ai-visibility/{bundle['report'].slug}"},
             ],
         )
@@ -1275,7 +1309,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
                 _select(IndustryReport).where(IndustryReport.slug == slug)
             ).first()
             if not report:
-                raise HTTPException(404, "Industry ranking not found")
+                raise HTTPException(404, "AEO ranking not found")
             brands = list(
                 s.exec(
                     _select(IndustryBrand)
@@ -1304,7 +1338,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         raise
     except Exception as exc:  # noqa: BLE001
         print(f"[ai-visibility] {slug} DB error: {type(exc).__name__}: {exc}")
-        raise HTTPException(503, "Rankings temporarily unavailable")
+        raise HTTPException(503, "AEO rankings temporarily unavailable")
 
     # Surface a few aggregate signals the template uses for the hero band.
     audited = [b for b in brands if b.last_audited]
@@ -1415,7 +1449,7 @@ def page_ai_visibility_industry(slug: str, request: Request) -> HTMLResponse:
         "ai_visibility_industry.html.j2", request=request,
         **bundle,
         breadcrumbs=[
-            {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+            {"name": "AEO Rankings", "path": "/ai-visibility"},
             {"name": report.name, "path": f"/ai-visibility/{report.slug}"},
         ],
     )
@@ -2740,7 +2774,7 @@ def _render_industry_pdf_background(
         print(f"[pdf-request] rendering url={industry_url} lead={lead_id}")
         pdf_bytes = render_url_to_pdf_bytes(industry_url, format="A4", margin_px=24)
         print(f"[pdf-request] pdf rendered lead={lead_id} bytes={len(pdf_bytes)}")
-        pdf_filename = f"monitoraeo-{slug}-rankings.pdf"
+        pdf_filename = f"monitoraeo-{slug}-aeo-rankings.pdf"
         resend_resp = send_industry_pdf(
             to_email=email,
             industry_name=industry_name,
@@ -2922,7 +2956,7 @@ def _build_industry_pdf_render_context(slug: str) -> dict[str, Any]:
         "base_url": SITE_BASE_URL,
         "user": None,
         "breadcrumbs": [
-            {"name": "AI Visibility Rankings", "path": "/ai-visibility"},
+            {"name": "AEO Rankings", "path": "/ai-visibility"},
             {"name": report.name, "path": f"/ai-visibility/{report.slug}"},
         ],
         "pdf": True,  # template uses this to drop interactive UI elements

@@ -1,18 +1,20 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility/" ~ report.slug %}
 {% set _engine_name = engine_display_name or "Google AI" %}
-{# Title + description target buyers researching the category. Earlier
-   version led with "AI search visibility ranking" which is what the page
-   IS but not what buyers search for. Google Search Console showed pages
-   ranking position 5-10 on niche/local queries with zero clicks — the
-   methodology-led titles didn't sell. New framing leads with "Best X"
-   buyer intent while preserving the same content. The H1 below keeps
-   the methodology framing so the page is still honest about what it is.
+{# Title + H1 lead with "AEO for <category>" so the page is unambiguously
+   about Answer Engine Optimisation, which is the term monitoraeo can
+   actually own in SERPs. The previous "Best <category> (2026)" framing
+   competed against every commercial listicle in the category and pulled
+   shoppers rather than AEO buyers. The year is deliberately dropped from
+   the title and H1: the page is refreshed monthly, so a hardcoded year
+   dates the page the moment the calendar turns and forces an annual
+   sweep across 2400+ pages. Freshness is signalled by the visible
+   "Last updated" byline plus schema dateModified instead.
    For local-service slugs (where detect_local_services found a city or
-   state), swap "the brands" for "the providers" so the meta reads
+   state), swap "the brands" for "the providers" so the copy reads
    naturally for dermatologists/lawyers/dentists/etc. #}
 {% set _noun = "providers" if local_meta else "brands" %}
-{% set page_description = "The " ~ _noun ~ " AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI) name and cite when buyers ask about " ~ report.name|lower ~ ". " ~ (brands|length) ~ " ranked, refreshed monthly." %}
+{% set page_description = "AEO for " ~ report.name|sentence_lower ~ ": which " ~ _noun ~ " AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI) name and cite when buyers ask. " ~ (brands|length) ~ " ranked on answer engine visibility, refreshed monthly." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
@@ -36,7 +38,14 @@
    raw scores so the page never reads bare. #}
 {% set insight_by_brand = dict(auto_brand_insights or {}) %}
 {% for bi in brand_insights %}{% set _ = insight_by_brand.update({bi.brand_name|lower: bi.text}) %}{% endfor %}
-{% block title %}Best {{ report.name|lower }} (2026): which {{ _noun }} AI search recommends | monitoraeo{% endblock %}
+{# Canonical page name, reused by the H1, the share buttons and every
+   JSON-LD headline below so they can never drift out of sync. #}
+{% set _page_name = "AEO for " ~ report.name|sentence_lower ~ ": AI search visibility ranking" %}
+{% block title %}AEO for {{ report.name }}: which {{ _noun }} AI search recommends | monitoraeo{% endblock %}
+{# Explicit og_title. Without this the layout falls back to self.title(),
+   which drags the " | monitoraeo" suffix into Slack/LinkedIn/X previews
+   and pushes the useful half of the headline out of the card. #}
+{% block og_title %}{{ _page_name }}{% endblock %}
 
 {% block schema %}
 <script type="application/ld+json">
@@ -46,8 +55,8 @@
     {
       "@type": "Dataset",
       "@id": "{{ _canonical }}#dataset",
-      "name": "{{ report.name }}: AI search visibility ranking (2026)",
-      "description": "How AI search engines rank {{ report.name|lower }} by visibility and citations. Per-brand visibility, citation rate and per-engine breakdown for {{ brands|length }} brands, audited via {{ _engine_name }} on an 8-query buyer-intent set, refreshed every {{ report.refresh_interval_days }} days.",
+      "name": "{{ _page_name }}",
+      "description": "Answer engine optimisation (AEO) ranking for {{ report.name|sentence_lower }}: how AI search engines rank the category by visibility and citations. Per-brand visibility, citation rate and per-engine breakdown for {{ brands|length }} brands, audited via {{ _engine_name }} on an 8-query buyer-intent set, refreshed every {{ report.refresh_interval_days }} days.",
       "url": "{{ _canonical }}",
       "creator": { "@id": "{{ _base_url }}/#org" },
       "publisher": { "@id": "{{ _base_url }}/#org" },
@@ -56,7 +65,7 @@
       "inLanguage": "en",
       "license": "https://creativecommons.org/licenses/by/4.0/",
       "isAccessibleForFree": true,
-      "keywords": ["{{ report.name }} AI search visibility", "{{ report.name }} AEO ranking", "AI visibility ranking {{ report.name|lower }}", "{{ report.name }} citation rate AI", "answer engine optimisation", "AEO", "{{ _engine_name }}"],
+      "keywords": ["AEO for {{ report.name|sentence_lower }}", "{{ report.name }} AEO ranking", "{{ report.name }} AI search visibility", "AI visibility ranking {{ report.name|sentence_lower }}", "{{ report.name }} citation rate AI", "answer engine optimisation", "AEO", "{{ _engine_name }}"],
       "variableMeasured": [
         {"@type": "PropertyValue", "name": "Visibility", "description": "Percentage of AI answers that name the brand in the prose"},
         {"@type": "PropertyValue", "name": "Citation rate", "description": "Percentage of AI answers that cite the brand's domain as a source"},
@@ -67,7 +76,7 @@
     {
       "@type": "ItemList",
       "@id": "{{ _canonical }}#ranking",
-      "name": "{{ report.name }} ranked by AI search visibility",
+      "name": "{{ report.name }} ranked by AEO performance (AI search visibility)",
       "itemListOrder": "https://schema.org/ItemListOrderDescending",
       "numberOfItems": {{ brands|length }},
       "itemListElement": [
@@ -117,7 +126,7 @@
     {
       "@type": "Article",
       "@id": "{{ _canonical }}#article",
-      "headline": "{{ report.name }}: AI search visibility ranking (2026)",
+      "headline": "{{ _page_name }}",
       "description": "{{ page_description }}",
       "url": "{{ _canonical }}",
       "mainEntityOfPage": "{{ _canonical }}",
@@ -316,8 +325,8 @@
 
 {% block content %}
 <section class="ind-hero">
-  <span class="eyebrow">AI Visibility Rankings · {{ report.parent_category or 'Industry' }}</span>
-  <h1>{{ report.name }}: AI search visibility ranking (2026)</h1>
+  <span class="eyebrow">AEO Rankings · {{ report.parent_category or 'Industry' }}</span>
+  <h1>{{ _page_name }}</h1>
   {# Byline. Renders both published + updated so the date signal is
      visible in-page (matches the Article schema dateModified above) and
      nudges SERP snippets toward showing a fresh date. Aria-hidden dot
@@ -333,7 +342,7 @@
     <span aria-hidden="true">·</span>
     <span>Refreshed every {{ report.refresh_interval_days }} days</span>
   </p>
-  <p class="lede">How AI search engines rank {{ report.name|lower }} by <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a> and <a href="/glossary/citation-rate-meaning" style="color:inherit;">citations</a>. {{ brands|length }} {{ _noun }} measured monthly across {{ _engine_name }}: which {{ _noun }} the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a></strong> (% of AI answers naming the brand) + <strong>30% <a href="/glossary/citation-rate-meaning" style="color:inherit;">citation rate</a></strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+  <p class="lede">How AI search engines rank {{ report.name|sentence_lower }} by <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a> and <a href="/glossary/citation-rate-meaning" style="color:inherit;">citations</a>. {{ brands|length }} {{ _noun }} measured monthly across {{ _engine_name }}: which {{ _noun }} the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a></strong> (% of AI answers naming the brand) + <strong>30% <a href="/glossary/citation-rate-meaning" style="color:inherit;">citation rate</a></strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
   <div class="ind-stats">
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_visibility }}%</div><div class="l">Avg visibility across category</div></div>
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_citation }}%</div><div class="l">Avg citation rate</div></div>
@@ -342,7 +351,7 @@
   {% if not pdf %}
   {# Action row — share + PDF download. Dropped entirely when rendering
      for the email-gated PDF (pdf=True context flag). #}
-  {% set _share_title = (report.name ~ ': AI search visibility ranking (2026)') %}
+  {% set _share_title = _page_name %}
   {% set _share_url = _canonical %}
   {% set _x_intent = 'https://twitter.com/intent/tweet?text=' ~ (_share_title ~ ' — via @monitoraeo')|urlencode ~ '&url=' ~ _share_url|urlencode %}
   {% set _li_intent = 'https://www.linkedin.com/sharing/share-offsite/?url=' ~ _share_url|urlencode %}
@@ -374,7 +383,7 @@
 {% if not pdf %}
 <div class="pdfm-backdrop" id="pdfmBackdrop" role="dialog" aria-modal="true" aria-labelledby="pdfmTitle">
   <div class="pdfm-card">
-    <h3 id="pdfmTitle">Download this ranking as a PDF</h3>
+    <h3 id="pdfmTitle">Download this AEO ranking as a PDF</h3>
     <p>We'll email it to you. One-off send — no list, no follow-up, no surprise marketing.</p>
     <form id="pdfmForm" autocomplete="off">
       <input type="email" id="pdfmEmail" placeholder="you@yourbrand.com" required autocomplete="email">
@@ -549,14 +558,14 @@
   <div class="glance-card">
     <span class="label">Most cited brand</span>
     <span class="value"><strong>{{ quick_insights.most_cited_brand.brand_name }}</strong></span>
-    <span class="sub">{{ '%.0f' % quick_insights.most_cited_brand.citation_pct }}% citation rate · the AI's most-trusted source brand in {{ report.name|lower }}</span>
+    <span class="sub">{{ '%.0f' % quick_insights.most_cited_brand.citation_pct }}% citation rate · the AI's most-trusted source brand in {{ report.name|sentence_lower }}</span>
   </div>
   {% endif %}
   {% if quick_insights.top_source_domain %}
   <div class="glance-card">
     <span class="label">Top cited domain</span>
     <span class="value"><strong>{{ quick_insights.top_source_domain }}</strong></span>
-    <span class="sub">Referenced by AI across the {{ report.name|lower }} query set — the highest-leverage PR target in this category</span>
+    <span class="sub">Referenced by AI across the {{ report.name|sentence_lower }} query set — the highest-leverage PR target in this category</span>
   </div>
   {% endif %}
   <div class="glance-card">
@@ -613,7 +622,7 @@
 {% endif %}
 
 {% if brands %}
-<h2>The ranking</h2>
+<h2>The AEO ranking</h2>
 <table class="rank-table">
   <thead>
     <tr>
@@ -649,13 +658,13 @@
 
 {% if top_category_sources %}
 <h2>Sources AI engines trust in this category</h2>
-<p>Across the 8 buyer-intent queries we ran on {{ report.name|lower }}, these are the domains {{ _engine_name }} cited most often. If you're not on this list — or if your competitors are — that's a concrete PR / linkbuilding target.</p>
+<p>Across the 8 buyer-intent queries we ran on {{ report.name|sentence_lower }}, these are the domains {{ _engine_name }} cited most often. If you're not on this list — or if your competitors are — that's a concrete PR / linkbuilding target.</p>
 <div class="source-pills">
   {% for src in top_category_sources %}<span>{{ src }}</span>{% endfor %}
 </div>
 {% endif %}
 
-<h2>How to read this ranking</h2>
+<h2>How to read this AEO ranking</h2>
 <p>Four things worth knowing before you act on the numbers above. These are the same definitions across every industry page — for category-specific observations, see the <em>What we observed</em> section above (where available) and the per-brand insights inline in the ranking.</p>
 <div class="insight-cards">
   <div class="insight-card">
@@ -671,7 +680,7 @@
     <p>The "top engine" column shows which AI surface each brand performs best on. Big gaps between a brand's score across engines usually points to specific content or schema gaps. <a href="/glossary/how-chatgpt-chooses-citations" style="color:var(--blue); font-weight:700;">How AI engines pick sources →</a></p>
   </div>
   <div class="insight-card">
-    <h4>Rankings move month to month</h4>
+    <h4>AEO rankings move month to month</h4>
     <p>AI engines re-crawl and re-rank on shorter cycles than classical search. We re-audit every brand on this list at least every {{ report.refresh_interval_days }} days and refresh this page automatically. <a href="/glossary/ai-search-ranking" style="color:var(--blue); font-weight:700;">How AI search ranking works →</a></p>
   </div>
 </div>
@@ -693,8 +702,8 @@
   </ul>
 </section>
 
-<h2>Get your own {{ report.name|lower }} brand audited</h2>
-<p>The brands above were curated from public market-leader lists. Want the same measurement against your own brand — including the queries you appear on, which competitors get named instead, and a prioritised fix list? Run a free preview.</p>
+<h2>Run an AEO audit on your own {{ report.name|sentence_lower }} brand</h2>
+<p>The brands above were curated from public market-leader lists. Want the same answer engine optimisation measurement against your own brand — including the queries you appear on, which competitors get named instead, and a prioritised fix list? Run a free preview.</p>
 
 <div style="display:flex; gap:14px; margin-top: 14px; flex-wrap:wrap;">
   {# Was href="/preview?c={category}" but Googlebot was following these
@@ -703,8 +712,8 @@
      homepage preview form anchor instead so visitors land on the form
      where they type their own domain + brand. nofollow as belt-and-
      suspenders if Google ever revisits a cached version of the URL. #}
-  <a href="/#preview" rel="nofollow" class="btn-primary">Audit your {{ report.name|lower }} brand →</a>
-  <a href="/ai-visibility" class="btn-secondary">Browse all rankings</a>
+  <a href="/#preview" rel="nofollow" class="btn-primary">Audit your {{ report.name|sentence_lower }} brand →</a>
+  <a href="/ai-visibility" class="btn-secondary">Browse all AEO rankings</a>
   <a href="/ai-visibility/methodology" class="btn-secondary">Methodology →</a>
 </div>
 
@@ -714,7 +723,7 @@
    questions, no answers) which looks broken in the PDF — better to
    drop it entirely. Web page is unchanged. #}
 <div class="faq-block">
-<h2 id="faq">Frequently asked about {{ report.name|lower }} AI visibility</h2>
+<h2 id="faq">Frequently asked about AEO for {{ report.name|sentence_lower }}</h2>
 <div style="display:grid; gap:14px; margin-top:14px;">
   {% for f in narrative_faqs %}
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">

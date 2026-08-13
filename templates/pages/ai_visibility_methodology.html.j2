@@ -1,10 +1,10 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility/methodology" %}
-{% set page_description = "How monitoraeo's AI visibility rankings are produced — the 8 category queries, the composite scoring formula, the monthly refresh cadence, and the safeguards against gaming." %}
+{% set page_description = "How monitoraeo's AEO rankings are produced — the 8 category queries, the composite answer engine optimisation score, the monthly refresh cadence, and the safeguards against gaming." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = '2026-06-01T00:00:00Z' %}
-{% block title %}AI visibility rankings methodology | monitoraeo{% endblock %}
+{% block title %}AEO rankings methodology | monitoraeo{% endblock %}
 
 {% block schema %}
 <script type="application/ld+json">
@@ -14,7 +14,7 @@
     {
       "@type": "Article",
       "@id": "{{ _canonical }}#article",
-      "headline": "AI visibility rankings methodology",
+      "headline": "AEO rankings methodology",
       "description": "{{ page_description }}",
       "url": "{{ _canonical }}",
       "mainEntityOfPage": "{{ _canonical }}",
@@ -29,11 +29,11 @@
       "@type": "FAQPage",
       "@id": "{{ _canonical }}#faq",
       "mainEntity": [
-        {"@type":"Question","name":"How often are the rankings refreshed?","acceptedAnswer":{"@type":"Answer","text":"Every 30 days by default — configurable per industry. Each refresh runs the full 8-query audit against every listed brand and recomputes the ranking. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated."}},
+        {"@type":"Question","name":"How often are the AEO rankings refreshed?","acceptedAnswer":{"@type":"Answer","text":"Every 30 days by default — configurable per industry. Each refresh runs the full 8-query audit against every listed brand and recomputes the ranking. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated."}},
         {"@type":"Question","name":"What is the composite visibility score?","acceptedAnswer":{"@type":"Answer","text":"A weighted average of two metrics: visibility (70%) — the percentage of AI answers naming the brand — plus citation rate (30%) — the percentage citing the brand's domain. The weighting reflects that being recommended in the prose is more valuable to a brand than being cited as a source, but both matter."}},
         {"@type":"Question","name":"Which AI engines are queried?","acceptedAnswer":{"@type":"Answer","text":"{{ engine_display_name }} currently. The 5-engine model used by paid monitoraeo audits (adding ChatGPT, Claude, Perplexity, Gemini) is planned for the rankings later in 2026 — the per_engine breakdown column on every brand is already structured to accommodate this without re-architecting."}},
         {"@type":"Question","name":"How are the 20 brands per industry chosen?","acceptedAnswer":{"@type":"Answer","text":"Hand-curated from public market-leader lists (G2 Grids, Crunchbase top-funded, trade-press 'top X' lists). The intent is broad coverage of the recognised category leaders, not a comprehensive list of every brand in the space. Brands missing from a ranking can request to be added via support."}},
-        {"@type":"Question","name":"Can rankings be gamed?","acceptedAnswer":{"@type":"Answer","text":"Not by us — we don't take payment for inclusion or position. Brands can improve their own ranking the way any AEO program does (better content, structured data, entity signals, earned mentions on sources AI engines trust). The 8 category queries are fixed, not influenced by individual brands."}}
+        {"@type":"Question","name":"Can the AEO rankings be gamed?","acceptedAnswer":{"@type":"Answer","text":"Not by us — we don't take payment for inclusion or position. Brands can improve their own ranking the way any AEO program does (better content, structured data, entity signals, earned mentions on sources AI engines trust). The 8 category queries are fixed, not influenced by individual brands."}}
       ]
     }
   ]
@@ -53,9 +53,9 @@
 {% endblock %}
 
 {% block content %}
-<span class="eyebrow">AI Visibility Rankings · Methodology</span>
-<h1 class="page-title">How the rankings are produced</h1>
-<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed methodology: 8 category-level queries against {{ engine_display_name }} per brand, scored monthly, with a composite ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
+<span class="eyebrow">AEO Rankings · Methodology</span>
+<h1 class="page-title">How the AEO rankings are produced</h1>
+<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed answer engine optimisation methodology: 8 category-level queries against {{ engine_display_name }} per brand, scored monthly, with a composite AEO ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
 
 <div class="definition-box">
   <div class="label">In one sentence</div>
@@ -113,7 +113,7 @@
   <li><strong>Promise visibility numbers.</strong> AI engines change weekly. We honestly measure where you are; we don't guarantee where you'll be.</li>
 </ul>
 
-<h2>How to improve your ranking</h2>
+<h2>How to improve your AEO ranking</h2>
 <p>The same way any AEO program works — better content, structured data, entity signals, earned mentions on the sites AI engines trust in your category. The <a href="/answer-engine-optimization-checklist">20-item AEO checklist</a> is the practical playbook. The fastest single move is usually shipping FAQPage schema across your content library.</p>
 
 <div style="display:flex; gap:14px; margin: 28px 0; flex-wrap: wrap;">
@@ -123,7 +123,7 @@
 
 <h2>Related</h2>
 <ul class="bullets">
-  <li><a href="/ai-visibility">AI visibility rankings index</a> — all published industries</li>
+  <li><a href="/ai-visibility">AEO rankings index</a> — all published industries</li>
   <li><a href="/how-it-works">How a monitoraeo audit works</a> — the paid-audit methodology (5 engines, 40 queries)</li>
   <li><a href="/answer-engine-optimization-checklist">AEO checklist</a> — the practical playbook for improving your ranking</li>
   <li><a href="/glossary">Glossary</a> — every AI search term defined</li>
@@ -132,7 +132,7 @@
 <h2 id="faq">Frequently asked</h2>
 <div style="display:grid; gap:14px; margin-top:14px;">
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
-    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often are the rankings refreshed?</summary>
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often are the AEO rankings refreshed?</summary>
     <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Every 30 days by default — configurable per industry. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated.</p>
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
@@ -148,7 +148,7 @@
     <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Hand-curated from public market-leader sources (G2, Crunchbase, trade press). Broad coverage of recognised leaders, not exhaustive. Missing brands can request inclusion via support.</p>
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
-    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can rankings be gamed?</summary>
+    <summary style="cursor:pointer; font-weight:800; font-size:16px;">Can the AEO rankings be gamed?</summary>
     <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Not by us — we don't take payment for inclusion or position. Brands can improve their ranking the way any AEO program does: better content, schema, entity signals, earned mentions on sources AI engines trust.</p>
   </details>
 </div>

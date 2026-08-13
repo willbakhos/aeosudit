@@ -125,17 +125,18 @@ def send_industry_pdf(
     resend.api_key = api_key
 
     from_addr = os.environ.get("REPORT_FROM_EMAIL", "monitoraeo <reports@monitoraeo.com>")
-    subject = f"Your AI visibility ranking PDF: {industry_name}"
+    subject = f"Your AEO ranking PDF: {industry_name}"
     html = f"""\
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   max-width:560px; margin:0 auto; padding:32px 24px; color:#0f172a; line-height:1.55;">
   <h1 style="font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0 0 16px;">
-    Your <strong>{_html_escape(industry_name)}</strong> ranking PDF
+    Your AEO ranking PDF for <strong>{_html_escape(industry_name)}</strong>
   </h1>
   <p style="margin:0 0 14px; font-size:15px;">
-    The PDF is attached. It captures the current AI visibility rankings,
-    citation rates, top cited sources, and the methodology behind the scores.
+    The PDF is attached. It captures the current answer engine optimisation
+    rankings, citation rates, top cited sources, and the methodology behind
+    the scores.
   </p>
   <p style="margin:0 0 24px; font-size:15px;">
     View the live page (refreshed monthly):
