@@ -7,7 +7,7 @@ Mirrors src/action_plan.py's strict-then-loose-JSON fallback because
 OpenRouter's strict-schema polyfill for Anthropic models is unreliable.
 
 Called from src/industry_audit.refresh_industry() at the end of every
-monthly refresh. Cost: ~one Claude Sonnet call per industry per refresh,
+quarterly refresh. Cost: ~one Claude Sonnet call per industry per refresh,
 roughly $0.04–0.07 depending on brand count + content length.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ MODEL = "anthropic/claude-sonnet-4.6"
 # Buyer-intent intro (above the ranking table): GPT-4o. The intro is short
 # (~200 words), the prompt is simpler, and GPT-4o is materially cheaper
 # than Claude Sonnet at the volume we run (382+ industries per backfill /
-# monthly refresh cycle).
+# quarterly refresh cycle).
 BUYER_INTRO_MODEL = "openai/gpt-4o"
 DEFAULT_TIMEOUT = 120.0
 MAX_RETRIES = 2

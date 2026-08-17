@@ -6,7 +6,7 @@
    actually own in SERPs. The previous "Best <category> (2026)" framing
    competed against every commercial listicle in the category and pulled
    shoppers rather than AEO buyers. The year is deliberately dropped from
-   the title and H1: the page is refreshed monthly, so a hardcoded year
+   the title and H1: the page is refreshed on a rolling cadence, so a hardcoded year
    dates the page the moment the calendar turns and forces an annual
    sweep across 2400+ pages. Freshness is signalled by the visible
    "Last updated" byline plus schema dateModified instead.
@@ -14,7 +14,7 @@
    state), swap "the brands" for "the providers" so the copy reads
    naturally for dermatologists/lawyers/dentists/etc. #}
 {% set _noun = "providers" if local_meta else "brands" %}
-{% set page_description = "AEO for " ~ report.name|sentence_lower ~ ": which " ~ _noun ~ " AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI) name and cite when buyers ask. " ~ (brands|length) ~ " ranked on answer engine visibility, refreshed monthly." %}
+{% set page_description = "AEO for " ~ report.name|sentence_lower ~ ": which " ~ _noun ~ " AI engines (ChatGPT, Claude, Perplexity, Gemini, Google AI) name and cite when buyers ask. " ~ (brands|length) ~ " ranked on answer engine visibility, refreshed quarterly." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = report.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if report.created_at else '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = report.last_full_refresh.strftime('%Y-%m-%dT%H:%M:%SZ') if report.last_full_refresh else page_published_time %}
@@ -342,7 +342,7 @@
     <span aria-hidden="true">·</span>
     <span>Refreshed every {{ report.refresh_interval_days }} days</span>
   </p>
-  <p class="lede">How AI search engines rank {{ report.name|sentence_lower }} by <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a> and <a href="/glossary/citation-rate-meaning" style="color:inherit;">citations</a>. {{ brands|length }} {{ _noun }} measured monthly across {{ _engine_name }}: which {{ _noun }} the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a></strong> (% of AI answers naming the brand) + <strong>30% <a href="/glossary/citation-rate-meaning" style="color:inherit;">citation rate</a></strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+  <p class="lede">How AI search engines rank {{ report.name|sentence_lower }} by <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a> and <a href="/glossary/citation-rate-meaning" style="color:inherit;">citations</a>. {{ brands|length }} {{ _noun }} measured quarterly across {{ _engine_name }}: which {{ _noun }} the AI names in answers, which domains it cites as sources, and how the leaders compare.{% if report.description %} {{ report.description }}{% endif %} Composite score: <strong>70% <a href="/glossary/visibility-metric" style="color:inherit;">visibility</a></strong> (% of AI answers naming the brand) + <strong>30% <a href="/glossary/citation-rate-meaning" style="color:inherit;">citation rate</a></strong> (% citing the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
   <div class="ind-stats">
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_visibility }}%</div><div class="l">Avg visibility across category</div></div>
     <div class="ind-stat"><div class="n">{{ '%.0f' % avg_citation }}%</div><div class="l">Avg citation rate</div></div>

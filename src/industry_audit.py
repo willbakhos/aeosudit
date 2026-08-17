@@ -9,12 +9,14 @@ Run-once-per-industry pattern:
   5. Re-rank, update timestamps
 
 The "shared questions across all brands" design is the cost optimisation:
-    8 queries × 50 industries × 12 months = 4,800 queries/year (~$14)
-vs the naive per-brand-per-question version which would cost ~$340/year.
+one set of 8 answers scores all ~20 brands in the industry, rather than
+running 8 questions per brand. At the current catalogue size:
+    8 queries × 2,450 industries × 4 refreshes/year ≈ 78k queries/year
+vs the naive per-brand-per-question version, which would be ~20x that.
 
 Failure mode: per-brand exceptions are logged into IndustryBrand.last_audit_error
 but don't abort the rest of the refresh. A single bad domain shouldn't take
-down the whole industry's monthly update.
+down the whole industry's quarterly update.
 """
 from __future__ import annotations
 
@@ -52,7 +54,7 @@ def _engine_display_name() -> str:
     return engine_display_name()
 
 
-def _advance_schedule_on_skip(session, report, days: int = 30) -> None:
+def _advance_schedule_on_skip(session, report, days: int = 90) -> None:
     """Skip-path schedule advance for the no-brands branch — sets both
     last_full_refresh and next_scheduled_refresh so the cron doesn't keep
     selecting this row every tick."""
@@ -362,7 +364,7 @@ def refresh_industry(slug: str) -> dict[str, Any]:
         from datetime import timedelta
         fresh_report = s.get(IndustryReport, slug)
         if fresh_report:
-            interval = fresh_report.refresh_interval_days or 30
+            interval = fresh_report.refresh_interval_days or 90
             fresh_report.last_full_refresh = datetime.utcnow()
             fresh_report.next_scheduled_refresh = datetime.utcnow() + timedelta(days=interval)
             # Empty-page guardrail: if NO brand scored any visibility or

@@ -66,7 +66,7 @@ def init_db() -> None:
         # an already-deployed schema without an explicit migration tool.
         "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS parent_category VARCHAR DEFAULT ''",
         "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS methodology_version INTEGER DEFAULT 1",
-        "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS refresh_interval_days INTEGER DEFAULT 30",
+        "ALTER TABLE monitor_industry_report ADD COLUMN IF NOT EXISTS refresh_interval_days INTEGER DEFAULT 90",
         "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS visibility_pct DOUBLE PRECISION DEFAULT 0",
         "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS citation_pct DOUBLE PRECISION DEFAULT 0",
         "ALTER TABLE monitor_industry_brand ADD COLUMN IF NOT EXISTS top_engine VARCHAR DEFAULT ''",
@@ -98,17 +98,18 @@ def init_db() -> None:
         "UPDATE monitor_industry_report SET noindex = TRUE WHERE last_full_refresh IS NOT NULL AND slug NOT IN (SELECT DISTINCT industry_slug FROM monitor_industry_brand WHERE visibility_pct > 0 OR citation_pct > 0)",
         "CREATE INDEX IF NOT EXISTS idx_industry_brand_history_slug_audited ON monitor_industry_brand_history (industry_slug, audited_at DESC)",
         # Backfill refresh_interval_days for any rows that ended up with NULL
-        # or 0 (the original `int = 30` Python default didn't generate a SQL
-        # default, so rows inserted via raw paths could miss it). 30 days =
-        # 1 month, our canonical default.
-        "UPDATE monitor_industry_report SET refresh_interval_days = 30 WHERE refresh_interval_days IS NULL OR refresh_interval_days <= 0",
+        # or 0 (a Python-side default doesn't generate a SQL default, so rows
+        # inserted via raw paths could miss it). 90 days = 1 quarter, our
+        # canonical default since the cadence change (see below).
+        "UPDATE monitor_industry_report SET refresh_interval_days = 90 WHERE refresh_interval_days IS NULL OR refresh_interval_days <= 0",
         # Repair stale next_scheduled_refresh values: any row where
         # next_scheduled_refresh ~= last_full_refresh shows the +0 days bug
         # (cron ran but refresh_interval_days was effectively zero, so the
-        # 'now + days' arithmetic produced ~now). Recompute as
-        # last_full_refresh + 30 days so the cron stops infinite-looping
-        # over them. Safe: only touches rows where the bug signature matches.
-        "UPDATE monitor_industry_report SET next_scheduled_refresh = last_full_refresh + INTERVAL '30 days' WHERE last_full_refresh IS NOT NULL AND next_scheduled_refresh IS NOT NULL AND next_scheduled_refresh <= last_full_refresh + INTERVAL '1 hour'",
+        # 'now + days' arithmetic produced ~now). Recompute from the row's
+        # OWN interval rather than a hardcoded 30 so this stays correct for
+        # any industry on a custom cadence. Safe: only touches rows where
+        # the bug signature matches.
+        "UPDATE monitor_industry_report SET next_scheduled_refresh = last_full_refresh + (COALESCE(refresh_interval_days, 90) || ' days')::interval WHERE last_full_refresh IS NOT NULL AND next_scheduled_refresh IS NOT NULL AND next_scheduled_refresh <= last_full_refresh + INTERVAL '1 hour'",
         # One-off repair: the admin form's old `lstrip('https://')` ate the
         # first character of any brand_domain whose first letter happened to
         # match h/t/p/s (the lstrip char set). Fix surgically by exact
@@ -294,7 +295,13 @@ class IndustryReport(SQLModel, table=True):
     # column-level default so rows added via raw SQL (or migrations that
     # forget to set it) still get the right value — the bare `int = 30`
     # form is Python-default only.
-    refresh_interval_days: int = Field(default=30)
+    # 90 days = 1 quarter. Was 30 (monthly) until the cadence change: at
+    # 2400+ industries a monthly cadence cost roughly 3x what quarterly does
+    # (8 engine queries + 2 LLM calls per industry per refresh) for data that
+    # moves slowly enough that a quarter is still a useful trend interval.
+    # Individual industries can still be put on a faster cadence by setting
+    # this column directly; nothing in the code path assumes 90.
+    refresh_interval_days: int = Field(default=90)
     last_full_refresh: datetime | None = None     # most recent successful pass over all brands
     next_scheduled_refresh: datetime | None = None
     # Cached AI-generated insights for the public page. Shape:

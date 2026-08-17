@@ -1,6 +1,6 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility/methodology" %}
-{% set page_description = "How monitoraeo's AEO rankings are produced — the 8 category queries, the composite answer engine optimisation score, the monthly refresh cadence, and the safeguards against gaming." %}
+{% set page_description = "How monitoraeo's AEO rankings are produced — the 8 category queries, the composite answer engine optimisation score, the quarterly refresh cadence, and the safeguards against gaming." %}
 {% set page_og_type = 'article' %}
 {% set page_published_time = '2026-01-15T00:00:00Z' %}
 {% set page_modified_time = '2026-06-01T00:00:00Z' %}
@@ -29,7 +29,7 @@
       "@type": "FAQPage",
       "@id": "{{ _canonical }}#faq",
       "mainEntity": [
-        {"@type":"Question","name":"How often are the AEO rankings refreshed?","acceptedAnswer":{"@type":"Answer","text":"Every 30 days by default — configurable per industry. Each refresh runs the full 8-query audit against every listed brand and recomputes the ranking. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated."}},
+        {"@type":"Question","name":"How often are the AEO rankings refreshed?","acceptedAnswer":{"@type":"Answer","text":"Every 90 days by default — configurable per industry. Each refresh runs the full 8-query audit against every listed brand and recomputes the ranking. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated."}},
         {"@type":"Question","name":"What is the composite visibility score?","acceptedAnswer":{"@type":"Answer","text":"A weighted average of two metrics: visibility (70%) — the percentage of AI answers naming the brand — plus citation rate (30%) — the percentage citing the brand's domain. The weighting reflects that being recommended in the prose is more valuable to a brand than being cited as a source, but both matter."}},
         {"@type":"Question","name":"Which AI engines are queried?","acceptedAnswer":{"@type":"Answer","text":"{{ engine_display_name }} currently. The 5-engine model used by paid monitoraeo audits (adding ChatGPT, Claude, Perplexity, Gemini) is planned for the rankings later in 2026 — the per_engine breakdown column on every brand is already structured to accommodate this without re-architecting."}},
         {"@type":"Question","name":"How are the 20 brands per industry chosen?","acceptedAnswer":{"@type":"Answer","text":"Hand-curated from public market-leader lists (G2 Grids, Crunchbase top-funded, trade-press 'top X' lists). The intent is broad coverage of the recognised category leaders, not a comprehensive list of every brand in the space. Brands missing from a ranking can request to be added via support."}},
@@ -55,11 +55,11 @@
 {% block content %}
 <span class="eyebrow">AEO Rankings · Methodology</span>
 <h1 class="page-title">How the AEO rankings are produced</h1>
-<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed answer engine optimisation methodology: 8 category-level queries against {{ engine_display_name }} per brand, scored monthly, with a composite AEO ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
+<p class="page-lede">Every industry page at <a href="/ai-visibility">/ai-visibility</a> is generated from a fixed answer engine optimisation methodology: 8 category-level queries against {{ engine_display_name }} per brand, scored quarterly, with a composite AEO ranking that weights being-recommended over being-cited. Here are the specifics so you can audit the data yourself.</p>
 
 <div class="definition-box">
   <div class="label">In one sentence</div>
-  <p>For each industry, we run 8 buyer-intent queries against {{ engine_display_name }}, count how often each brand is named in the prose and cited in the source list, compute a <strong>70% visibility + 30% citation</strong> composite score, and re-rank monthly. Same questions every month so the trend is comparable.</p>
+  <p>For each industry, we run 8 buyer-intent queries against {{ engine_display_name }}, count how often each brand is named in the prose and cited in the source list, compute a <strong>70% visibility + 30% citation</strong> composite score, and re-rank quarterly. Same questions every quarter so the trend is comparable.</p>
 </div>
 
 <h2>The 8 queries we ask, per industry</h2>
@@ -91,7 +91,7 @@
 <p>The 70/30 weighting reflects an editorial choice — for most brand owners, being named in the AI's prose recommendation matters more than being one of many cited sources. If you weight them differently (e.g. 50/50 because you're optimising for citations as a backlink-equivalent), the ranking shifts but rarely dramatically. The raw <code>visibility_pct</code> and <code>citation_pct</code> are visible on every brand row so you can re-rank with your own weighting.</p>
 
 <h2>Refresh cadence</h2>
-<p>Every 30 days by default per industry. The cron worker picks up to 3 industries per 5-minute tick whose <code>next_scheduled_refresh</code> is due, runs the 8 queries, re-scores every brand, snapshots the previous state into history (drives the Movers &amp; Shakers section), generates a fresh AI-written narrative + FAQ from the new data, and advances the schedule.</p>
+<p>Every 90 days by default per industry. The cron worker picks up to 3 industries per 5-minute tick whose <code>next_scheduled_refresh</code> is due, runs the 8 queries, re-scores every brand, snapshots the previous state into history (drives the Movers &amp; Shakers section), generates a fresh AI-written narrative + FAQ from the new data, and advances the schedule.</p>
 
 <ul class="bullets">
   <li>Industries can have custom intervals (some categories shift faster than others) — set per-industry on creation.</li>
@@ -133,7 +133,7 @@
 <div style="display:grid; gap:14px; margin-top:14px;">
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
     <summary style="cursor:pointer; font-weight:800; font-size:16px;">How often are the AEO rankings refreshed?</summary>
-    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Every 30 days by default — configurable per industry. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated.</p>
+    <p style="margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6;">Every 90 days by default — configurable per industry. The 'Refreshed [date]' pill on each industry page shows when the data was last regenerated.</p>
   </details>
   <details style="padding:18px 22px; border-radius:18px; background:white; border:1px solid var(--line); box-shadow:var(--shadow-soft);">
     <summary style="cursor:pointer; font-weight:800; font-size:16px;">What is the composite visibility score?</summary>

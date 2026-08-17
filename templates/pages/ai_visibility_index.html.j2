@@ -1,6 +1,6 @@
 {% extends "_layout.html.j2" %}
 {% set canonical_path = "/ai-visibility" %}
-{% set page_description = "AEO rankings by industry — answer engine optimisation performance measured monthly across ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews. The brands AI engines actually name and cite when buyers ask." %}
+{% set page_description = "AEO rankings by industry — answer engine optimisation performance measured quarterly across ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews. The brands AI engines actually name and cite when buyers ask." %}
 {% set page_og_type = 'website' %}
 {# Noindex filtered/paginated views so they don't compete with the canonical index for SEO. #}
 {% if is_filtered or page > 1 %}{% set _ = page_description %}{% endif %}
@@ -215,7 +215,7 @@
   <div class="inner">
     <span class="eyebrow" style="background:rgba(255,255,255,.10); color:rgba(255,255,255,.84); border:1px solid rgba(255,255,255,.16);">AEO Rankings</span>
     <h1>AEO rankings: the brands AI engines actually name when buyers ask.</h1>
-    <p class="lede">Answer engine optimisation, measured. We audit thousands of brands across the five major AI answer engines — ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews — every month. These pages rank who's named, who's cited, and who AI engines have decided are the default answers in each category.</p>
+    <p class="lede">Answer engine optimisation, measured. We audit thousands of brands across the five major AI answer engines — ChatGPT, Claude, Perplexity, Gemini and Google AI Overviews — every quarter. These pages rank who's named, who's cited, and who AI engines have decided are the default answers in each category.</p>
     <div class="hero-stats">
       <div class="hero-stat">
         <div class="n">{{ total_industries or 0 }}</div>
@@ -494,7 +494,7 @@
 {% endif %}
 
 <h2 style="margin-top:48px;">How these AEO rankings are produced</h2>
-<p>For each industry we pick 20 leading brands and run an 8-query answer engine optimisation audit per brand monthly against {{ engine_display_name or "Google AI" }}. Brands are ranked by a composite AEO score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
+<p>For each industry we pick 20 leading brands and run an 8-query answer engine optimisation audit per brand quarterly against {{ engine_display_name or "Google AI" }}. Brands are ranked by a composite AEO score: 70% visibility (how often the AI names the brand) + 30% citation rate (how often AI links to the brand's domain). <a href="/ai-visibility/methodology" style="color:var(--blue); font-weight:700;">Full methodology →</a></p>
 
 <div style="display:flex; gap:14px; margin-top: 18px; flex-wrap:wrap;">
   <a href="/#preview" class="btn-primary">Run an AEO audit on your brand →</a>

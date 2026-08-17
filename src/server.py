@@ -378,7 +378,7 @@ hallucination risk per engine, and produces a prioritised action plan.
 - [Glossary]({SITE_BASE_URL}/glossary): Every AI search term defined — AEO, GEO, AI Overview, AI Mode, llms.txt, citation rate, share of voice, brand hallucination and more.
 
 ## AEO rankings by industry
-- [AEO rankings by industry]({SITE_BASE_URL}/ai-visibility): Public answer engine optimisation ranking pages for the top brands in each industry, scored by how often AI engines name and cite them. Updated monthly. Each industry page (e.g. /ai-visibility/crm-software, titled "AEO for CRM software") is a Dataset with per-brand visibility and citation rates across Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini.
+- [AEO rankings by industry]({SITE_BASE_URL}/ai-visibility): Public answer engine optimisation ranking pages for the top brands in each industry, scored by how often AI engines name and cite them. Updated quarterly. Each industry page (e.g. /ai-visibility/crm-software, titled "AEO for CRM software") is a Dataset with per-brand visibility and citation rates across Google AI Overviews, ChatGPT, Claude, Perplexity and Gemini.
 - [AEO rankings methodology]({SITE_BASE_URL}/ai-visibility/methodology): The 8 category queries, the 70% visibility + 30% citation composite AEO score, the monthly refresh cadence, and the safeguards against gaming.
 
 ## Product
